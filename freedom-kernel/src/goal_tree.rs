@@ -32,6 +32,7 @@ impl GoalNode {
     }
 
     /// Add a subgoal. Returns Err if depth_limit would be exceeded.
+    #[allow(clippy::result_large_err)]
     pub fn with_subgoal(mut self, child: GoalNode) -> Result<Self, GoalTreeError> {
         let child_depth = child.max_depth();
         if child_depth >= self.depth_limit {
@@ -146,7 +147,7 @@ fn dfs_verify(
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use crate::wire::{ClaimWire, EntityKind, EntityWire, MachineOwnerWire, ResourceWire};
+    use crate::wire::{EntityKind, EntityWire, MachineOwnerWire};
 
     fn machine(name: &str) -> EntityWire {
         EntityWire { name: name.to_string(), kind: EntityKind::Machine }
