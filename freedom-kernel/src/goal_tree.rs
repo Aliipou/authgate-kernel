@@ -48,12 +48,13 @@ impl GoalNode {
         if self.subgoals.is_empty() {
             return 0;
         }
-        1 + self.subgoals.iter().map(|s| s.max_depth()).max().unwrap_or(0)
+        1 + self.subgoals.iter().map(GoalNode::max_depth).max().unwrap_or(0)
     }
 }
 
 // ── GoalTreeError ─────────────────────────────────────────────────────────────
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum GoalTreeError {
     DepthLimitExceeded { limit: usize, actual: usize },
@@ -142,6 +143,7 @@ fn dfs_verify(
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::wire::{ClaimWire, EntityKind, EntityWire, MachineOwnerWire, ResourceWire};
