@@ -1,3 +1,4 @@
+#![allow(clippy::useless_conversion)]
 use std::collections::HashMap;
 use std::sync::Mutex;
 
@@ -234,6 +235,7 @@ pub fn resource_to_key(r: &Resource) -> ResourceKey {
 #[pymethods]
 impl OwnershipRegistry {
     #[new]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         OwnershipRegistry {
             inner: Mutex::new(RegistryInner::new()),
@@ -440,7 +442,7 @@ impl OwnershipRegistry {
         let mut result = Vec::new();
         for entry in &inner.conflicts {
             let record = ConflictRecord { inner: entry.clone() };
-            result.push(Py::new(py, record)?.into_any().into());
+            result.push(Py::new(py, record)?.into_any());
         }
         Ok(result)
     }
