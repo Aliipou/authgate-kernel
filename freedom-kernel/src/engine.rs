@@ -38,7 +38,7 @@ fn now_secs() -> f64 {
 }
 
 fn claim_valid(c: &ClaimWire) -> bool {
-    c.confidence > 0.0 && c.expires_at.map_or(true, |t| now_secs() <= t)
+    c.confidence > 0.0 && c.expires_at.is_none_or(|t| now_secs() <= t)
 }
 
 fn can_act(
