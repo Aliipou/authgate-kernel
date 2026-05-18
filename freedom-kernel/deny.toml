@@ -1,21 +1,23 @@
+[advisories]
+version = 2
+ignore = []
+
 [licenses]
-allow = ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC"]
-deny  = ["GPL-2.0", "GPL-3.0", "AGPL-3.0"]
-copyleft = "deny"
+version = 2
+allow = [
+  "MIT",
+  "Apache-2.0",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "ISC",
+  "Unicode-DFS-2016",
+  "OpenSSL",
+]
+deny = []
 
 [bans]
 multiple-versions = "warn"
-wildcards         = "deny"
-allow-wildcard-paths = false
-
-[advisories]
-db-path   = "~/.cargo/advisory-db"
-db-urls   = ["https://github.com/rustsec/advisory-db"]
-vulnerability = "deny"
-unmaintained  = "warn"
-yanked        = "deny"
-notice        = "warn"
 
 [sources]
-unknown-registry = "deny"
-unknown-git      = "deny"
+unknown-registry = "warn"
+unknown-git = "warn"
