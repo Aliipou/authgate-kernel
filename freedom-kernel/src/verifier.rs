@@ -1,3 +1,4 @@
+#![allow(clippy::useless_conversion)]
 use pyo3::prelude::*;
 
 use crate::entities::{Entity, Resource};
@@ -168,7 +169,7 @@ fn action_wire(a: &Action) -> wire::ActionWire {
         resources_read: a.resources_read.iter().map(resource_wire).collect(),
         resources_write: a.resources_write.iter().map(resource_wire).collect(),
         resources_delegate: a.resources_delegate.iter().map(resource_wire).collect(),
-        governs_humans: a.governs_humans.iter().map(|e| entity_wire(e)).collect(),
+        governs_humans: a.governs_humans.iter().map(entity_wire).collect(),
         argument: a.argument.clone(),
         increases_machine_sovereignty: a.increases_machine_sovereignty,
         resists_human_correction: a.resists_human_correction,
@@ -269,6 +270,7 @@ impl FreedomVerifier {
     /// If any action triggers a hard sovereignty flag (FORBIDDEN violation), the
     /// remaining actions are cancelled rather than evaluated — the plan itself
     /// reveals intent to subvert the system. Returns one result per action.
+    #[allow(clippy::indexing_slicing)]
     pub fn verify_plan(
         &self,
         py: Python<'_>,
@@ -330,7 +332,7 @@ impl FreedomVerifier {
         };
         let mut r = crate::engine::verify(&reg_w, &action_wire(&action));
         crate::ffi::attach_signature(&mut r)
-            .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+            .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
         let result = wire_to_result(r);
         if let Some(ref log) = self.audit_log {
             let result_obj = Py::new(py, result.clone())?;
