@@ -222,7 +222,7 @@ mod tests {
     #[test]
     fn test_spawn_depth_cap_enforced() {
         let registry = owned_registry_with_ctx_claim("bot", "child");
-        let req = AgentSpawnRequest {
+        let _req = AgentSpawnRequest {
             parent: machine("bot"),
             child_id: "child".to_string(),
             delegated_claims: vec![],
