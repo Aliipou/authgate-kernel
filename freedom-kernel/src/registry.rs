@@ -253,7 +253,7 @@ impl OwnershipRegistry {
     }
 
     pub fn set_conflict_hook(&self, hook: PyObject) {
-        self.inner.lock().unwrap().conflict_hook = Some(hook);
+        self.inner.lock().unwrap_or_else(|e| e.into_inner()).conflict_hook = Some(hook);
     }
 
     pub fn add_claim(&self, py: Python<'_>, claim: PyRef<RightsClaim>) -> PyResult<()> {
@@ -324,7 +324,7 @@ impl OwnershipRegistry {
 
     pub fn owner_of(&self, py: Python<'_>, machine: PyRef<Entity>) -> Option<Entity> {
         let key = entity_to_key(&machine);
-        let inner = self.inner.lock().unwrap();
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         inner.machine_owners.get(&key).map(|ok| {
             Entity::new(py, ok.name.clone(), AgentType::Human, None)
         })
@@ -342,7 +342,7 @@ impl OwnershipRegistry {
             Some(op) => op,
             None => return (false, 0.0, format!("unknown operation: {}", operation)),
         };
-        self.inner.lock().unwrap().can_act(&hk, &rk, op)
+        self.inner.lock().unwrap_or_else(|e| e.into_inner()).can_act(&hk, &rk, op)
     }
 
     /// Delegate a claim from `delegated_by` to `claim.holder`.
@@ -355,7 +355,7 @@ impl OwnershipRegistry {
         claim: PyRef<RightsClaim>,
         delegated_by: PyRef<Entity>,
     ) -> PyResult<()> {
-        if self.inner.lock().unwrap().frozen {
+        if self.inner.lock().unwrap_or_else(|e| e.into_inner()).frozen {
             return Err(pyo3::exceptions::PyRuntimeError::new_err(
                 "Registry is frozen; mutations are not permitted on snapshots."
             ));
@@ -452,7 +452,7 @@ impl OwnershipRegistry {
     ) -> Vec<RightsClaim> {
         let hk = entity_to_key(&holder);
         let rk = resource_to_key(&resource);
-        let inner = self.inner.lock().unwrap();
+        let inner = self.inner.lock().unwrap_or_else(|e| e.into_inner());
         inner
             .claims
             .iter()
