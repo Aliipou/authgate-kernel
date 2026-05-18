@@ -13,11 +13,6 @@ allow = [
   "Unicode-DFS-2016",
   "OpenSSL",
 ]
-deny = []
 
 [bans]
 multiple-versions = "warn"
-
-[sources]
-unknown-registry = "warn"
-unknown-git = "warn"
