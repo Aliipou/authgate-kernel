@@ -1,3 +1,5 @@
+#![allow(unexpected_cfgs)]
+#![allow(clippy::useless_conversion)]
 pub mod capability;
 mod crypto;
 pub(crate) mod engine;
@@ -34,7 +36,7 @@ fn verify_json(input_json: &str) -> PyResult<String> {
         .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))?;
     let mut r = crate::engine::verify(&vi.registry, &vi.action);
     crate::ffi::attach_signature(&mut r)
-        .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e))?;
+        .map_err(pyo3::exceptions::PyRuntimeError::new_err)?;
     serde_json::to_string(&r)
         .map_err(|e| pyo3::exceptions::PyRuntimeError::new_err(e.to_string()))
 }
