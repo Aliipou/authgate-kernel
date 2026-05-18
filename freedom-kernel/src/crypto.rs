@@ -11,6 +11,7 @@ pub struct KeyPair {
     signing_key: SigningKey,
     verifying_key: VerifyingKey,
     pub key_id: String,
+    #[allow(dead_code)]
     pub issued_at: u64,
 }
 
@@ -92,6 +93,7 @@ pub fn sign_canonical(action_id: &str, permitted: bool, violations: &[String]) -
 }
 
 /// Verify a signature produced by this kernel instance using constant-time comparison.
+#[allow(dead_code)]
 pub fn verify_signature(
     action_id: &str,
     permitted: bool,
@@ -125,6 +127,7 @@ pub fn verify_signature(
 }
 
 /// Legacy sign function (signs raw bytes) — kept for backward compat.
+#[allow(dead_code)]
 pub fn sign(msg: &[u8]) -> (String, String) {
     let kp = keypair();
     let sig = kp.signing_key.sign(msg);
@@ -135,6 +138,7 @@ pub fn pubkey_hex() -> String {
     hex::encode(keypair().verifying_key.to_bytes())
 }
 
+#[allow(dead_code)]
 pub fn key_id() -> String {
     keypair().key_id.clone()
 }
