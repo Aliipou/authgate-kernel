@@ -5,7 +5,7 @@
 //! to prevent recursive delegation explosion.
 
 use crate::engine;
-use crate::wire::{ActionWire, EntityKind, EntityWire, OwnershipRegistryWire, VerificationResultWire};
+use crate::wire::{ActionWire, OwnershipRegistryWire, VerificationResultWire};
 
 // ── GoalNode ──────────────────────────────────────────────────────────────────
 
