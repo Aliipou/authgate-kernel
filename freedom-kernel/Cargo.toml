@@ -3,6 +3,7 @@ name = "freedom-kernel"
 version = "0.1.0"
 edition = "2021"
 description = "Formal, auditable, cryptographically-verifiable AGI permission kernel"
+license = "MIT"
 
 [lib]
 name = "freedom_kernel"
