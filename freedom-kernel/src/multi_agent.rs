@@ -66,6 +66,7 @@ pub struct AgentSpawnRequest {
 
 // ── SpawnResult ───────────────────────────────────────────────────────────────
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug)]
 pub enum SpawnError {
     KernelBlocked(VerificationResultWire),
