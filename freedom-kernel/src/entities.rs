@@ -1,3 +1,4 @@
+#![allow(clippy::useless_conversion)]
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::time::{SystemTime, UNIX_EPOCH};
 
