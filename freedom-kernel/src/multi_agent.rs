@@ -122,6 +122,7 @@ pub fn spawn_to_action(req: &AgentSpawnRequest) -> ActionWire {
 /// 1. Parent's spawn action passes the kernel gate
 /// 2. Budget depth cap is ≤ MAX_DELEGATION_DEPTH
 /// 3. Parent is a MACHINE (humans don't spawn agents through this interface)
+#[allow(clippy::result_large_err)]
 pub fn verify_spawn(
     registry: &OwnershipRegistryWire,
     req: &AgentSpawnRequest,
