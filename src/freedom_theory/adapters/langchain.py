@@ -144,6 +144,6 @@ class FreedomTool:
                     self._verify()
                     return original_run(self, *args, **kwargs)
 
-                cls._run = gated_run
+                cls._run = gated_run  # type: ignore[method-assign]
         except ImportError:
             pass
