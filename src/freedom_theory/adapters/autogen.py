@@ -127,8 +127,8 @@ class AutoGenKernelAdapter:
                     **flags,
                 )
                 return fn(*args, **kwargs)
-            wrapper.__kernel_resources_read__ = resources_read or []
-            wrapper.__kernel_resources_write__ = resources_write or []
+            wrapper.__kernel_resources_read__ = resources_read or []  # type: ignore[attr-defined]
+            wrapper.__kernel_resources_write__ = resources_write or []  # type: ignore[attr-defined]
             return wrapper
         return decorator
 
