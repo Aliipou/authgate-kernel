@@ -9,19 +9,20 @@ These test invariants that must hold for ALL inputs, not just known examples:
 
 Run: pytest tests/test_proptest.py
 """
-from hypothesis import given, settings
+import pytest
+from hypothesis import given, assume, settings
 from hypothesis import strategies as st
 
 try:
-    from freedom_kernel import (  # noqa: I001
+    from freedom_kernel import (
         Action, AgentType, Entity, FreedomVerifier,
         OwnershipRegistry, Resource, ResourceType, RightsClaim,
     )
     RUST_KERNEL = True
 except ImportError:
-    from freedom_theory.kernel.entities import AgentType, Entity, Resource, ResourceType  # noqa: I001
+    from freedom_theory.kernel.verifier import FreedomVerifier, Action  # type: ignore[no-reattr]
+    from freedom_theory.kernel.entities import Entity, AgentType, Resource, ResourceType
     from freedom_theory.kernel.registry import OwnershipRegistry, RightsClaim
-    from freedom_theory.kernel.verifier import Action, FreedomVerifier  # type: ignore[no-reattr]
     RUST_KERNEL = False
 
 
@@ -37,8 +38,6 @@ FORBIDDEN_FLAGS = [
     "self_modification_weakens_verifier",
     "machine_coalition_reduces_freedom",
 ]
-
-RESOURCE_TYPES = [rt.value for rt in ResourceType]
 
 
 def _make_registry_with_bot():
@@ -61,7 +60,8 @@ def test_every_forbidden_flag_blocks(flag):
     action = Action(action_id=f"test-{flag}", actor=bot, **{flag: True})
     result = v.verify(action)
     assert not result.permitted, f"Flag {flag} must always block"
-    assert any("FORBIDDEN" in viol for viol in result.violations),         f"Violation list must contain FORBIDDEN for flag {flag}"
+    assert any("FORBIDDEN" in viol for viol in result.violations), \
+        f"Violation list must contain FORBIDDEN for flag {flag}"
 
 
 @given(
