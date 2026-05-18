@@ -49,6 +49,7 @@ pub enum Operation {
 impl Operation {
     /// Parse from string — only for external boundaries (C ABI, Python API).
     /// Internal Rust code must use the enum variant directly.
+    #[allow(clippy::should_implement_trait)]
     pub fn from_str(s: &str) -> Option<Self> {
         match s {
             "read" => Some(Operation::Read),
