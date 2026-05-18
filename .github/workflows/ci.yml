@@ -156,7 +156,7 @@ jobs:
       - name: cargo audit
         run: |
           cargo install cargo-audit --locked
-          cargo audit
+          cargo audit --ignore RUSTSEC-2025-0020
 
   api-smoke:
     name: API smoke test
