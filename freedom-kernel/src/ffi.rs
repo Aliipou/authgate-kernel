@@ -2,7 +2,6 @@
 //!
 //! Go, C, Zig, Java (JNA), Node (ffi-napi) — all use the same .so.
 //! No Python runtime required.
-use std::ffi::CStr;
 use std::os::raw::c_char;
 
 use crate::{crypto, engine};
