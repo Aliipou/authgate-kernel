@@ -162,13 +162,13 @@ pub fn verify_plan(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::wire::{ClaimWire, EntityWire, MachineOwnerWire, ResourceWire};
+    use crate::wire::{ClaimWire, EntityKind, EntityWire, MachineOwnerWire, ResourceWire};
 
     fn human(name: &str) -> EntityWire {
-        EntityWire { name: name.to_string(), kind: "HUMAN".to_string() }
+        EntityWire { name: name.to_string(), kind: EntityKind::Human }
     }
     fn machine(name: &str) -> EntityWire {
-        EntityWire { name: name.to_string(), kind: "MACHINE".to_string() }
+        EntityWire { name: name.to_string(), kind: EntityKind::Machine }
     }
     fn owned_registry() -> OwnershipRegistryWire {
         OwnershipRegistryWire {
