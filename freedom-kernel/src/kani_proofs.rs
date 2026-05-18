@@ -3,6 +3,7 @@
 /// Build with: cargo kani --harness <name>
 /// These harnesses are gated behind #[cfg(kani)] so they never affect the
 /// normal Rust build or test suite.
+#[allow(unexpected_cfgs)]
 #[cfg(kani)]
 mod proofs {
     use crate::engine;
