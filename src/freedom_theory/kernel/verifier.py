@@ -170,7 +170,7 @@ class FreedomVerifier:
             manipulation_score=0.0,
         )
         if self._audit_log is not None:
-            self._audit_log.record(result)
+            self._audit_log.record(result)  # type: ignore[attr-defined]
         return result
 
     def verify_plan(self, actions: list[Action]) -> list[VerificationResult]:
