@@ -112,6 +112,12 @@ mod tcb_tests {
         rev
     }
 
+    // Identity model: subject_id = SHA-256(pubkey). Used when building delegation
+    // chains — the parent proof's subject_id must equal subject_id_of(delegator_sk).
+    fn subject_id_of(sk: &SigningKey) -> [u8; 32] {
+        Sha256::digest(sk.verifying_key().to_bytes()).into()
+    }
+
     const ACTOR:     [u8; 32] = [0x01; 32];
     const RESOURCE:  [u8; 32] = [0x02; 32];
     const OTHER:     [u8; 32] = [0x09; 32];
@@ -346,9 +352,9 @@ mod tcb_tests {
         let root_vk = root_sk.verifying_key();
         let delegator_sk = random_key();
 
-        // Parent: READ only
-        let parent = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
-        // Child claims READ | WRITE — violation
+        // Parent grants READ to delegator_sk's identity (subject_id = SHA-256(delegator.pubkey)).
+        let parent = make_root_proof(&root_sk, subject_id_of(&delegator_sk), RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        // delegator_sk issues to ACTOR but claims READ|WRITE — attenuation violation.
         let child = make_delegated_proof(&delegator_sk, &parent, ACTOR, RESOURCE, RIGHT_READ | RIGHT_WRITE, EXPIRY, EPOCH);
         let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![parent, child.clone()], MIN_EPOCH);
         let result = verify(&action, &root_vk, NOW);
@@ -361,7 +367,9 @@ mod tcb_tests {
         let root_vk = root_sk.verifying_key();
         let delegator_sk = random_key();
 
-        let parent = make_root_proof(&root_sk, [0xAA; 32], RESOURCE, RIGHT_READ | RIGHT_WRITE, EXPIRY, EPOCH);
+        // Parent grants READ|WRITE to delegator_sk's identity.
+        let parent = make_root_proof(&root_sk, subject_id_of(&delegator_sk), RESOURCE, RIGHT_READ | RIGHT_WRITE, EXPIRY, EPOCH);
+        // delegator_sk issues READ (subset) to ACTOR — valid.
         let child = make_delegated_proof(&delegator_sk, &parent, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
         let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![parent, child], MIN_EPOCH);
         assert_eq!(verify(&action, &root_vk, NOW), Decision::Permit);
@@ -497,29 +505,33 @@ mod tcb_tests {
         child.signature = delegator_sk.sign(&child.signing_message()).to_bytes();
         child.proof_hash = Sha256::digest(child.to_canonical_bytes()).into();
         // Bundle has no parent matching fake_parent_hash
-        let result = validate_chain(&child, &[child.clone()], &root_vk);
+        let result = validate_chain(&child, &[child.clone()], &root_vk, EPOCH);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("parent proof not found"));
     }
 
     #[test]
     fn chain_depth_limit_enforced() {
-        // Build a chain of MAX_CHAIN_DEPTH + 1 — should fail
+        // Build a chain of MAX_CHAIN_DEPTH + 1 nodes — depth limit should fire.
+        // Each node's subject_id = SHA-256(next_signer.pubkey) to satisfy AT-5.1.
         let root_sk = random_key();
         let root_vk = root_sk.verifying_key();
 
+        let first_sk = random_key();
         let mut all_proofs = Vec::new();
-        let mut prev = make_root_proof(&root_sk, [0xA0; 32], RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let mut prev = make_root_proof(&root_sk, subject_id_of(&first_sk), RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
         all_proofs.push(prev.clone());
+        let mut current_sk = first_sk;
 
-        for i in 0..17u8 {
-            let sk = random_key();
-            let next = make_delegated_proof(&sk, &prev, [i; 32], RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        for _ in 0..17u8 {
+            let next_sk = random_key();
+            let next = make_delegated_proof(&current_sk, &prev, subject_id_of(&next_sk), RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
             all_proofs.push(next.clone());
             prev = next;
+            current_sk = next_sk;
         }
 
-        let result = validate_chain(all_proofs.last().unwrap(), &all_proofs, &root_vk);
+        let result = validate_chain(all_proofs.last().unwrap(), &all_proofs, &root_vk, EPOCH);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("depth limit"));
     }
@@ -554,28 +566,29 @@ mod tcb_tests {
         ));
     }
 
-    // AT-2.1: valid two-level delegation chain (parent subject != actor)
-    // Validates the actor_id filter fix: parent.subject=[0xAA;32] is filtered out,
-    // only child.subject=ACTOR is validated as a grant.
+    // AT-2.1: valid two-level delegation chain with correct identity binding.
+    // parent.subject = SHA-256(delegator.pubkey); only child.subject=ACTOR is treated as actor grant.
     #[test]
     fn happy_two_level_delegation_chain() {
         let root_sk = random_key();
         let root_vk = root_sk.verifying_key();
         let delegator_sk = random_key();
-        let parent = make_root_proof(&root_sk, [0xAA; 32], RESOURCE, RIGHT_READ | RIGHT_WRITE, EXPIRY, EPOCH);
+        // Root grants READ|WRITE to delegator_sk's identity.
+        let parent = make_root_proof(&root_sk, subject_id_of(&delegator_sk), RESOURCE, RIGHT_READ | RIGHT_WRITE, EXPIRY, EPOCH);
+        // delegator_sk issues READ to ACTOR.
         let child = make_delegated_proof(&delegator_sk, &parent, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
         let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![parent, child], MIN_EPOCH);
         assert_eq!(verify(&action, &root_vk, NOW), Decision::Permit);
     }
 
-    // AT-2.4: leaf in chain has stale epoch → denied
+    // AT-2.4: leaf in chain has stale epoch → engine denies before validate_chain
     #[test]
     fn deny_delegated_chain_leaf_stale_epoch() {
         let root_sk = random_key();
         let root_vk = root_sk.verifying_key();
         let delegator_sk = random_key();
-        let parent = make_root_proof(&root_sk, [0xAA; 32], RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
-        let child = make_delegated_proof(&delegator_sk, &parent, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, 1); // stale
+        let parent = make_root_proof(&root_sk, subject_id_of(&delegator_sk), RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let child = make_delegated_proof(&delegator_sk, &parent, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, 1); // stale leaf
         let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![parent, child], MIN_EPOCH);
         assert!(matches!(
             verify(&action, &root_vk, NOW),
@@ -589,43 +602,42 @@ mod tcb_tests {
         let root_sk = random_key();
         let root_vk = root_sk.verifying_key();
         let delegator_sk = random_key();
-        let parent = make_root_proof(&root_sk, [0xAA; 32], RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let parent = make_root_proof(&root_sk, subject_id_of(&delegator_sk), RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
         let mut child = make_delegated_proof(&delegator_sk, &parent, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
         child.signature[0] ^= 0x01; // corrupt one bit — ed25519 verify will fail
         let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![parent, child], MIN_EPOCH);
         assert!(matches!(verify(&action, &root_vk, NOW), Decision::Deny { .. }));
     }
 
-    // AT-3.1: KNOWN GAP — intermediate node epoch is not checked by the current engine.
-    // If a delegator's key was compromised in an old epoch, an attacker could present
-    // a chain with a stale-epoch parent but a fresh-epoch leaf. The leaf passes the
-    // epoch gate; the parent's epoch 0 is never inspected.
-    // Fix: validate_chain should also enforce epoch >= min_epoch for every node.
+    // AT-3.1: stale intermediate node epoch rejected (formerly a known gap, now fixed).
+    // Parent issued at epoch 0 (stale); leaf issued at epoch 5 (fresh).
+    // Engine's early check passes (leaf epoch OK); validate_chain must reject the parent.
     #[test]
-    fn known_gap_intermediate_node_epoch_not_enforced() {
+    fn deny_intermediate_node_stale_epoch_enforced() {
         let root_sk = random_key();
         let root_vk = root_sk.verifying_key();
         let delegator_sk = random_key();
-        // Parent issued at epoch 0 (very stale)
-        let parent = make_root_proof(&root_sk, [0xAA; 32], RESOURCE, RIGHT_READ, EXPIRY, 0);
+        // Parent at epoch 0 — stale delegator that was revoked by epoch advancement.
+        let parent = make_root_proof(&root_sk, subject_id_of(&delegator_sk), RESOURCE, RIGHT_READ, EXPIRY, 0);
+        // Leaf at current epoch — but the chain link is stale.
         let child = make_delegated_proof(&delegator_sk, &parent, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
         let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![parent, child], MIN_EPOCH);
-        // KNOWN GAP: currently Permits despite parent being from epoch 0.
-        assert_eq!(
+        assert!(matches!(
             verify(&action, &root_vk, NOW),
-            Decision::Permit,
-            "KNOWN GAP AT-3.1: intermediate node epoch is not checked"
-        );
+            Decision::Deny { reason: "delegation chain node epoch predates minimum required epoch" }
+        ));
     }
 
-    // AT-3.2: bundle contains two actor caps, one with stale epoch → deny
+    // AT-3.2: bundle with one fresh and one stale actor cap — stale triggers deny.
+    // Both caps grant RIGHT_READ so the epoch check fires before the rights check
+    // (if caps had mismatched rights, the rights check would fire first instead).
     #[test]
     fn deny_mixed_epoch_bundle_stale_cap_rejected() {
         let root_sk = random_key();
         let root_vk = root_sk.verifying_key();
         let cap_fresh = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
-        let cap_stale = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_WRITE, EXPIRY, 1);
-        let action = make_action(ACTOR, RESOURCE, RIGHT_READ | RIGHT_WRITE, vec![cap_fresh, cap_stale], MIN_EPOCH);
+        let cap_stale = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, 1); // same rights, stale epoch
+        let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap_fresh, cap_stale], MIN_EPOCH);
         assert!(matches!(
             verify(&action, &root_vk, NOW),
             Decision::Deny { reason: "capability epoch predates minimum required epoch" }
@@ -670,26 +682,23 @@ mod tcb_tests {
             "session accumulates all rights regardless of which actor exercised them");
     }
 
-    // AT-5.1: KNOWN GAP — delegation impersonation is not blocked.
-    // Attacker creates a fake child claiming delegation from Actor A (subject=[0xAA;32])
-    // without possessing A's private key. validate_chain verifies the child's signature
-    // against child.issuer_pubkey (the attacker's key), but never checks that
-    // issuer_pubkey corresponds to parent.subject_id.
-    // Fix: SHA-256(child.issuer_pubkey) == parent.subject_id.
+    // AT-5.1: delegation impersonation is now blocked (formerly a known gap, now fixed).
+    // Attacker signs a child with their own key and sets parent_hash to a real parent proof,
+    // but parent.subject_id=[0xAA;32] ≠ SHA-256(attacker.pubkey) → rejected.
     #[test]
-    fn known_gap_delegation_impersonation_not_blocked() {
+    fn deny_delegation_impersonation_blocked() {
         let root_sk = random_key();
         let root_vk = root_sk.verifying_key();
-        let attacker_sk = random_key(); // attacker does NOT hold [0xAA;32]'s key
+        let attacker_sk = random_key(); // does NOT hold the key for [0xAA;32]
+        // Parent issued to [0xAA;32] — not to attacker_sk's identity.
         let parent = make_root_proof(&root_sk, [0xAA; 32], RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        // Attacker forges a child using their own key.
         let fake_child = make_delegated_proof(&attacker_sk, &parent, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
         let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![parent, fake_child], MIN_EPOCH);
-        // KNOWN GAP: should Deny; currently Permits.
-        assert_eq!(
+        assert!(matches!(
             verify(&action, &root_vk, NOW),
-            Decision::Permit,
-            "KNOWN GAP AT-5.1: fix validate_chain to enforce issuer_pubkey -> parent.subject_id binding"
-        );
+            Decision::Deny { reason: "issuer pubkey does not correspond to parent subject identity" }
+        ));
     }
 
     // AT-6.2: cross-context proof reuse — cap issued for RESOURCE rejected for OTHER

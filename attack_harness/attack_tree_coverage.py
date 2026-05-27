@@ -14,6 +14,9 @@ Attack classes tested:
   AT-6: Crypto boundary (cross-context reuse, nonce uniqueness)
   AT-7: Integration boundary (adapter mutation, shadow execution — documented)
 
+AT-5.1 (delegation impersonation) and AT-3.1 (intermediate epoch) are now fixed.
+AT-7.5 (shadow execution) remains a KNOWN-GAP — requires architectural enforcement.
+
 Format: each test prints PASS / KNOWN-GAP / FAIL.
 """
 
@@ -139,6 +142,14 @@ def verify_action(actor_id, resource_hash, required_rights, min_epoch,
             return Decision(False, "capability epoch predates minimum required epoch")
         if not cap.get("sig_valid", True):
             return Decision(False, "root signature verification failed")
+        # AT-3.1 fix: intermediate (parent) node epoch must also meet min_epoch.
+        # parent_epoch defaults to the leaf's epoch — stale chains must set it explicitly.
+        parent_epoch = cap.get("parent_epoch", cap.get("epoch", 0))
+        if parent_epoch < min_epoch:
+            return Decision(False, "delegation chain node epoch predates minimum required epoch")
+        # AT-5.1 fix: issuer pubkey must bind to parent subject_id via SHA-256.
+        if not cap.get("issuer_binding_valid", True):
+            return Decision(False, "issuer pubkey does not correspond to parent subject identity")
         if cap.get("parent_rights") is not None:
             if (cap["rights"] & ~cap["parent_rights"]) != 0:
                 return Decision(False, "attenuation violation: child rights exceed parent")
@@ -173,7 +184,17 @@ NONCE    = b"\x07" * 16
 
 
 def base_cap(actor=None, resource=None, rights=RIGHT_READ, expiry=EXPIRY,
-             epoch=EPOCH, sig_valid=True, parent_rights=None):
+             epoch=EPOCH, sig_valid=True, parent_rights=None,
+             issuer_binding_valid=True, parent_epoch=None):
+    """Build a capability proof descriptor.
+
+    issuer_binding_valid — simulates AT-5.1 check:
+        SHA-256(child.issuer_pubkey) == parent.subject_id.
+        False means the issuer's key does not correspond to the parent subject (impersonation).
+    parent_epoch — simulates AT-3.1 check: epoch of the parent (intermediate) node.
+        If parent_epoch < min_epoch, the chain is rejected even if the leaf is fresh.
+        Defaults to the leaf epoch (assumes parent is at least as fresh as the leaf).
+    """
     a = actor or ACTOR
     r = resource or RESOURCE
     ph = hashlib.sha256(a + r + struct.pack(">Q", rights)).digest()
@@ -185,6 +206,8 @@ def base_cap(actor=None, resource=None, rights=RIGHT_READ, expiry=EXPIRY,
         "epoch": epoch,
         "sig_valid": sig_valid,
         "parent_rights": parent_rights,
+        "issuer_binding_valid": issuer_binding_valid,
+        "parent_epoch": parent_epoch if parent_epoch is not None else epoch,
         "proof_hash": ph,
         "canonical_bytes": ph + a + r,
     }
@@ -428,23 +451,30 @@ def test_at4_stepwise_accumulation_detection():
 # AT-5: Identity binding
 # ---------------------------------------------------------------------------
 
-def test_at5_delegation_impersonation_gap_documented():
-    """AT-5.1 KNOWN GAP: validate_chain does not check that the delegation chain
-    issuer key corresponds to the parent's subject_id. An attacker who knows the
-    parent proof can forge a child without the parent subject's private key.
-    Fix: SHA-256(child.issuer_pubkey) == parent.subject_id.
-    This test documents the current (exploitable) behavior."""
-    # Simulate: attacker creates a child claiming delegation from [0xAA;32]
-    # but signs it with their own key, not [0xAA;32]'s key.
-    # In the Python model, parent_rights represents the linked parent's rights.
-    # The Python model doesn't check issuer_pubkey -> parent.subject_id, mirroring the gap.
-    attacker_cap = base_cap(ACTOR, RESOURCE, rights=RIGHT_READ, parent_rights=RIGHT_READ)
-    # The attacker's cap passes attenuation (READ <= READ) and sig_valid=True.
+def test_at5_delegation_impersonation_blocked():
+    """AT-5.1: Delegation impersonation is now blocked (formerly a known gap, now fixed).
+    Attacker forges a child proof claiming delegation from a parent they don't control.
+    issuer_binding_valid=False simulates SHA-256(attacker.pubkey) != parent.subject_id."""
+    # Attacker's cap: valid sig, rights within parent, but issuer key doesn't match
+    # the parent's subject_id — the binding check (AT-5.1 fix) rejects it.
+    attacker_cap = base_cap(ACTOR, RESOURCE, rights=RIGHT_READ, parent_rights=RIGHT_READ,
+                            issuer_binding_valid=False)
     action = sealed_action(caps=[attacker_cap])
     d = check_action(action)
-    # KNOWN GAP: currently Permits (impersonation succeeds in Python model too)
-    assert d.permit, f"KNOWN GAP AT-5.1: expected Permit to document gap, got: {d}"
-    print("AT-5.1 KNOWN-GAP: delegation impersonation not blocked (fix: bind issuer_pubkey to parent.subject_id)")
+    assert not d.permit and "issuer" in d.reason, f"AT-5.1 FAILED: expected Deny(issuer...), got: {d}"
+    print("AT-5.1 PASS: delegation impersonation blocked (issuer_pubkey must bind to parent.subject_id)")
+
+
+def test_at3_1_intermediate_node_stale_epoch_rejected():
+    """AT-3.1: Stale epoch on intermediate (parent) delegation node is now rejected.
+    Leaf has epoch=EPOCH (fresh), parent has epoch=1 (stale, < min_epoch=EPOCH).
+    validate_chain must check every node, not just the leaf."""
+    # Cap with stale parent_epoch — simulates a chain whose delegator is from a revoked epoch.
+    cap = base_cap(ACTOR, RESOURCE, rights=RIGHT_READ, epoch=EPOCH, parent_epoch=1)
+    action = sealed_action(caps=[cap], min_epoch=EPOCH)
+    d = check_action(action)
+    assert not d.permit and "epoch" in d.reason, f"AT-3.1 FAILED: {d}"
+    print("AT-3.1 PASS: stale intermediate node epoch rejected (chain-wide epoch enforcement)")
 
 
 def test_at5_zero_actor_vs_nonzero_subject():
@@ -567,7 +597,8 @@ if __name__ == "__main__":
     test_at4_stepwise_accumulation_detection()
 
     print("\n--- AT-5: Identity Binding ---")
-    test_at5_delegation_impersonation_gap_documented()
+    test_at5_delegation_impersonation_blocked()
+    test_at3_1_intermediate_node_stale_epoch_rejected()
     test_at5_zero_actor_vs_nonzero_subject()
 
     print("\n--- AT-6: Crypto Boundary ---")

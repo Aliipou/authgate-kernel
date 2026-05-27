@@ -71,7 +71,7 @@ pub fn verify(
 
         // Bug 2 + Bug 5 fix: full chain with signatures + attenuation enforcement.
         // validate_chain receives all_proofs so intermediate delegation nodes can be found.
-        if let Err(reason) = validate_chain(cap, &action.capability_proofs, root_key) {
+        if let Err(reason) = validate_chain(cap, &action.capability_proofs, root_key, action.min_epoch) {
             return Decision::Deny { reason };
         }
 

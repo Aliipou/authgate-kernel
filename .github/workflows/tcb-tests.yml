@@ -11,7 +11,7 @@ env:
 
 jobs:
   rust-tcb:
-    name: Rust TCB tests (45 tests)
+    name: Rust TCB tests (56 in tests.rs + dag/engine/sequence modules)
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
@@ -40,7 +40,7 @@ jobs:
         continue-on-error: true
 
   python-attack-harness:
-    name: Python attack harness (41 tests)
+    name: Python attack harness (42 tests — AT-5.1 and AT-3.1 fixed)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
