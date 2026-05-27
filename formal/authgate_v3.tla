@@ -21,8 +21,9 @@
   spec-core — research / formal verification track
 
   ── Status ────────────────────────────────────────────────────────────────────
-  Skeleton: invariants stated, transitions defined, TLC model TBD.
-  Next: instantiate with |Actors|=3, |Resources|=2, MaxChainDepth=3 for TLC.
+  Abstract spec: invariants stated, transitions defined.
+  TLC model: MC_AuthGateV3.tla + MC_AuthGateV3.cfg — concrete instantiation.
+  Run: java -jar tla2tools.jar -tool MC_AuthGateV3
 *)
 
 EXTENDS Naturals, FiniteSets, Sequences, TLC
@@ -34,27 +35,21 @@ CONSTANTS
   PublicKeys,    \* Finite set of public key representations
   RootKey,       \* Distinguished root key — element of PublicKeys
   MaxChainDepth, \* Delegation depth limit (= 16 in Rust impl)
-  MaxEpoch       \* Upper bound for TLC model checking
+  MaxEpoch,      \* Upper bound for TLC model checking
+  Hash(_)        \* Abstract injective function: PublicKey -> Actor (SHA-256 in impl)
 
 ASSUME MaxChainDepth \in Nat /\ MaxChainDepth > 0
 ASSUME MaxEpoch \in Nat /\ MaxEpoch > 0
 ASSUME RootKey \in PublicKeys
+\* Hash injectivity — no two distinct keys map to the same actor identity.
+ASSUME \A k1, k2 \in PublicKeys : Hash(k1) = Hash(k2) => k1 = k2
 
-\* All 8 right bits modeled as symbolic names.
+\* Rights modeled as symbolic strings — MC model restricts to {"READ","WRITE"}.
 AllRights == {"READ", "WRITE", "DELEGATE", "EXECUTE",
               "SPAWN", "NETWORK", "MODEL_INVOKE", "POLICY_MODIFY"}
 
-\* ── Abstract cryptographic functions ────────────────────────────────────────
-\*
-\* Hash: PublicKey -> Actor identity (SHA-256(pubkey) in the Rust impl).
-\* Assumed injective — no two distinct keys map to the same identity.
-\*
-ASSUME \A k1, k2 \in PublicKeys :
-         Hash(k1) = Hash(k2) => k1 = k2
-
-\* SigValid(proof, key): TRUE iff key signed proof.signing_message().
-\* Abstracted as a Boolean — crypto soundness is assumed.
-\* In TLC models, instantiate with a concrete injective mapping.
+\* sig_valid: abstracted as a Boolean field in CapabilityProof.
+\* Crypto soundness (EUF-CMA) is assumed — not modeled in state.
 
 \* ── Structured types ────────────────────────────────────────────────────────
 
@@ -91,9 +86,7 @@ Decision == {"Permit", "Deny"}
 
 \* Locate parent proof in the bundle.
 FindParent(proof, bundle) ==
-  CHOOSE p \in bundle :
-    /\ proof.issuer.type = "Delegated"
-    /\ p.proof_hash = proof.issuer.parent_hash
+  CHOOSE p \in bundle : p.proof_hash = proof.issuer.parent_hash
 
 HasParent(proof, bundle) ==
   /\ proof.issuer.type = "Delegated"
@@ -122,29 +115,31 @@ ValidChain(leaf, bundle, min_epoch_val) ==
 
 \* ── Kernel verify() modeled as a pure function ──────────────────────────────
 \*
-\* Returns Permit iff ALL of the following hold:
-\*   L1: binding_valid (canonical gate)
-\*   L2: at least one actor-matching cap exists and passes all checks
-\*   L3: no valid revocation applies (modeled via revoked_set state variable)
+\* Returns "Permit" iff there EXISTS at least one cap in the bundle that:
+\*   - belongs to the actor (subject_id match)
+\*   - matches the requested resource (I6)
+\*   - has not expired (expiry >= now)
+\*   - passes the leaf epoch gate (I1)
+\*   - passes the full chain walk (I2, I3, I7, I8 via ValidChain)
+\*   - covers the required rights
+\*   - is not revoked (I4)
+\* AND the action binding is valid (L1 canonical gate).
+\*
+\* This is the positive form: Permit = ∃ valid cap. Deny = ¬∃ valid cap.
+\* Mirrors the Rust engine.rs semantics exactly.
 
-Verify(action, revoked_set, now) ==
-  \* L1: canonical binding gate
-  IF ~action.binding_valid THEN "Deny"
-  ELSE IF action.cap_bundle = {} THEN "Deny"
+Verify(action, revoked_set_var, now) ==
+  IF ~action.binding_valid THEN "Deny"   \* L1: canonical gate
   ELSE
     LET actor_caps == {c \in action.cap_bundle : c.subject_id = action.actor_id}
-    IN IF actor_caps = {} THEN "Deny"
-       ELSE IF \E c \in actor_caps :
-               \/ c.resource_hash # action.resource_hash   \* I6
-               \/ c.expiry < now                           \* expiry
-               \/ c.epoch < action.min_epoch               \* I1 (leaf epoch)
-               \/ ~ValidChain(c, action.cap_bundle, action.min_epoch)  \* chain
-               \/ ~(action.required_rights \subseteq c.rights)         \* rights
-            THEN "Deny"
-       ELSE IF \E c \in actor_caps :
-               \E rh \in revoked_set : rh = c.proof_hash   \* I4
-            THEN "Deny"
-       ELSE "Permit"
+        valid_caps == {c \in actor_caps :
+          /\ c.resource_hash = action.resource_hash     \* I6
+          /\ c.expiry >= now                            \* expiry
+          /\ c.epoch >= action.min_epoch                \* I1 leaf epoch
+          /\ ValidChain(c, action.cap_bundle, action.min_epoch) \* I2 I3 I7 I8
+          /\ action.required_rights \subseteq c.rights  \* rights coverage
+          /\ c.proof_hash \notin revoked_set_var}        \* I4 revocation
+    IN IF valid_caps = {} THEN "Deny" ELSE "Permit"
 
 \* ── State variables ─────────────────────────────────────────────────────────
 \*
@@ -259,7 +254,7 @@ Revoke(proof_hash) ==
 \* On Permit: updates session_rights for the actor (composition tracking).
 ExecuteVerify(action, now) ==
   /\ action \in CanonicalAction
-  /\ action.min_epoch = global_epoch   \* caller uses current epoch
+  /\ action.min_epoch = global_epoch   \* caller must use the current epoch
   /\ LET d == Verify(action, revoked_set, now)
      IN /\ audit_log' = Append(audit_log, [action |-> action, decision |-> d])
         /\ IF d = "Permit"
