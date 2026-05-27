@@ -1,4 +1,4 @@
-# freedom-kernel — Architecture v2
+# authgate-kernel — Architecture v2
 
 ---
 
@@ -390,14 +390,14 @@ Attestation properties:
 
 | Invariant | Source | Enforcement point |
 |---|---|---|
-| A4: every machine has a human owner | `engine.rs` guard [2] | TCB |
-| A5: machine scope ⊆ owner scope | `registry.rs` at `add_claim()` | Not TCB |
-| A6: no machine governs humans | `engine.rs` guard [3] | TCB |
-| A7: machine acts only on delegated resources | `engine.rs` guard [4] | TCB |
-| Attenuation: child ⊆ parent | `registry.rs` at `delegate()` | Not TCB |
-| No cycles in delegation graph | `authority_graph.rs` at `delegate()` | Not TCB |
-| Depth ≤ 16 | `engine.rs` guard [4] | TCB |
-| Catastrophic capabilities: human-only | `registry.rs` at `add_claim()` | Not TCB |
-| Sovereignty flags: unconditional block | `engine.rs` guard [1] | TCB |
+| INV-OWNER: every machine has a registered human owner | `engine.rs` guard [2] | TCB |
+| INV-SCOPE: machine scope ⊆ owner scope | `registry.rs` at `add_claim()` | Not TCB |
+| INV-DOMINION: no machine governs humans | `engine.rs` guard [3] | TCB |
+| INV-AUTHORITY: machine acts only on explicitly delegated resources | `engine.rs` guard [4] | TCB |
+| INV-ATTENUATION: child capability ⊆ parent capability | `registry.rs` at `delegate()` | Not TCB |
+| INV-ACYCLIC: delegation graph contains no cycles | `authority_graph.rs` at `delegate()` | Not TCB |
+| INV-DEPTH: delegation depth ≤ 16 | `engine.rs` guard [4] | TCB |
+| INV-CATASTROPHIC: catastrophic capabilities require human principal | `registry.rs` at `add_claim()` | Not TCB |
+| INV-FLAGS: sovereignty flags produce unconditional block | `engine.rs` guard [1] | TCB |
 
 Invariants enforced outside the TCB depend on `registry.rs` and `authority_graph.rs` being correct. These components are tested but not formally verified. See [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md).

@@ -33,18 +33,14 @@ Resource := (name: String, type: ResourceType, scope: String, is_public: Bool)
 ```
 
 `Resource` is a **named, typed, scoped identifier**. The kernel makes no claims about the
-ontological status of what a resource represents. What counts as a resource is determined by
-the integrating system, not the kernel. The kernel enforces claims on whatever resources are
+semantics of what a resource represents. What counts as a resource is determined by the
+integrating system, not the kernel. The kernel enforces claims on whatever resources are
 registered.
 
-**Implication**: The kernel does not and cannot adjudicate:
-- Whether an AI model trained on Alice's data "owns" the resulting weights
-- Whether copied embeddings of Alice's text constitute her property
-- Whether inferred knowledge derived from Bob's private data belongs to Bob
-- Whether generated artifacts (LLM outputs) are owned by the prompter or the model operator
-
-These are unresolved problems in digital property theory. The kernel takes resource definitions
-as given from the registering authority (a human operator) and enforces them consistently.
+**Implication**: Resource definition — what objects are registered, what names they carry, and
+what scopes they cover — is the caller's responsibility. The kernel enforces registered claims
+consistently but does not validate whether those registrations are correct, complete, or
+semantically meaningful.
 
 ### 2. Rights Claims
 
@@ -144,15 +140,15 @@ is equivalent to halting problem reduction in the general case. The kernel is de
 *necessary condition checker*, not a *sufficient condition checker*. A PERMITTED result means
 "the agent holds the claimed authority." It does not mean "this sequence of actions is safe."
 
-The verify_plan limitation is the primary reason this kernel is *not sufficient* for AGI
-alignment by itself — it is a substrate on which alignment infrastructure can be built, not
-a complete alignment solution.
+The verify_plan limitation is why this kernel is a structural precondition, not a complete
+behavioral safety system — it is a substrate on which behavioral monitors and sequence-level
+policy enforcement can be built.
 
 ---
 
 ## What the TLA+ Spec Models
 
-`formal/freedom_kernel.tla` specifies the five core safety invariants:
+`formal/authgate_kernel.tla` specifies the five core safety invariants:
 
 | Invariant | What it says | What it does NOT say |
 |---|---|---|
@@ -232,9 +228,9 @@ Items 1 and 3 are tractable in the short term. Items 2, 4, and 5 require dedicat
 | Complete ownership semantics | ✗ Out of scope; application-layer concern |
 | Behavioral plan verification | ✗ Not provided; see verify_plan limitations |
 | Formally verified implementation | ✗ Not yet; TLC model checking is the next step |
-| Sufficient for AGI alignment | ✗ Necessary substrate only |
+| Sufficient for behavioral alignment | ✗ Necessary structural precondition only |
 
 The kernel is strongest when understood as what it is: a **deterministic, auditable,
-capability-checked authority gate** — not a complete safety system. Systems built on top of
-this kernel can achieve stronger guarantees by composing it with behavioral monitors,
-information-flow systems, and formal plan verifiers.
+capability-checked authority gate** — not a complete safety system. Stronger guarantees are
+achievable by composing it with behavioral monitors, information-flow systems, and formal
+plan verifiers built outside the TCB.

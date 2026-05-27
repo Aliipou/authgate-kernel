@@ -4,7 +4,7 @@ Tests are written adversarially: each tries to break an axiom.
 """
 import pytest
 
-from freedom_theory import (
+from authgate import (
     Action,
     AgentType,
     Entity,

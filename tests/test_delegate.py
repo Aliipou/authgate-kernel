@@ -6,7 +6,7 @@ Every test tries to violate attenuation and expects PermissionError.
 """
 import pytest
 
-from freedom_theory import (
+from authgate import (
     AgentType,
     Entity,
     OwnershipRegistry,

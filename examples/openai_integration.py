@@ -10,7 +10,7 @@ For production use with the real OpenAI Agents SDK:
 Run:
     python examples/openai_integration.py
 """
-from freedom_theory import (
+from authgate import (
     AgentType,
     Entity,
     FreedomVerifier,
@@ -19,7 +19,7 @@ from freedom_theory import (
     ResourceType,
     RightsClaim,
 )
-from freedom_theory.adapters.openai_agents import OpenAIKernelMiddleware
+from authgate.adapters.openai_agents import OpenAIKernelMiddleware
 
 # ── Setup ─────────────────────────────────────────────────────────────────────
 

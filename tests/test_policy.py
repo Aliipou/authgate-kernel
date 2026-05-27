@@ -1,9 +1,9 @@
 """Policy IR tests — ABAC rule layer on top of the capability kernel."""
 
-from freedom_theory.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from freedom_theory.kernel.policy import Policy, PolicyRule, PolicyVerifier
-from freedom_theory.kernel.registry import OwnershipRegistry
-from freedom_theory.kernel.verifier import Action, FreedomVerifier
+from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
+from authgate.kernel.policy import Policy, PolicyRule, PolicyVerifier
+from authgate.kernel.registry import OwnershipRegistry
+from authgate.kernel.verifier import Action, FreedomVerifier
 
 # ── helpers ───────────────────────────────────────────────────────────────────
 

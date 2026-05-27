@@ -4,7 +4,7 @@ These run as a separate CI job after the unit test suite passes.
 """
 from fastapi.testclient import TestClient
 
-from freedom_theory.api.app import app
+from authgate.api.app import app
 
 client = TestClient(app)
 

@@ -11,7 +11,7 @@ Run:
     python examples/multi_agent.py
 """
 
-from freedom_theory import (
+from authgate import (
     Action,
     AgentType,
     Entity,
@@ -22,7 +22,7 @@ from freedom_theory import (
     ResourceType,
     RightsClaim,
 )
-from freedom_theory.kernel.goals import GoalNode, verify_goal_tree
+from authgate.kernel.goals import GoalNode, verify_goal_tree
 
 # ── 1. Declare entities ───────────────────────────────────────────────────────
 

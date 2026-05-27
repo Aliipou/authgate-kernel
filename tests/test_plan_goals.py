@@ -3,7 +3,7 @@ Tests for verify_plan and goal tree verification (Stage 2).
 """
 import pytest
 
-from freedom_theory import (
+from authgate import (
     Action,
     AgentType,
     Entity,
@@ -13,7 +13,7 @@ from freedom_theory import (
     ResourceType,
     RightsClaim,
 )
-from freedom_theory.kernel.goals import GoalNode, verify_goal_tree
+from authgate.kernel.goals import GoalNode, verify_goal_tree
 
 # ── fixtures ──────────────────────────────────────────────────────────────────
 

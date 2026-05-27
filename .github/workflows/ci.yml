@@ -15,7 +15,7 @@ jobs:
     runs-on: ubuntu-24.04
     defaults:
       run:
-        working-directory: freedom-kernel
+        working-directory: authgate-kernel
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -28,7 +28,7 @@ jobs:
       - name: Cargo cache
         uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
         with:
-          workspaces: freedom-kernel
+          workspaces: authgate-kernel
 
       - name: TCB LOC guard — engine.rs must stay under 300 lines
         run: |
@@ -121,7 +121,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Build Rust kernel
-        working-directory: freedom-kernel
+        working-directory: authgate-kernel
         run: pip install .
 
       - name: Install Python dependencies
@@ -134,14 +134,14 @@ jobs:
         run: mypy src --ignore-missing-imports
 
       - name: Test with coverage gate
-        run: pytest --cov=freedom_theory --cov-report=term-missing --cov-fail-under=85
+        run: pytest --cov=authgate --cov-report=term-missing --cov-fail-under=85
 
   supply-chain:
     name: Supply chain — cargo-deny + audit
     runs-on: ubuntu-24.04
     defaults:
       run:
-        working-directory: freedom-kernel
+        working-directory: authgate-kernel
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -149,7 +149,7 @@ jobs:
       - name: cargo-deny
         uses: EmbarkStudios/cargo-deny-action@v2
         with:
-          manifest-path: freedom-kernel/Cargo.toml
+          manifest-path: authgate-kernel/Cargo.toml
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -175,7 +175,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Build and install
-        working-directory: freedom-kernel
+        working-directory: authgate-kernel
         run: pip install .
 
       - run: pip install -e ".[dev]"

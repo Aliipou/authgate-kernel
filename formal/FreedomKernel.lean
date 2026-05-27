@@ -3,7 +3,7 @@
 
   This file states and proves structural properties of the capability
   system. It is a mechanically checkable complement to the TLA+ spec
-  (freedom_kernel.tla), which models temporal properties.
+  (authgate_kernel.tla), which models temporal properties.
 
   Lean 4 scope:
     ✓ Type definitions mirror the Python/Rust kernel exactly

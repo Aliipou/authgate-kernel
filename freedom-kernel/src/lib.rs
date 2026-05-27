@@ -52,7 +52,7 @@ fn kernel_pubkey() -> String {
 }
 
 #[pymodule]
-fn freedom_kernel(m: &Bound<'_, PyModule>) -> PyResult<()> {
+fn authgate_kernel(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_class::<AgentType>()?;
     m.add_class::<ResourceType>()?;
     m.add_class::<Resource>()?;

@@ -7,8 +7,8 @@ __pycache__/
 .env.local
 .venv/
 venv/
-freedom-kernel/.venv/
-freedom-kernel/target/
+authgate-kernel/.venv/
+authgate-kernel/target/
 *.egg-info/
 dist/
 build/

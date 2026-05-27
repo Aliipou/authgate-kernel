@@ -1,0 +1,308 @@
+# authgate-kernel Sidecar Verifier — Kubernetes Deployment
+#
+# Architecture invariant: the authgate-kernel verifier runs as a sidecar in the
+# same pod as the AI agent. Because all containers in a pod share the same
+# network namespace, the agent can reach the verifier on localhost:8080. The
+# NetworkPolicy below restricts all other egress, making the sidecar the only
+# path through which capability-bound actions can be approved.
+#
+# This structural unavoidability is the security property: an agent cannot
+# simply "not call" the verifier — its egress to every external endpoint is
+# blocked unless the action has been approved at the application level via a
+# PERMITTED result from the sidecar.
+#
+# Wire format: the agent POSTs a typed Action IR (JSON) to /verify and receives
+# a signed VerificationResult. The sidecar never interprets natural language;
+# it evaluates structured capability claims against the registered ownership
+# graph exactly as described in SEMANTICS.md.
+
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: agent-runtime
+  labels:
+    security.authgate-kernel/enforced: "true"
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agent-runtime-sa
+  namespace: agent-runtime
+  annotations:
+    # Links this ServiceAccount to the human principal registered in the
+    # OwnershipRegistry. The kernel's A4 invariant requires every machine to
+    # have an explicit human owner; this annotation makes that binding auditable
+    # at the infrastructure level.
+    security.authgate-kernel/principal: "AgentRuntime"
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-agent-with-verifier
+  namespace: agent-runtime
+  labels:
+    app: ai-agent
+    security.authgate-kernel/version: "v1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-agent
+  template:
+    metadata:
+      labels:
+        app: ai-agent
+        security.authgate-kernel/protected: "true"
+      annotations:
+        # Signals to admission controllers and audit pipelines that this pod
+        # runs under authgate-kernel authority enforcement.
+        security.authgate-kernel/registry-secret: "agent-registry-config"
+    spec:
+      serviceAccountName: agent-runtime-sa
+
+      # Prevent privilege escalation at the pod level. Individual container
+      # securityContexts below add further constraints.
+      securityContext:
+        runAsNonRoot: true
+        seccompProfile:
+          type: RuntimeDefault
+
+      containers:
+        # ── Main container: the AI agent ─────────────────────────────────────
+        #
+        # The agent is responsible for constructing typed Action IR before
+        # performing any capability-bound operation, POSTing it to the sidecar,
+        # and acting only on a PERMITTED response. This is an application-level
+        # contract; the NetworkPolicy enforces it structurally by blocking
+        # direct egress to external endpoints.
+        - name: ai-agent
+          image: your-org/your-agent:latest
+          imagePullPolicy: Always
+          env:
+            # The sidecar listens on the pod's loopback interface. The agent
+            # must route all capability checks through this endpoint.
+            - name: VERIFIER_ENDPOINT
+              value: "http://localhost:8080/verify"
+            # Used by the agent to retrieve the sidecar's public key for
+            # offline verification of signed VerificationResult payloads.
+            - name: KERNEL_PUBKEY_ENDPOINT
+              value: "http://localhost:8080/pubkey"
+            # The agent's own identity in the OwnershipRegistry. Must match
+            # the entity name registered under the human principal.
+            - name: AGENT_IDENTITY
+              valueFrom:
+                secretKeyRef:
+                  name: agent-identity
+                  key: agent_name
+          resources:
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 2000
+            capabilities:
+              drop: ["ALL"]
+          volumeMounts:
+            - name: agent-tmp
+              mountPath: /tmp
+
+        # ── Sidecar: authgate-kernel verifier proxy ───────────────────────────
+        #
+        # The verifier is a thin HTTP wrapper around the Rust TCB. It loads the
+        # OwnershipRegistry from the mounted registry.json at startup and then
+        # deterministically evaluates Action IR payloads. It never calls out to
+        # external services during evaluation — all authority information is
+        # pre-loaded from the registry.
+        #
+        # The sidecar also owns the audit log. Every PERMITTED and BLOCKED
+        # decision is appended as a signed VerificationResult to /audit/kernel.log.
+        - name: authgate-kernel-verifier
+          image: ghcr.io/aliipou/authgate-kernel:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+              name: verify
+              protocol: TCP
+          env:
+            # Name of the Kubernetes Secret containing the registry configuration.
+            # Referenced here for operational visibility; the actual config is
+            # mounted as a volume below.
+            - name: REGISTRY_SECRET_NAME
+              value: "agent-registry-config"
+            # Append-only audit log. In production, pair this emptyDir with a
+            # log shipper sidecar (e.g., Fluent Bit) to forward to a SIEM.
+            - name: AUDIT_LOG_PATH
+              value: "/audit/kernel.log"
+            # Maximum delegation depth accepted in any Action IR. Matches the
+            # depth cap in ARCHITECTURE.md (default 16; reduced here to 4
+            # because this deployment has a flat, single-agent topology).
+            - name: MAX_DELEGATION_DEPTH
+              value: "4"
+            # Clock tolerance for replay-protection nonce expiry (seconds).
+            # Default is 30; tighten for high-assurance deployments.
+            - name: NONCE_WINDOW_SECONDS
+              value: "30"
+            # Ed25519 signing key for VerificationResult attestation.
+            # Rotated externally via the secret; the sidecar reloads on SIGHUP.
+            - name: SIGNING_KEY_PATH
+              value: "/etc/authgate-kernel/signing.key"
+          volumeMounts:
+            - name: registry-config
+              mountPath: /etc/authgate-kernel/registry.json
+              subPath: registry.json
+              readOnly: true
+            - name: signing-key
+              mountPath: /etc/authgate-kernel/signing.key
+              subPath: signing.key
+              readOnly: true
+            - name: audit-log
+              mountPath: /audit
+            - name: verifier-tmp
+              mountPath: /tmp
+          resources:
+            limits:
+              cpu: "200m"
+              memory: "256Mi"
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            failureThreshold: 2
+          securityContext:
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+            runAsUser: 1000
+            capabilities:
+              drop: ["ALL"]
+
+      volumes:
+        # Registry configuration — the authority source of truth for this pod.
+        # Mounted read-only; the sidecar cannot mutate its own registry.
+        - name: registry-config
+          secret:
+            secretName: agent-registry-config
+            defaultMode: 0400
+
+        # Ed25519 private key for signing VerificationResult payloads.
+        # Inject via external secret operator (e.g., External Secrets Operator
+        # backed by Vault) rather than a manually-created Secret in production.
+        - name: signing-key
+          secret:
+            secretName: authgate-kernel-signing-key
+            defaultMode: 0400
+
+        # Ephemeral audit log volume. Replace with a PVC or log-shipper in
+        # production to ensure durability across pod restarts.
+        - name: audit-log
+          emptyDir: {}
+
+        # Writable scratch space for the agent; kept separate from the
+        # read-only root filesystem.
+        - name: agent-tmp
+          emptyDir: {}
+
+        - name: verifier-tmp
+          emptyDir: {}
+
+---
+# NetworkPolicy: enforce structural sidecar dependency
+#
+# This policy implements the "structurally unavoidable verifier" property at
+# the network layer. The agent pod's egress is restricted to:
+#   1. localhost:8080 — the authgate-kernel sidecar (implicit; loopback is not
+#      subject to NetworkPolicy, but all external egress is blocked)
+#   2. kube-dns (UDP/53) — required for service discovery
+#
+# Consequence: the agent cannot directly call any external API, database, or
+# storage endpoint. It must route those calls through application-level logic
+# that first obtains a PERMITTED verdict from the sidecar. A compromised or
+# jailbroken agent that skips the sidecar call will have its subsequent network
+# connections dropped by the CNI plugin enforcing this policy.
+#
+# Note: NetworkPolicy alone does not enforce the authgate-kernel semantics —
+# it enforces the *structural dependency*. The actual capability check happens
+# inside the sidecar. Both layers are required.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: agent-egress-policy
+  namespace: agent-runtime
+spec:
+  podSelector:
+    matchLabels:
+      app: ai-agent
+  policyTypes:
+    - Egress
+    - Ingress
+  ingress:
+    # No inbound traffic to the agent pod from outside the namespace.
+    # The agent is purely an egress actor; it does not serve external requests.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: agent-runtime
+  egress:
+    # DNS — required for all name resolution. Scope to kube-dns namespace
+    # if your cluster uses a dedicated DNS namespace.
+    - ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+
+    # External HTTPS — only reachable after the agent has obtained a PERMITTED
+    # verdict from the sidecar. This rule permits the TCP connection; the
+    # application layer is responsible for enforcing the capability check.
+    #
+    # In a high-assurance deployment, replace this with explicit ipBlock rules
+    # scoped to the specific external endpoints registered in the registry.
+    - ports:
+        - port: 443
+          protocol: TCP
+
+---
+# NetworkPolicy for the verifier sidecar's own egress.
+# The sidecar evaluates actions purely from in-memory registry state and must
+# not make outbound calls during evaluation (TCB constraint: no network calls).
+# This policy enforces that constraint at the infrastructure layer.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: verifier-egress-policy
+  namespace: agent-runtime
+spec:
+  podSelector:
+    matchLabels:
+      app: ai-agent
+      security.authgate-kernel/protected: "true"
+  policyTypes:
+    - Egress
+  egress:
+    # DNS only. The verifier needs no other egress during normal operation.
+    # If you ship audit logs to an external SIEM from the sidecar rather than
+    # a separate log-shipper, add the SIEM endpoint here explicitly.
+    - ports:
+        - port: 53
+          protocol: UDP

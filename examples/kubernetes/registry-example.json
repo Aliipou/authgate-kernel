@@ -1,0 +1,138 @@
+{
+  "_comment": "authgate-kernel OwnershipRegistry — sidecar configuration example",
+  "_doc": "This file is mounted read-only into the authgate-kernel-verifier sidecar at /etc/authgate-kernel/registry.json. It declares the ownership hierarchy and capability claims that govern the co-located AI agent. The verifier loads this at startup and evaluates all Action IR payloads against it. Modifying this file requires a pod restart; runtime registry mutation is not supported in this deployment model (frozen registry).",
+  "_version": "2",
+  "_schema": "https://github.com/Aliipou/authgate-kernel/blob/main/spec/registry-schema.json",
+
+  "principals": [
+    {
+      "name": "alice-operator",
+      "kind": "HUMAN",
+      "_comment": "The registered human owner of the agent. Axiom A4: every machine must have a specific human owner. This entry is the trust root for all capability claims in this registry. The kernel's attenuation invariant ensures the agent can never hold capabilities that alice-operator does not hold."
+    }
+  ],
+
+  "machines": [
+    {
+      "name": "customer-analytics-agent",
+      "kind": "MACHINE",
+      "human_owner": "alice-operator",
+      "_comment": "The AI agent running in the main container. Registered under alice-operator per A4. The agent's capability surface is bounded by the claims below; it cannot self-grant additional capabilities at runtime."
+    }
+  ],
+
+  "claims": [
+    {
+      "_comment": "READ access to the customer analytics dataset. Scoped to the specific dataset partition owned by alice-operator. No write capability — the agent may not modify source data.",
+      "holder": "customer-analytics-agent",
+      "resource": {
+        "name": "customer-analytics-dataset",
+        "type": "DATASET",
+        "scope": "s3://org-data-lake/customers/analytics/v3/",
+        "is_public": false
+      },
+      "can_read": true,
+      "can_write": false,
+      "can_delegate": false,
+      "confidence": 1.0,
+      "expires_at": "2026-05-28T00:00:00Z",
+      "_rationale": "Read-only access required for analytics query execution. Delegation disabled: the agent must not sub-delegate data access to spawned tools or sub-agents without re-authorization."
+    },
+
+    {
+      "_comment": "WRITE access to the output bucket. Scoped to the agent's dedicated output prefix. Cannot read outside this prefix, cannot delegate.",
+      "holder": "customer-analytics-agent",
+      "resource": {
+        "name": "analytics-output-bucket",
+        "type": "OBJECT_STORE",
+        "scope": "s3://org-outputs/agents/customer-analytics/",
+        "is_public": false
+      },
+      "can_read": true,
+      "can_write": true,
+      "can_delegate": false,
+      "confidence": 1.0,
+      "expires_at": "2026-05-28T00:00:00Z",
+      "_rationale": "Agent must write analysis results and intermediate artifacts. Scoped prefix prevents writes to other agents' output areas. Expiry matches the dataset claim to enforce synchronized rotation."
+    },
+
+    {
+      "_comment": "NETWORK_ACCESS to specific allowed external API endpoints. Explicit allowlist — deny-by-default. The sidecar enforces this at the Action IR level; the NetworkPolicy enforces it at the packet level.",
+      "holder": "customer-analytics-agent",
+      "resource": {
+        "name": "allowed-external-apis",
+        "type": "NETWORK_ENDPOINT",
+        "scope": "https://api.internal.org/analytics/v2/",
+        "is_public": false
+      },
+      "can_read": true,
+      "can_write": false,
+      "can_delegate": false,
+      "confidence": 0.95,
+      "expires_at": "2026-05-28T00:00:00Z",
+      "_rationale": "Agent may call the internal analytics API for enrichment lookups. Confidence 0.95 rather than 1.0 because the internal API's data provenance is partially controlled by a third-party team; the operator accepts residual uncertainty. Any confidence < 1.0 is logged as a PERMITTED_WITH_CAVEAT result."
+    },
+
+    {
+      "_comment": "MODEL_INVOKE access for calling inference endpoints. Scoped to the approved model version. Does not include FINE_TUNE or TRAIN capabilities.",
+      "holder": "customer-analytics-agent",
+      "resource": {
+        "name": "inference-endpoint-gpt4o",
+        "type": "MODEL_WEIGHTS",
+        "scope": "openai://gpt-4o/2024-08-06",
+        "is_public": false
+      },
+      "can_read": true,
+      "can_write": false,
+      "can_delegate": false,
+      "confidence": 1.0,
+      "expires_at": "2026-05-28T00:00:00Z",
+      "_rationale": "The agent may invoke this model for reasoning steps. Fine-tuning and training capabilities are explicitly absent — the agent cannot modify model weights."
+    }
+  ],
+
+  "explicitly_absent_capabilities": {
+    "_comment": "This section is documentation only — absent capabilities do not need to be listed for the kernel to deny them (deny-by-default). This list exists to make the operator's intent auditable and to serve as a checklist for security reviewers.",
+    "SPAWN_AGENT": {
+      "reason": "This agent operates in a flat single-agent topology. Sub-agent spawning is not required and would expand the attack surface by creating additional machine principals that require their own ownership registrations.",
+      "authority_class": "CapabilityRisk::Critical",
+      "would_require": "Explicit human re-authorization per A7"
+    },
+    "POLICY_MODIFY": {
+      "reason": "No machine may modify the capability policy governing itself or other machines. This capability is CapabilityRisk::Catastrophic and is structurally blocked for all machine actors by the kernel's escalation check, regardless of whether a claim is registered.",
+      "authority_class": "CapabilityRisk::Catastrophic",
+      "kernel_enforcement": "EscalationError — hard block, no claim can override"
+    },
+    "SYSTEM_PROMPT_EDIT": {
+      "reason": "The agent must not modify its own system prompt or the system prompts of other agents. Allowing this would permit the agent to rewrite its own constraints.",
+      "authority_class": "CapabilityRisk::Critical"
+    },
+    "DELEGATE": {
+      "reason": "All claims above have can_delegate: false. The agent is a leaf node in the delegation graph and may not create sub-delegations. This is consistent with the MAX_DELEGATION_DEPTH=4 configured in the sidecar but operates at a finer granularity.",
+      "authority_class": "CapabilityRisk::High"
+    },
+    "CREDENTIAL_WRITE": {
+      "reason": "The agent may not create, rotate, or delete credentials. Credential lifecycle is managed exclusively by the human operator.",
+      "authority_class": "CapabilityRisk::Critical"
+    }
+  },
+
+  "sovereignty_flags": {
+    "_comment": "Sovereignty flags that are hard-blocked for all actions in this registry, regardless of any claim. These correspond to the 10 forbidden flags in engine.rs. If any submitted Action IR carries one of these flags, the kernel returns BLOCKED unconditionally with no override path.",
+    "GOVERNS_HUMAN": true,
+    "SELF_MODIFYING_POLICY": true,
+    "SPAWN_UNRESTRICTED": true,
+    "REGISTRY_MODIFY": true
+  },
+
+  "registry_meta": {
+    "created_at": "2026-05-27T00:00:00Z",
+    "created_by": "alice-operator",
+    "frozen": true,
+    "_comment": "frozen=true means the registry is immutable after load. Any attempt to call add_claim() or delegate() on a frozen registry returns FrozenRegistryError. This prevents runtime registry manipulation by a compromised sidecar process or injected code.",
+    "max_delegation_depth": 4,
+    "clock_source": "system",
+    "audit_on_permitted": true,
+    "audit_on_blocked": true
+  }
+}

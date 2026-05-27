@@ -65,7 +65,7 @@ These will be rejected regardless of stated motivation — including performance
 
 1. Fork → branch → PR against `main`
 2. Fill out the PR template — including the **TCB Gate section** if touching TCB files
-3. All tests must pass: `pytest --cov=freedom_theory --cov-fail-under=85`
+3. All tests must pass: `pytest --cov=authgate --cov-fail-under=85`
 4. Lint must pass: `ruff check src tests`
 5. CI must pass: this includes the LOC guard and purity check on `engine.rs`
 

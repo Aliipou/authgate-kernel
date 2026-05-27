@@ -1,11 +1,11 @@
 """Adapter tests — OpenAI, Anthropic, LangChain, AutoGen."""
 import pytest
 
-from freedom_theory.adapters.anthropic import AnthropicKernelAdapter
-from freedom_theory.adapters.autogen import AutoGenKernelAdapter
-from freedom_theory.adapters.langchain import FreedomTool, kernel_gate
-from freedom_theory.adapters.openai_agents import OpenAIKernelMiddleware
-from freedom_theory.kernel import (
+from authgate.adapters.anthropic import AnthropicKernelAdapter
+from authgate.adapters.autogen import AutoGenKernelAdapter
+from authgate.adapters.langchain import FreedomTool, kernel_gate
+from authgate.adapters.openai_agents import OpenAIKernelMiddleware
+from authgate.kernel import (
     AgentType,
     Entity,
     FreedomVerifier,

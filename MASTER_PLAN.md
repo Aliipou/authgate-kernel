@@ -10,7 +10,7 @@ ideological capture all happen here.
 - `engine.rs` separation — pure verification logic isolated from all I/O and bindings
 - JSON wire + C ABI — verifier is a portable governance primitive, not a Python library
 - Cryptographic attestation — audit chain, remote verification, tamper evidence
-- Operational/philosophical separation — kernel is independent of the book's metaphysics
+- Theory/kernel separation — kernel is independent of the theoretical framework; using or auditing the kernel requires no engagement with it
 - Tiny verifier philosophy — currently ~200 lines of pure logic; this must be maintained
 
 **The primary risk right now:** pseudo-formalism.
@@ -41,7 +41,7 @@ extension on top of the gate?*
 
 - [x] `engine.rs` — pure Rust verification core, zero I/O
 - [x] JSON wire format — language-agnostic in/out
-- [x] C ABI — `freedom_kernel_verify`, `freedom_kernel_pubkey`
+- [x] C ABI — `authgate_kernel_verify`, `authgate_kernel_pubkey`
 - [x] ed25519 attestation — signed verification results
 - [x] Python fallback — identical API, zero config
 - [x] Attenuation (`delegate()`) — enforced in both Python and Rust
@@ -120,7 +120,7 @@ This is the Bell-LaPadula model applied to agentic execution.
 
 **Priority 2.2 — IFC checker (extension, not kernel)**
 ```python
-from freedom_theory.extensions.ifc import NonInterferenceChecker
+from authgate.extensions.ifc import NonInterferenceChecker
 checker = NonInterferenceChecker(verifier, lattice={"SECRET": ["PUBLIC"], ...})
 checker.check_plan(actions)  # raises IFCViolation if flow would be violated
 ```

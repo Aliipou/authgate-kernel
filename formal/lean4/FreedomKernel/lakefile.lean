@@ -1,7 +1,7 @@
 import Lake
 open Lake DSL
 
-package «freedom-kernel» where
+package «authgate-kernel» where
   name := "FreedomKernel"
 
 lean_lib «FreedomKernel» where

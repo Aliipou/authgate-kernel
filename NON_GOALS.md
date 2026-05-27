@@ -8,18 +8,17 @@ it does not belong in this kernel.
 
 ## Freedom Kernel does NOT:
 
-- **Solve alignment** — it enforces authority boundaries, not values
+- **Solve behavioral alignment** — it enforces authority boundaries, not values
 - **Infer intent** — all decisions are based on explicit, typed claims
 - **Understand natural language** — no NLP enters the kernel or TCB
 - **Detect truth** — claims are accepted as-presented; truth is the caller's responsibility
 - **Guarantee benevolence** — a well-owned, correctly-authorized machine can still be misused
 - **Prevent covert channels** — timing, steganography, and side-channels are out of scope
-- **Contain superintelligence** — capability boundaries apply to actions, not thought
+- **Sandbox LLM reasoning** — capability boundaries apply to typed actions, not model internals
 - **Verify semantic equivalence** — two actions with different text but same meaning are not unified
-- **Score ethics** — there is no ethics score, alignment metric, or virtue measure
-- **Replace alignment research** — this is infrastructure, not a solution to the hard problem
+- **Score ethics** — there is no ethics score, behavioral score, or alignment metric
+- **Replace behavioral alignment research** — this kernel is a necessary structural precondition, not a sufficient alignment solution
 - **Operate without a human owner** — the system requires an explicit ownership graph
-- **Enforce metaphysical claims** — A1 (divine ownership) is documented foundation, not runtime logic
 
 ---
 

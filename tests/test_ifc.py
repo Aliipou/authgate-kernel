@@ -1,8 +1,8 @@
 """Phase 2 — IFC / Bell-LaPadula non-interference tests."""
 import pytest
 
-from freedom_theory.extensions.ifc import IFCViolation, NonInterferenceChecker, SecurityLattice
-from freedom_theory.kernel.entities import Resource, ResourceType
+from authgate.extensions.ifc import IFCViolation, NonInterferenceChecker, SecurityLattice
+from authgate.kernel.entities import Resource, ResourceType
 
 # ── SecurityLattice ──────────────────────────────────────────────────────────
 

@@ -79,7 +79,7 @@ Examples:
   or `crypto.rs` reachable from untrusted input
 - Deserialization gadget in the JSON wire format that bypasses invariant
   checks
-- C ABI buffer overflow in `freedom_kernel_verify` reachable from an
+- C ABI buffer overflow in `authgate_kernel_verify` reachable from an
   untrusted caller
 
 CVSS analog: 9.0–10.0. Patch target: 7 days.
@@ -128,7 +128,7 @@ CVSS analog: 0.1–3.9. Patch target: 180 days.
 This is open-source infrastructure. Report vulnerabilities by opening a
 GitHub Issue with the **security** label:
 
-https://github.com/Aliipou/freedom-kernel/issues/new?labels=security
+https://github.com/Aliipou/authgate-kernel/issues/new?labels=security
 
 Include in your report:
 1. A minimal, self-contained reproduction (code or input that triggers
@@ -142,7 +142,7 @@ Include in your report:
 For issues where public disclosure before a fix would create meaningful
 risk, use GitHub's private security advisory mechanism instead:
 
-https://github.com/Aliipou/freedom-kernel/security/advisories/new
+https://github.com/Aliipou/authgate-kernel/security/advisories/new
 
 We will confirm receipt within the response times below. If you do not
 receive a response within the stated window, follow up on the issue thread.
@@ -183,10 +183,10 @@ The Trusted Computing Base is exactly these four files:
 
 | File | Role |
 |---|---|
-| `freedom-kernel/src/engine.rs` | Core verification logic |
-| `freedom-kernel/src/capability.rs` | Capability algebra (enums only) |
-| `freedom-kernel/src/wire.rs` | Typed JSON wire format |
-| `freedom-kernel/src/crypto.rs` | ed25519 attestation |
+| `authgate-kernel/src/engine.rs` | Core verification logic |
+| `authgate-kernel/src/capability.rs` | Capability algebra (enums only) |
+| `authgate-kernel/src/wire.rs` | Typed JSON wire format |
+| `authgate-kernel/src/crypto.rs` | ed25519 attestation |
 
 All other files — adapters, extensions, Python implementation, registry,
 policy layers — are outside the TCB. Vulnerabilities in those files are

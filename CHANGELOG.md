@@ -28,11 +28,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `ARCHITECTURE.md`: Rewritten to reflect v2 architecture
 - `README.md`: Rewritten — scoped to engineering, no philosophical/book references
 - `capability.rs` LOC ceiling: 150 → 200 (justified by Capability Algebra v2 expansion)
-- Repo split: `freedom-kernel` (engineering), `freedom-specs` (RFCs), `freedom-theory` (theory)
+- Repo split: `authgate-kernel` (engineering), `freedom-specs` (RFCs), `authgate` (theory)
 
 ### Removed
 - Book references from `README.md` invariants section
-- `THEORY.md` reference from engineering docs (moved to `freedom-theory` repo)
+- `THEORY.md` reference from engineering docs (moved to `authgate` repo)
 - `// Book pp.800-805` inline comment from `verifier.rs`
 
 ---

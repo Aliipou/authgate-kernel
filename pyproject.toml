@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "freedom-theory-ai"
+name = "authgate"
 version = "1.0.0"
 description = "Capability-security kernel for agent runtimes — typed authority verification with formal invariants"
 readme = "README.md"
@@ -40,15 +40,15 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/Aliipou/freedom-theory-ai"
-Repository = "https://github.com/Aliipou/freedom-theory-ai"
-Issues = "https://github.com/Aliipou/freedom-theory-ai/issues"
+Homepage = "https://github.com/Aliipou/authgate"
+Repository = "https://github.com/Aliipou/authgate"
+Issues = "https://github.com/Aliipou/authgate/issues"
 
 [project.scripts]
-freedom-server = "freedom_theory.api.app:app"
+authgate-server = "authgate.api.app:app"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/freedom_theory"]
+packages = ["src/authgate"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

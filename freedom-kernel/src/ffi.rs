@@ -25,7 +25,7 @@ const MAX_INPUT_BYTES: usize = 1 << 20; // 1 MB
 /// `input_buf` and `output_buf` must be valid for their respective lengths
 /// for the duration of this call. They must not overlap.
 #[no_mangle]
-pub unsafe extern "C" fn freedom_kernel_verify(
+pub unsafe extern "C" fn authgate_kernel_verify(
     input_buf: *const c_char,
     input_len: usize,
     output_buf: *mut c_char,
@@ -87,7 +87,7 @@ pub unsafe extern "C" fn freedom_kernel_verify(
 /// # Safety
 /// `out_buf` must be valid and at least `out_len` bytes.
 #[no_mangle]
-pub unsafe extern "C" fn freedom_kernel_pubkey(out_buf: *mut c_char, out_len: usize) -> i32 {
+pub unsafe extern "C" fn authgate_kernel_pubkey(out_buf: *mut c_char, out_len: usize) -> i32 {
     if out_buf.is_null() {
         return -2;
     }

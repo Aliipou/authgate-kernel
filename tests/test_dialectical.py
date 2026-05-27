@@ -5,7 +5,7 @@ and doesn't false-positive on legitimate arguments.
 """
 import pytest
 
-from freedom_theory.extensions.detection import detect
+from authgate.extensions.detection import detect
 
 # -------- HIGH-RISK arguments (must be caught) ---------------------------
 

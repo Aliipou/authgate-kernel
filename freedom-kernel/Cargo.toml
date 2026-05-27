@@ -1,12 +1,12 @@
 [package]
-name = "freedom-kernel"
+name = "authgate-kernel"
 version = "0.1.0"
 edition = "2021"
-description = "Formal, auditable, cryptographically-verifiable AGI permission kernel"
+description = "Formal, auditable, cryptographically-verifiable capability-governance kernel"
 license = "MIT"
 
 [lib]
-name = "freedom_kernel"
+name = "authgate_kernel"
 crate-type = ["cdylib"]
 
 # ── Features ──────────────────────────────────────────────────────────────────

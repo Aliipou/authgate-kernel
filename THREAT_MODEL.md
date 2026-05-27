@@ -10,7 +10,7 @@
 
 ### System Under Analysis
 
-The freedom-kernel is a capability-security enforcement runtime. It receives an action graph (Action IR), a registry of principals and machines, and a set of delegation claims, then deterministically accepts or blocks execution based on formal invariants.
+The authgate-kernel is a capability-security enforcement runtime. It receives an action graph (Action IR), a registry of principals and machines, and a set of delegation claims, then deterministically accepts or blocks execution based on formal invariants.
 
 ### Security Claim (Precise)
 

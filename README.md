@@ -1,10 +1,10 @@
-# freedom-kernel
+# authgate-kernel
 
 **Capability-security runtime for autonomous agents. Formally verified. No heuristics.**
 
-[![CI](https://github.com/Aliipou/freedom-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/freedom-kernel/actions)
+[![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
-[![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](freedom-kernel/)
+[![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Kani](https://img.shields.io/badge/verified-Kani%2019%20harnesses-green.svg)](formal/)
 [![Lean4](https://img.shields.io/badge/proved-Lean4%204%20theorems-blue.svg)](formal/lean4/)
@@ -70,7 +70,7 @@ Everything else — adapters, extensions, scheduler, registry logic — is outsi
 ### Repository layout
 
 ```
-freedom-kernel/src/
+authgate-kernel/src/
   engine.rs        pure Rust verification (no PyO3, no I/O)      — TCB
   capability.rs    closed capability algebra (enums only)         — TCB
   wire.rs          typed JSON wire format (serde, no logic)       — TCB
@@ -79,7 +79,7 @@ freedom-kernel/src/
   verifier.rs      PyO3 facade over engine.rs                     — not TCB
   registry.rs      ownership registry, attenuation enforcement    — not TCB
 
-src/freedom_theory/
+src/authgate/
   kernel/          Python implementation (mirrors Rust)
   extensions/      heuristic layers — explicitly NOT TCB
     ifc.py         Bell-LaPadula non-interference
@@ -157,7 +157,7 @@ All 17 capability kinds recognized by the kernel, with risk classification:
 ## Quick start
 
 ```python
-from freedom_theory import (
+from authgate import (
     Action, AgentType, Entity, FreedomVerifier,
     OwnershipRegistry, Resource, ResourceType, RightsClaim,
 )
@@ -188,12 +188,12 @@ print(result.summary())
 **Install:**
 
 ```bash
-pip install freedom-theory-ai                        # pure Python, no build toolchain
-pip install maturin && cd freedom-kernel && pip install .   # with Rust kernel
+pip install authgate                        # pure Python, no build toolchain
+pip install maturin && cd authgate-kernel && pip install .   # with Rust kernel
 ```
 
 ```python
-from freedom_theory.kernel import _BACKEND
+from authgate.kernel import _BACKEND
 print(_BACKEND)  # "rust" or "python"
 ```
 
@@ -240,11 +240,11 @@ These are explicit, non-negotiable limitations of the current system:
 The kernel exposes a C ABI for language-agnostic use:
 
 ```c
-#include "freedom_kernel.h"
+#include "authgate_kernel.h"
 
 char out[FREEDOM_KERNEL_MAX_OUTPUT];
 const char *input = "{\"registry\":{...},\"action\":{...}}";
-freedom_kernel_verify(input, strlen(input), out, sizeof(out));
+authgate_kernel_verify(input, strlen(input), out, sizeof(out));
 // {"permitted":true,"signature":"...","signing_key":"...","key_id":"..."}
 ```
 
@@ -335,12 +335,12 @@ The pull request template enforces this check. See [`CONTRIBUTING.md`](CONTRIBUT
 ## Ecosystem
 
 ```
-freedom-kernel   — this repo, engineering only
+authgate-kernel   — this repo, engineering only
 freedom-specs    — formal RFCs and specifications
-freedom-theory   — theoretical foundations (not required to use the kernel)
+authgate   — theoretical foundations (not required to use the kernel)
 ```
 
-The theoretical foundations are in a separate repository by design. Using, auditing, or deploying the kernel requires no engagement with `freedom-theory`.
+The theoretical foundations are in [authgate](https://github.com/Aliipou/authgate) — a separate repository by design. Using, auditing, or deploying the kernel requires no engagement with it.
 
 ---
 
@@ -348,7 +348,7 @@ The theoretical foundations are in a separate repository by design. Using, audit
 
 ```bash
 pip install -e ".[dev]"
-pytest --cov=freedom_theory   # 165 tests, 85% coverage gate
+pytest --cov=authgate   # 165 tests, 85% coverage gate
 ```
 
 ---

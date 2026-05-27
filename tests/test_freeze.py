@@ -1,8 +1,8 @@
 """Phase 5 — OwnershipRegistry.freeze() tests."""
 import pytest
 
-from freedom_theory.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from freedom_theory.kernel.registry import OwnershipRegistry
+from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
+from authgate.kernel.registry import OwnershipRegistry
 
 
 def _registry_with_claim():

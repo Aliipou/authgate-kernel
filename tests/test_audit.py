@@ -3,10 +3,10 @@ import json
 import os
 import tempfile
 
-from freedom_theory.kernel.audit import AuditLog
-from freedom_theory.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from freedom_theory.kernel.registry import OwnershipRegistry
-from freedom_theory.kernel.verifier import Action, FreedomVerifier
+from authgate.kernel.audit import AuditLog
+from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
+from authgate.kernel.registry import OwnershipRegistry
+from authgate.kernel.verifier import Action, FreedomVerifier
 
 
 def _setup():

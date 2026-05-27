@@ -19,9 +19,9 @@ try:
     )
     RUST_KERNEL = True
 except ImportError:
-    from freedom_theory.kernel.entities import AgentType, Entity, Resource, ResourceType  # noqa: I001
-    from freedom_theory.kernel.registry import OwnershipRegistry, RightsClaim
-    from freedom_theory.kernel.verifier import Action, FreedomVerifier  # type: ignore[no-reattr]
+    from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType  # noqa: I001
+    from authgate.kernel.registry import OwnershipRegistry, RightsClaim
+    from authgate.kernel.verifier import Action, FreedomVerifier  # type: ignore[no-reattr]
     RUST_KERNEL = False
 
 

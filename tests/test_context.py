@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from freedom_theory import (
+from authgate import (
     Action,
     AgentType,
     Entity,

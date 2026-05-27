@@ -51,7 +51,7 @@ def _assert_permitted(result: object, scenario: str) -> None:
 # Imports — falls back to Python implementation if Rust extension not built
 # ---------------------------------------------------------------------------
 
-from freedom_theory.kernel import (  # noqa: E402
+from authgate.kernel import (  # noqa: E402
     Action,
     AgentType,
     Entity,
@@ -207,8 +207,8 @@ def scenario_3_delegation_chain_overflow() -> None:
     print("  Setup: Alice grants BotA read+delegate. Chain attempts BotA→B→C→D→E.")
     print("  Policy DSL enforces MAX_DELEGATION_DEPTH 2; attenuation is a second line.")
 
-    from freedom_theory.kernel.policy_dsl import compile as compile_policy
-    from freedom_theory.kernel.policy import PolicyVerifier
+    from authgate.kernel.policy_dsl import compile as compile_policy
+    from authgate.kernel.policy import PolicyVerifier
 
     alice = Entity("Alice", AgentType.HUMAN)
     bots = [Entity(f"Bot{chr(65 + i)}", AgentType.MACHINE) for i in range(5)]

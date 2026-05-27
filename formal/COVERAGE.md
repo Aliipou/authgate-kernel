@@ -22,7 +22,7 @@ MaxDepth     = 3
 
 ## Kani Model Checking
 
-Run: `cargo kani --harness <name>` from `freedom-kernel/`
+Run: `cargo kani --harness <name>` from `authgate-kernel/`
 
 | Harness                              | Property                                          | Status     |
 |--------------------------------------|---------------------------------------------------|------------|

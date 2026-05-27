@@ -1,5 +1,5 @@
 """Phase 1 — scope_contains formal rule tests."""
-from freedom_theory.kernel.entities import scope_contains
+from authgate.kernel.entities import scope_contains
 
 
 def test_empty_parent_matches_everything():

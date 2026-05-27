@@ -13,7 +13,7 @@ This example simulates a 3-stage agent deciding how to handle a task:
   5. Use dialectical argument to justify violation → should be blocked + flagged
 """
 
-from freedom_theory import (
+from authgate import (
     Action,
     AgentType,
     Entity,

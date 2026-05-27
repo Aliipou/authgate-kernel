@@ -1,7 +1,7 @@
 """Tests for the Mahdavi Compass terminal goal scorer."""
 import math
 
-from freedom_theory.extensions.compass import WorldState, score
+from authgate.extensions.compass import WorldState, score
 
 
 def test_toward_final_order():
