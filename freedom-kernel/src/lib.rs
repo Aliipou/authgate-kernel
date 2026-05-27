@@ -1,6 +1,9 @@
 #![allow(unexpected_cfgs)]
 #![allow(clippy::useless_conversion)]
 pub mod authority_graph;
+/// v2 TCB — stateless proof-chain engine (replaces registry-based v1 engine).
+/// See src/tcb/ for the trusted computing base boundary.
+pub mod tcb;
 pub mod capability;
 mod crypto;
 pub(crate) mod engine;

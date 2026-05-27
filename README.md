@@ -64,20 +64,25 @@ engine.rs   ◄─────────────────────�
                            (owner may inspect, retry with correction)
 ```
 
-**Trusted Computing Base:** `engine.rs`, `capability.rs`, `wire.rs`, `crypto.rs`.
+**Trusted Computing Base:** `engine.rs`, `capability.rs`, `wire.rs`, `crypto.rs`, and the new `src/tcb/` module (v2 stateless kernel).
 Everything else — adapters, extensions, scheduler, registry logic — is outside the TCB.
 
 ### Repository layout
 
 ```
-authgate-kernel/src/
-  engine.rs        pure Rust verification (no PyO3, no I/O)      — TCB
-  capability.rs    closed capability algebra (enums only)         — TCB
-  wire.rs          typed JSON wire format (serde, no logic)       — TCB
-  crypto.rs        ed25519 attestation                            — TCB
-  ffi.rs           C ABI — thin facade                            — not TCB
-  verifier.rs      PyO3 facade over engine.rs                     — not TCB
-  registry.rs      ownership registry, attenuation enforcement    — not TCB
+freedom-kernel/src/
+  engine.rs           registry-based verifier (v1, production)        — TCB
+  capability.rs       closed capability algebra (enums only)           — TCB
+  wire.rs             typed JSON wire format (serde, no logic)         — TCB
+  crypto.rs           ed25519 attestation                              — TCB
+  tcb/                stateless proof-chain kernel (v2, in progress)   — TCB
+    types.rs            CanonicalAction + CapabilityProof + Rights
+    engine.rs           verify(action, root_key, now) -> Decision
+    dag.rs              delegation chain validation + attenuation
+    sequence.rs         composition safety tracker (SequenceContext)
+  ffi.rs              C ABI — thin facade                              — not TCB
+  verifier.rs         PyO3 facade over engine.rs                       — not TCB
+  registry.rs         ownership registry (v1; not truth in v2)        — not TCB
 
 src/authgate/
   kernel/          Python implementation (mirrors Rust)
@@ -85,7 +90,28 @@ src/authgate/
     ifc.py         Bell-LaPadula non-interference
     detection.py   manipulation scorer (heuristic signal)
     synthesis.py   rule admission engine
+
+formal/
+  kani/            Kani bounded model-checking harnesses
+  lean4/           Lean 4 proofs (Core.lean, Invariants.lean, Proofs.lean)
+
+attack_harness/
+  mutation_attacks.py        20 mutation tests — one security check per test
+  canonicalization_attacks.py  5 canonical gate attacks (CA-1 through CA-5)
+  sequence_attacks.py          5 composition safety attacks (SA-1 through SA-4)
 ```
+
+### v2 TCB design
+
+The v2 kernel (`src/tcb/`) is stateless and registry-free. All authority is carried in signed capability proof chains. Key design decisions:
+
+**Canonical gate (Layer 1):** Every action arrives as a `CanonicalAction` with a `binding_hash` over all fields. The kernel recomputes this hash before touching any proof — IR tampered between adapter and kernel is rejected before any cryptographic work begins.
+
+**Epoch-based primary revocation:** Instead of distributing revocation lists, the caller sets `min_epoch` in each action. Capability proofs with `epoch < min_epoch` are rejected without consulting any revocation list. Advancing the epoch invalidates an entire cohort of proofs in O(1).
+
+**Revocation proofs (secondary):** Emergency single-proof revocation via root-signed `RevocationProof`. Forged or invalid-signature revocations are silently skipped — attackers cannot force a Deny by injecting garbage revocation proofs.
+
+**Composition safety:** `SequenceContext` tracks the union of all rights exercised within a session. Policy layers compare the accumulated state against the session limit, closing the gap where individually-permitted actions compose into a globally-invalid sequence.
 
 ### TCB guards (CI-enforced on every commit)
 
@@ -284,9 +310,11 @@ cargo bench --bench verify_bench
 
 ## Formal verification
 
-### Kani bounded model-checking (19 harnesses)
+### Kani bounded model-checking
 
-Covers `engine.rs` only. Each harness is symbolically executed over all possible inputs within bounds.
+Covers `engine.rs` (v1) and `src/tcb/` (v2). Each harness is symbolically executed over all possible inputs within unwind bounds.
+
+**v1 harnesses (19):**
 
 | Harness | What is verified |
 |---|---|
@@ -299,24 +327,56 @@ Covers `engine.rs` only. Each harness is symbolically executed over all possible
 | `prop_permitted_implies_no_violations` | PERMITTED ↔ violations list is empty |
 | `prop_blocked_implies_violations_non_empty` | BLOCKED ↔ at least one violation |
 
+**v2 harnesses (3, `formal/kani/`):**
+
+| Harness | What is verified |
+|---|---|
+| `prop_attenuation_two_node` | Child rights ⊆ parent rights for all bitmask combinations |
+| `prop_epoch_check` | Epoch gate is a total relation (no third case exists) |
+| `proof_forged_revocation_ignored` | Invalid-sig revocation never changes Permit → Deny |
+
 ```bash
-cargo kani --harness prop_increases_machine_sovereignty
+cargo kani --harness prop_increases_machine_sovereignty   # v1
+cargo kani --harness prop_attenuation_two_node            # v2
 ```
 
-### Lean 4 (proved theorems, no `sorry`)
+### Lean 4
 
-| Theorem | What is proved |
+**Proved theorems (no `sorry` except where explicitly admitted at cryptographic boundaries):**
+
+| Theorem | File | What is proved |
+|---|---|---|
+| `forbidden_flags_always_block` | Proofs.lean | Flag set → `permitted = false`, constructively |
+| `verify_deterministic` | Proofs.lean | Pure function: no state, no effects |
+| `attenuation_transitive` | Proofs.lean | If B ⊆ A and C ⊆ B then C ⊆ A (chain attenuation) |
+| `rights_sufficiency_correct` | Proofs.lean | `required ⊆ cap.rights` ↔ rights check passes |
+| `epoch_gate_total` | Proofs.lean | `cap_epoch < min_epoch ∨ min_epoch ≤ cap_epoch` — no third case |
+| `stale_epoch_implies_deny` | Proofs.lean | Stale epoch → `¬FreshEpoch` — deny without revocation list |
+| `subject_mismatch_violates_binding` | Proofs.lean | `cap.subject ≠ actor_id` → `¬SubjectBinding` |
+
+**Admitted (axiomatized from cryptographic assumptions):**
+
+| Axiom | Assumption |
 |---|---|
-| `forbidden_flags_always_block` | Flag set → `permitted = false`, constructively |
-| `verify_deterministic` | Pure function: no state, no effects |
-| `taint_monotone` | IFC taint only grows across a plan, never shrinks |
-| `attenuation_cannot_escalate` | Delegated confidence ≤ delegator confidence |
+| `sig_euf_cma` | ed25519 EUF-CMA security — unforgeability of valid signatures |
+| `forged_revocation_harmless` | Invalid-sig revocations do not affect decisions — proved by code inspection |
 
 ```bash
 cd formal/lean4 && lake build
 ```
 
-**Proof scope:** `engine.rs` behaviors on typed inputs. Not proved: Python implementation, extensions, adapters, multi-agent semantics, or any property involving natural language. See [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md).
+**Proof scope:** TCB behaviors on typed inputs. Not proved: Python implementation, extensions, adapters, multi-agent semantics, or any property involving natural language. See [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md).
+
+### Attack harness (25 tests, all passing)
+
+```bash
+cd attack_harness
+python mutation_attacks.py           # 10 tests: one per security check in engine.rs
+python canonicalization_attacks.py   # 5 tests: CA-1 through CA-5
+python sequence_attacks.py           # 5 tests: SA-1 through SA-4 + edge cases
+```
+
+These are black-box regression tests for the security properties. They run against the Python model of the v2 TCB and serve as ground truth for what the Rust TCB must implement.
 
 ---
 
