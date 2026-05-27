@@ -84,6 +84,29 @@ fn can_act(
     (true, best_conf, format!("claim confidence={:.2}", best_conf))
 }
 
+fn trust_domain_allows(
+    registry: &OwnershipRegistryWire,
+    actor_domain: &str,
+    resource_domain: &str,
+    op: &str,
+) -> bool {
+    if actor_domain == resource_domain {
+        return true;
+    }
+    for td in &registry.trust_domains {
+        for grant in &td.cross_domain_grants {
+            if grant.from_domain == actor_domain
+                && grant.to_domain == resource_domain
+                && (grant.allowed_operations.is_empty()
+                    || grant.allowed_operations.iter().any(|o| o == op))
+            {
+                return true;
+            }
+        }
+    }
+    false
+}
+
 pub fn verify(registry: &OwnershipRegistryWire, action: &ActionWire) -> VerificationResultWire {
     let mut violations: Vec<String> = Vec::new();
     let mut warnings: Vec<String> = Vec::new();
@@ -189,6 +212,35 @@ pub fn verify(registry: &OwnershipRegistryWire, action: &ActionWire) -> Verifica
         }
     }
 
+    // 5. Trust domain boundary enforcement
+    // Only fires when both actor and resource carry explicit trust_domain labels.
+    // Unlabeled resources are accessible within the existing claim-based rules.
+    if let Some(actor_domain) = &action.trust_domain {
+        for r in &action.resources_read {
+            if let Some(res_domain) = &r.trust_domain {
+                if !trust_domain_allows(registry, actor_domain, res_domain, "read") {
+                    violations.push(format!(
+                        "TRUST DOMAIN: {} (domain:{}) cannot read {}:{} (domain:{}) \
+                         — no cross-domain grant",
+                        actor.name, actor_domain, r.rtype, r.name, res_domain
+                    ));
+                }
+            }
+        }
+        for r in &action.resources_write {
+            if let Some(res_domain) = &r.trust_domain {
+                if !trust_domain_allows(registry, actor_domain, res_domain, "write") {
+                    violations.push(format!(
+                        "TRUST DOMAIN: {} (domain:{}) cannot write {}:{} (domain:{}) \
+                         — no cross-domain grant",
+                        actor.name, actor_domain, r.rtype, r.name, res_domain
+                    ));
+                }
+            }
+        }
+    }
+
+    // pass through trust_domain from action (new field, backward compat)
     VerificationResultWire {
         action_id: action.action_id.clone(),
         permitted: violations.is_empty(),

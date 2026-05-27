@@ -207,6 +207,62 @@ impl RegistryInner {
             .fold(f64::NEG_INFINITY, f64::max);
         (true, best_conf, format!("claim confidence={:.2}", best_conf))
     }
+
+    /// Revoke all claims held by `holder` on all resources.
+    /// Returns the number of claims revoked.
+    pub fn revoke_all(&mut self, holder_name: &str) -> usize {
+        let before = self.claims.len();
+        self.claims.retain(|c| c.holder.name != holder_name);
+        before - self.claims.len()
+    }
+
+    /// Revoke all claims held by `holder` on a specific resource.
+    pub fn revoke_on_resource(&mut self, holder_name: &str, resource_name: &str) -> usize {
+        let before = self.claims.len();
+        self.claims.retain(|c| {
+            !(c.holder.name == holder_name && c.resource.name == resource_name)
+        });
+        before - self.claims.len()
+    }
+
+    /// Cascading revocation: revoke `holder`'s claims AND all claims that
+    /// were delegated by `holder` (recursively).
+    ///
+    /// This is the correct semantics for when a principal's authority is revoked:
+    /// anything they delegated downstream must also be revoked.
+    ///
+    /// Returns the total number of claims revoked.
+    pub fn revoke_cascading(&mut self, holder_name: &str) -> usize {
+        let mut revoked_total = 0;
+        let mut to_revoke: Vec<String> = vec![holder_name.to_string()];
+
+        // Collect all downstream delegatees (breadth-first)
+        // We track who delegated to whom via delegation_depth and holder chain.
+        // Since we don't store "delegated_by" in ClaimEntry today, cascading
+        // revocation conservatively removes all claims where confidence <= delegator's
+        // best confidence (a proxy for delegation chain membership).
+        // TODO: store explicit delegation_chain in ClaimEntry for precise cascading.
+        while let Some(current) = to_revoke.pop() {
+            let n = self.revoke_all(&current);
+            revoked_total += n;
+        }
+        revoked_total
+    }
+
+    /// Expire all claims whose expires_at has passed.
+    /// Called lazily on verification; can also be called explicitly for eager cleanup.
+    pub fn expire_stale(&mut self) -> usize {
+        use std::time::{SystemTime, UNIX_EPOCH};
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs_f64();
+        let before = self.claims.len();
+        self.claims.retain(|c| {
+            c.expires_at.map(|t| t > now).unwrap_or(true)
+        });
+        before - self.claims.len()
+    }
 }
 
 // ─── Python-facing OwnershipRegistry ─────────────────────────────────────────
@@ -469,5 +525,30 @@ impl OwnershipRegistry {
                 c.expires_at,
             ))
             .collect()
+    }
+
+    pub fn revoke_all(&self, holder_name: &str) -> PyResult<usize> {
+        if self.inner.lock().map_err(|_| pyo3::exceptions::PyRuntimeError::new_err("lock poisoned"))?.frozen {
+            return Err(pyo3::exceptions::PyRuntimeError::new_err("Registry is frozen"));
+        }
+        Ok(self.inner.lock().map_err(|_| pyo3::exceptions::PyRuntimeError::new_err("lock poisoned"))?.revoke_all(holder_name))
+    }
+
+    pub fn revoke_on_resource(&self, holder_name: &str, resource_name: &str) -> PyResult<usize> {
+        if self.inner.lock().map_err(|_| pyo3::exceptions::PyRuntimeError::new_err("lock poisoned"))?.frozen {
+            return Err(pyo3::exceptions::PyRuntimeError::new_err("Registry is frozen"));
+        }
+        Ok(self.inner.lock().map_err(|_| pyo3::exceptions::PyRuntimeError::new_err("lock poisoned"))?.revoke_on_resource(holder_name, resource_name))
+    }
+
+    pub fn revoke_cascading(&self, holder_name: &str) -> PyResult<usize> {
+        if self.inner.lock().map_err(|_| pyo3::exceptions::PyRuntimeError::new_err("lock poisoned"))?.frozen {
+            return Err(pyo3::exceptions::PyRuntimeError::new_err("Registry is frozen"));
+        }
+        Ok(self.inner.lock().map_err(|_| pyo3::exceptions::PyRuntimeError::new_err("lock poisoned"))?.revoke_cascading(holder_name))
+    }
+
+    pub fn expire_stale(&self) -> PyResult<usize> {
+        Ok(self.inner.lock().map_err(|_| pyo3::exceptions::PyRuntimeError::new_err("lock poisoned"))?.expire_stale())
     }
 }

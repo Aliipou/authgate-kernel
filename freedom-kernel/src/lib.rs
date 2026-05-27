@@ -1,5 +1,6 @@
 #![allow(unexpected_cfgs)]
 #![allow(clippy::useless_conversion)]
+pub mod authority_graph;
 pub mod capability;
 mod crypto;
 pub(crate) mod engine;

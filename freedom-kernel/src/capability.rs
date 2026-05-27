@@ -7,7 +7,8 @@
 //! - **Closed** — exhaustive enums only; no trait objects, no dynamic dispatch
 //! - **Algebraic** — pure data (enums + Copy); no logic, no state, no side effects
 //! - **Self-contained** — zero project imports (`use crate::` is forbidden here)
-//! - **Small** — hard ceiling of 150 LOC (CI-enforced)
+//! - **Small** — hard ceiling of 200 LOC (CI-enforced; raised from 150 in v2 to
+//!   accommodate the expanded capability taxonomy and `CapabilityRisk`)
 //!
 //! # What this file must never become
 //!
@@ -18,6 +19,13 @@
 //!
 //! The only permitted impls are `Display` and boundary-only `from_str` for `Operation`.
 //! Every other behavior belongs outside this file.
+//!
+//! # v2 additions
+//!
+//! `CapabilityRisk` was added in v2 to support risk-aware policy enforcement without
+//! adding policy logic to this file. The `risk()` method on `CapabilityKind` is a pure
+//! data lookup — it carries no evaluation semantics. Policy decisions remain outside
+//! the TCB.
 
 /// The exhaustive set of capability kinds this kernel recognizes.
 ///
@@ -32,6 +40,57 @@ pub enum CapabilityKind {
     IPCReceive,
     ConsumeQuota,
     EnterDomain,
+    // v2 additions — AI/agent-specific capability taxonomy
+    Execute,
+    NetworkAccess,
+    ModelInvoke,
+    Train,
+    FineTune,
+    MemoryAccess,
+    ToolInvoke,
+    SystemPromptEdit,
+    PolicyModify,
+}
+
+/// Risk classification for a `CapabilityKind`.
+///
+/// Ordered from lowest to highest risk. Used by policy layers outside the TCB
+/// to make risk-aware decisions. This enum carries no evaluation semantics.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum CapabilityRisk {
+    Low,
+    Medium,
+    High,
+    Critical,
+    Catastrophic,
+}
+
+impl CapabilityKind {
+    /// Return the inherent risk level of this capability kind.
+    ///
+    /// This is a static data lookup — no policy logic, no runtime state.
+    /// Higher-risk capabilities should require stronger authorization evidence.
+    pub fn risk(self) -> CapabilityRisk {
+        match self {
+            CapabilityKind::Read => CapabilityRisk::Low,
+            CapabilityKind::MemoryAccess => CapabilityRisk::Medium,
+            CapabilityKind::Write => CapabilityRisk::Medium,
+            CapabilityKind::ConsumeQuota => CapabilityRisk::Medium,
+            CapabilityKind::Delegate => CapabilityRisk::High,
+            CapabilityKind::Execute => CapabilityRisk::High,
+            CapabilityKind::ToolInvoke => CapabilityRisk::High,
+            CapabilityKind::IPCSend => CapabilityRisk::High,
+            CapabilityKind::IPCReceive => CapabilityRisk::High,
+            CapabilityKind::EnterDomain => CapabilityRisk::High,
+            CapabilityKind::Spawn => CapabilityRisk::Critical,
+            CapabilityKind::NetworkAccess => CapabilityRisk::Critical,
+            CapabilityKind::ModelInvoke => CapabilityRisk::Critical,
+            CapabilityKind::Train => CapabilityRisk::Critical,
+            CapabilityKind::FineTune => CapabilityRisk::Critical,
+            CapabilityKind::SystemPromptEdit => CapabilityRisk::Critical,
+            CapabilityKind::PolicyModify => CapabilityRisk::Catastrophic,
+        }
+    }
 }
 
 /// Operations that can be checked against a `RightsClaim`.

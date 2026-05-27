@@ -35,6 +35,13 @@ subtle             = "2"
 zeroize            = { version = "1", features = ["derive"] }
 wasm-bindgen       = { version = "0.2", optional = true }
 
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+
+[[bench]]
+name = "verify_bench"
+harness = false
+
 [profile.release]
 opt-level        = 3
 lto              = true

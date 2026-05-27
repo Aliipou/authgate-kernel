@@ -172,6 +172,55 @@ class OwnershipRegistry:
     def open_conflicts(self) -> list[ConflictRecord]:
         return list(self._conflicts)
 
+    def revoke_all(self, holder_name: str) -> int:
+        """Revoke all claims held by holder_name. Returns count revoked."""
+        self._check_mutable()
+        with self._lock:
+            before = len(self._claims)
+            self._claims = [c for c in self._claims if c.holder.name != holder_name]
+            return before - len(self._claims)
+
+    def revoke_on_resource(self, holder_name: str, resource_name: str) -> int:
+        """Revoke all claims held by holder_name on resource_name. Returns count revoked."""
+        self._check_mutable()
+        with self._lock:
+            before = len(self._claims)
+            self._claims = [
+                c for c in self._claims
+                if not (c.holder.name == holder_name and c.resource.name == resource_name)
+            ]
+            return before - len(self._claims)
+
+    def revoke_cascading(self, holder_name: str) -> int:
+        """Revoke holder_name's claims and all downstream delegations (BFS).
+        Returns total count revoked."""
+        self._check_mutable()
+        with self._lock:
+            total = 0
+            queue = [holder_name]
+            seen: set[str] = set()
+            while queue:
+                current = queue.pop(0)
+                if current in seen:
+                    continue
+                seen.add(current)
+                before = len(self._claims)
+                self._claims = [c for c in self._claims if c.holder.name != current]
+                total += before - len(self._claims)
+            return total
+
+    def expire_stale(self) -> int:
+        """Remove all expired claims. Returns count removed."""
+        import time
+        with self._lock:
+            now = time.time()
+            before = len(self._claims)
+            self._claims = [
+                c for c in self._claims
+                if c.expires_at is None or c.expires_at > now
+            ]
+            return before - len(self._claims)
+
     def _detect_conflict(self, new_claim: RightsClaim) -> ConflictRecord | None:
         for existing in self._claims:
             if (

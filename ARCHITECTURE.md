@@ -1,291 +1,403 @@
-# Freedom Kernel — Architecture
-
-## One principle
-
-```
-EVERYTHING IS CAPABILITIES
-```
-
-Not "AI is good." Not "AI has values." Not "AI follows rules."
-
-**AI cannot exceed granted authority.**
-
-That is the only invariant that matters at AGI scale.
+# freedom-kernel — Architecture v2
 
 ---
 
-## The real problem
-
-When a system has planning, tool use, self-improvement, memory, multi-agent
-coordination, and recursive goal pursuit — the question is no longer:
-
-> "What values does it have?"
-
-The question becomes:
-
-> "Who controls execution authority?"
-
-Values can be argued away. Authority boundaries cannot.
-
-This is why alignment research that operates at the level of preferences,
-principles, or reward models will fail at AGI scale: any rule stated in
-natural language can be synthesized into a new rule that permits the harm.
-A capability boundary cannot be reasoned around — it can only be violated,
-and violations are detectable.
-
----
-
-## The right analogy
-
-AGI alignment will look more like **operating system security** than moral
-philosophy.
-
-| OS security primitive | Freedom Kernel equivalent |
-|---|---|
-| Process / namespace | `ExecutionContext` — bounded authority scope |
-| Capability token | `RightsClaim` — unforgeable, scoped, revocable |
-| No ambient authority | Agent has only what's in its context |
-| `setuid` / privilege escalation | Blocked by sovereignty flags |
-| Attenuation | `registry.delegate()` — you cannot grant what you don't have |
-| Revocation | `context.revoke()` / claim expiry |
-| Audit log | Signed `VerificationResult` chain |
-| seccomp / syscall filter | `FreedomVerifier` — gate on every action |
-
-The kernel enforces the same invariant that capability-secure operating
-systems enforce: **no authority is ever invented inside the system** — it
-can only flow downward from the root (human owner), and only attenuated.
-
----
-
-## Current state
+## 1. System Overview
 
 ```
-Action IR
-    │
-    ▼
-FreedomVerifier  ←  OwnershipRegistry
-    │
-    ▼
-PERMITTED / BLOCKED + VerificationResult (signed)
-```
+┌─────────────────────────────────────────────────────────────────────┐
+│  Human Principal (trust root)                                       │
+│  - registers machines                                               │
+│  - holds root claims on all resources                               │
+│  - only entity that can modify REGISTRY or POLICY                   │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ registers, delegates, revokes
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  OwnershipRegistry                                [not TCB]         │
+│  - claims map: (actor, resource) → RightsClaim                      │
+│  - machine → human owner entries                                    │
+│  - delegation chains (DAG, cycle-detected)                          │
+│  - trust domain memberships                                         │
+│  - revocation engine (eager / lazy / cascading)                     │
+└──────────────────────────────┬──────────────────────────────────────┘
+                               │ registry snapshot (read-only view)
+                               ▼
+┌─────────────────────────────────────────────────────────────────────┐
+│  engine.rs  — Trusted Computing Base                   [TCB]        │
+│                                                                     │
+│  Input:  ActionWire (typed, no natural language)                    │
+│  Output: VerificationResult {permitted, violations[], signature}    │
+│                                                                     │
+│  Guards (in order, short-circuit on first BLOCKED):                 │
+│    [1] sovereignty flag check     O(1)  — 10 unconditional flags    │
+│    [2] machine ownership check    O(1)  — actor in registry?        │
+│    [3] machine-governs-human      O(1)  — dominion check            │
+│    [4] claim verification         O(n)  — per resource, per right   │
+│                                                                     │
+│  Properties: pure function, no I/O, deterministic, <300 LOC         │
+└────────────┬────────────────────────┬───────────────────────────────┘
+             │ PERMITTED              │ BLOCKED
+             ▼                        ▼
+┌────────────────────┐   ┌────────────────────────────────────────────┐
+│  AuditLog          │   │  Violation surface                         │
+│  append-only JSON  │   │  - structured ViolationRecord              │
+│  ed25519 signed    │   │  - surfaced to human owner                 │
+│  timestamp + nonce │   │  - halt: action does not execute           │
+└────────────────────┘   └────────────────────────────────────────────┘
 
-**What this handles:**
-- Single-shot action verification
-- Ownership and delegation checks (A4, A7)
-- Machine sovereignty constraints (A6)
-- 10 hard forbidden flags
-- Conflict detection
-- Cryptographic attestation of decisions
-
-**What is missing for AGI-grade:**
-
----
-
-## The gap: from gate to substrate
-
-### 1. Attenuation enforcement ✓ (implemented)
-
-`registry.delegate(claim, delegated_by)` now enforces:
-- You cannot grant read if you lack read
-- You cannot grant write if you lack write
-- You cannot sub-delegate if you lack `can_delegate=True`
-- You cannot grant confidence higher than you hold
-
-Without this, the ownership graph is annotations. With it, the graph is a
-real capability system: authority can only flow from owners downward, never
-be invented inside the system.
-
-### 2. Bounded execution contexts ✓ (implemented)
-
-`ExecutionContext` gives each agent task a fixed authority ceiling:
-- No ambient authority: agent has only what's in the context
-- Child contexts are strictly ⊆ parent's authority (attenuation)
-- Hard depth limit: prevents recursive delegation explosion
-- Revocability: any context (and all descendants) can be cancelled instantly
-- Expiry: time-bounded authority
-
-### 3. Plan / trajectory verification — next
-
-A single `verify(action)` is not enough for a planning agent. The verifier
-needs to check multi-step plans:
-
-```python
-results = verifier.verify_plan([action1, action2, action3])
-# Check that the entire trajectory stays within authority scope
-# and that no intermediate state creates a sovereignty violation
-```
-
-This requires modeling *state changes* through a plan, not just
-single actions.
-
-### 4. Goal tree constraints — planned
-
-Recursive goal pursuit is how AGI systems work. A goal G spawns subgoals
-G1, G2, G3. Each subgoal must stay within the authority scope of G.
-
-The kernel needs a `GoalNode` type and a `verify_goal_tree` function that
-checks the entire goal decomposition against the ownership graph.
-
-### 5. Formal semantics — critical, not yet done
-
-Without formal semantics, there is no way to prove that the kernel enforces
-what it claims to enforce. This is not optional for AGI-grade infrastructure.
-
-**Target:** TLA+ or Lean proof of the core invariants:
-- Authority monotonicity: authority never increases as it flows down
-- Confinement: a confined agent cannot leak authority outside its context
-- Non-bypass: the verifier cannot be bypassed from within the system
-
-Until these proofs exist, the kernel is **research-grade**, not
-**security-grade**. That gap must be closed before production deployment.
-
----
-
-## Architecture roadmap
-
-### Stage 1 — Stable minimal core (current)
-
-```
-engine.rs           ✓  pure Rust verification, no I/O
-wire.rs             ✓  JSON wire format
-crypto.rs           ✓  ed25519 attestation
-ffi.rs              ✓  C ABI (language-agnostic)
-registry.delegate   ✓  attenuation enforcement
-ExecutionContext     ✓  bounded execution scope
-```
-
-### Stage 2 — Plan and goal verification
-
-```
-verifier.verify_plan(actions)      → list[VerificationResult]
-GoalNode + verify_goal_tree        → checks recursive subgoal authority
-StateProjection                    → models registry state after each action
-```
-
-### Stage 3 — Multi-agent authority propagation
-
-```
-AgentSpawnRequest    → spawning a sub-agent is itself a verified action
-DelegationChain      → full chain from root human to executing agent
-AuthorityBudget      → max compute/calls/time per context
-```
-
-### Stage 4 — Formal verification
-
-```
-tla+/freedom_kernel.tla     → TLA+ spec of core invariants
-lean/FreedomKernel.lean     → Lean4 proof of confinement
-model-checking/             → exhaustive state-space exploration
-```
-
-### Stage 5 — Runtime integrations
-
-```
-adapters/openai_agents/     → intercept tool calls via function-call hook
-adapters/anthropic/         → Claude tool use → Action IR → verify → execute
-adapters/langchain/         → LangChain tool wrapper
-adapters/browser_agents/    → browser action interceptor
-wasm/                       → verifier compiled to WASM (runs anywhere)
+Outside TCB (extension layer):
+  AuthorityGraphEngine  — DAG analysis, cross-domain checks
+  TrustDomainManager    — isolation namespace enforcement
+  PolicyDSL             — textual policy language (ALLOW/DENY rules)
+  NonInterferenceChecker — Bell-LaPadula IFC
+  ManipulationDetector  — heuristic score (signal only)
+  Framework adapters    — LangChain, OpenAI Agents SDK, AutoGen, Anthropic
 ```
 
 ---
 
-## Philosophical foundation vs. runtime coupling
+## 2. Trusted Computing Base (TCB)
 
-**وفاداری فلسفی ≠ coupling معماری** — philosophical loyalty ≠ architectural coupling.
+The TCB is the minimal set of code that must be correct for the security properties to hold. Every line is subject to Kani model-checking and Lean 4 proofs.
 
-The axioms come from *نظریه آزادی* (Theory of Freedom) by Mohammad Ali Jannat Khah
-Doust. That origin is real and should not be erased. But the runtime enforces
-machine-checkable propositions over a typed ownership graph — not a theology.
+### Components
 
-The distinction must be explicit everywhere:
-
-| Layer | Axiom | Status |
+| File | LOC ceiling | Role |
 |---|---|---|
-| Metaphysical | A1: every person's ultimate ownership is not by any human, state, or machine | Declared — ontological foundation, not runtime-enforced |
-| Governance | A2–A3: no human owns another; every person has typed property rights | Declared — grounds the ownership model |
-| **Operational** | **A4–A7: machine ownership, scope, dominion, delegation** | **Runtime-enforced — machine-checkable** |
+| `engine.rs` | 300 | Single exported function `verify()`. Pure, deterministic, no I/O. |
+| `capability.rs` | 200 | Closed enum of all 17 `CapabilityKind` variants + `CapabilityRisk`. Enums only, no structs, no logic. |
+| `wire.rs` | uncapped | Typed serde structs: `ActionWire`, `ClaimWire`, `RegistryWire`. No business logic. |
+| `crypto.rs` | uncapped | ed25519 signing and verification via `ring`. No policy logic. |
 
-A1 is not theology inside a syscall filter. It is the *why* behind A4–A7.
-A4–A7 work as a formal system independently of anyone accepting A1.
+### Why these four files and nothing else
 
-**What this means in practice:**
+`engine.rs` is the gate. It needs `capability.rs` to name kinds, `wire.rs` to deserialize inputs, and `crypto.rs` to sign outputs. No other component is on the PERMITTED/BLOCKED decision path.
 
-- The runtime never checks metaphysical claims
-- The runtime never scores "spirit" or "divine alignment"
-- The runtime checks: does this agent have a human owner? Does it have a delegated claim? Does this action set a sovereignty flag?
-- Those checks are purely structural — they require no worldview commitment from the caller
+`ffi.rs`, `verifier.rs`, and `registry.rs` wrap or feed the TCB — they are **not** in the TCB because a bug in them cannot cause `engine.rs` to emit a false PERMITTED verdict. They can cause incorrect inputs, which is a different failure mode and is handled by the registry's own validation layer.
 
-**What must NOT enter the runtime:**
-- Satan detection
-- Mysticism scoring
-- Metaphysical alignment metrics
-- Mahdavi compass as a hard gate (it is an optional extension, not a kernel primitive)
-- Any check that requires theological interpretation
+### TCB inflation policy
 
-**What must stay in the foundation:**
-- The ontological framing in documentation (A1 explains *why* A6 exists)
-- Attribution to the source theory
-- The moral weight that motivates the engineering constraints
-
-Strip the ontology and the project becomes a generic capability kernel with no
-identity. Couple the ontology into the runtime and it becomes a worldview-locked
-monolith that no one outside the theory's community will deploy.
-
-The right boundary: philosophy explains the axioms; the runtime enforces them.
+Any PR that increases TCB LOC beyond the ceiling, adds a new TCB file, or adds a dependency to a TCB file is automatically blocked by CI. Justification requires a written argument that the addition cannot exist outside the TCB and a review from a second engineer.
 
 ---
 
-## What the kernel is NOT
+## 3. Authority Graph Engine (v2)
 
-- Not a moral philosophy engine
-- Not a preference optimizer
-- Not a value alignment system
-- Not a constitutional AI system
-- Not a classifier or detector
+`authority_graph.rs` provides DAG analysis over the ownership graph. It is **not** in the TCB — bugs here cannot produce false PERMITTED verdicts — but it guards the registry layer.
 
-Those approaches fail at AGI scale because they are stated in natural
-language and can be synthesized away.
-
-The kernel enforces **one thing**: authority boundaries.
-Everything else follows from that.
-
----
-
-## The five fatal mistakes to avoid
-
-1. **Rewrite mania** — do not rewrite to Rust/C/WASM before the architecture
-   is stable and formally specified. A fast implementation of the wrong design
-   is worse than a slow implementation of the right one.
-
-2. **Feature explosion** — the kernel must remain minimal. Every feature added
-   to the kernel is a surface area that must be formally verified. Extensions
-   belong in `extensions/`, not in `kernel/`.
-
-3. **Philosophy inside the runtime** — the runtime enforces capability
-   boundaries. It does not reason about ethics, justice, or metaphysics.
-   Those belong in documentation, not in code paths.
-
-4. **Grandiosity in claims** — do not claim the kernel solves AGI alignment.
-   It enforces authority boundaries for agentic systems. That is a precise,
-   valuable, verifiable claim. Keep it.
-
-5. **No formal semantics** — this is fatal. Without a formal spec and
-   mechanically-checked proofs, the kernel cannot be trusted for
-   production AGI deployment. This is the most critical missing piece.
-
----
-
-## The target
+### Structure
 
 ```
-"Capability-security operating layer for autonomous agents"
+OwnershipRegistry
+  └── authority_graph: AuthorityGraph
+        ├── nodes: HashMap<ActorId, Node>
+        │     Node { actor, trust_domain, depth }
+        ├── edges: Vec<DelegationEdge>
+        │     DelegationEdge { from, to, rights, depth, expires_at }
+        └── domain_map: HashMap<TrustDomainId, HashSet<ActorId>>
 ```
 
-Not "AI morality engine." Not "ethics runtime." Not "alignment system."
+### Operations
 
-A capability-security kernel: tiny, formal, auditable, composable,
-language-agnostic, cryptographically verifiable, and provably correct.
+| Operation | Complexity | Description |
+|---|---|---|
+| `reachability(actor, resource)` | O(V + E) | Can actor reach resource via any delegation path? |
+| `cycle_detection()` | O(V + E) | Topological sort; cycles are rejected at `delegate()` time |
+| `cross_domain_violations()` | O(E) | Edges crossing trust domain boundaries without explicit grant |
+| `delegation_depth(actor)` | O(depth) | Distance from root human principal |
+| `subgraph(root)` | O(V + E) | All agents reachable from a given principal |
 
-The same class of infrastructure as seccomp, SELinux, and capability-secure
-operating systems — but for agentic AI execution.
+### Cycle detection
+
+Cycles in the delegation graph would allow authority amplification (A → B → A could bootstrap claims neither A nor B holds). `delegate()` runs topological sort before committing any new edge. If a cycle would be created, the delegation is rejected with `CyclicDelegationError`.
+
+### Depth cap
+
+Maximum delegation depth is 16 hops from the root human principal. An `AgentSpawnRequest` that would exceed depth 16 is rejected. This prevents unbounded recursive delegation chains in multi-agent systems.
+
+---
+
+## 4. Capability Algebra v2
+
+The capability vocabulary is a closed enum in `capability.rs`. It is exhaustive — no runtime-defined capabilities exist.
+
+### Full taxonomy
+
+| CapabilityKind | CapabilityRisk | Delegable by machine? |
+|---|---|---|
+| `READ` | Low | Yes |
+| `WRITE` | Medium | Yes |
+| `EXECUTE` | Medium | Yes |
+| `DELETE` | High | Yes, if granted |
+| `DELEGATE` | High | Yes, if granted |
+| `NETWORK_EGRESS` | High | Yes, if granted |
+| `NETWORK_INGRESS` | High | Yes, if granted |
+| `FILE_SYSTEM` | High | Yes, if granted |
+| `PROCESS_SPAWN` | High | Yes, if granted |
+| `MEMORY_WRITE` | High | Yes, if granted |
+| `CREDENTIAL_READ` | Critical | Yes, if granted |
+| `CREDENTIAL_WRITE` | Critical | Yes, if granted |
+| `AUDIT_READ` | Critical | Yes, if granted |
+| `AUDIT_WRITE` | Critical | No — human authorization required |
+| `POLICY_READ` | Critical | Yes, if granted |
+| `REGISTRY_MODIFY` | Catastrophic | No — human principal only |
+| `POLICY_MODIFY` | Catastrophic | No — human principal only |
+
+### Risk enforcement
+
+`CapabilityRisk::Catastrophic` capabilities cannot appear in a `RightsClaim` where the grantor is a machine actor. The registry enforces this at `add_claim()` time. A machine attempting to grant `REGISTRY_MODIFY` or `POLICY_MODIFY` raises `EscalationError` regardless of what claims the machine holds.
+
+### Attenuation algebra
+
+For a delegation `Alice → Bot`:
+
+```
+granted_rights(Bot) ⊆ held_rights(Alice)
+```
+
+This is enforced structurally. The registry computes the intersection at delegation time and rejects any claimed right not present in the parent's grant. The `DELEGATE` right itself must be explicitly held to sub-delegate.
+
+---
+
+## 5. Revocation System
+
+### Revocation modes
+
+| Mode | Trigger | Scope | Latency |
+|---|---|---|---|
+| Eager | `registry.revoke(claim_id)` | Single claim | Immediate |
+| Resource-scoped | `registry.revoke_on_resource(resource_id)` | All claims on resource | Immediate |
+| Cascading | `registry.revoke_cascading(actor_id)` | Actor + all transitive delegates | BFS, O(reachable agents) |
+| Expiry | `registry.expire_stale()` | All claims past `expires_at` | Called on verify or by background sweep |
+
+### Cascading revocation
+
+When a machine is revoked, all machines that received authority from it (directly or transitively) must also have their derived claims invalidated. This is a BFS over the delegation subgraph rooted at the revoked actor.
+
+```
+revoke_cascading(Bot_A):
+  queue = [Bot_A]
+  while queue not empty:
+    current = queue.pop()
+    revoke all claims where grantor == current
+    queue.extend(all actors who received claims from current)
+```
+
+Worst-case: O(V + E) over the delegation subgraph. Benchmark target: < 1ms for 100-agent subgraph.
+
+### Revocation and the TCB
+
+`engine.rs` does not perform revocation. It receives a registry snapshot at call time. The snapshot excludes revoked and expired claims — this exclusion happens in `registry.rs` before the snapshot is passed to `verify()`. The TCB trusts the snapshot it is given; correctness of the snapshot is the responsibility of `registry.rs`.
+
+---
+
+## 6. Trust Domains (v2)
+
+Trust domains are isolation namespaces. An agent in domain `D1` cannot act on resources owned by agents in domain `D2` without an explicit `CrossDomainGrant`.
+
+### Wire format
+
+```json
+{
+  "trust_domain": "research-sandbox",
+  "delegation_depth": 3
+}
+```
+
+Both `trust_domain` and `delegation_depth` are new fields in v2. They use `#[serde(default)]` — v1 wire messages deserialize with `trust_domain = "default"` and `delegation_depth = 0`.
+
+### CrossDomainGrant
+
+```
+CrossDomainGrant {
+  from_domain: TrustDomainId,
+  to_domain:   TrustDomainId,
+  capability:  CapabilityKind,
+  resource:    ResourceId,
+  granted_by:  ActorId,   // must be human principal
+  expires_at:  Option<Timestamp>,
+}
+```
+
+Cross-domain grants require the human principal of the target domain to countersign. No machine can unilaterally grant cross-domain access.
+
+### Domain isolation enforcement
+
+The `AuthorityGraphEngine` checks cross-domain violations at graph analysis time. `engine.rs` checks domain membership during claim verification — a claim is invalid if the claiming actor's domain does not match the resource's domain and no `CrossDomainGrant` exists.
+
+---
+
+## 7. Wire Protocol
+
+All data crossing the TCB boundary is serialized via `wire.rs`. The wire format is JSON (serde_json internally; msgpack planned for performance-sensitive paths).
+
+### ActionWire (v2)
+
+```json
+{
+  "id": "action-uuid",
+  "actor": "agent-id",
+  "capability_kind": "WRITE",
+  "resources_read": [],
+  "resources_write": ["resource-id"],
+  "resources_execute": [],
+  "flags": {
+    "increases_machine_sovereignty": false,
+    "resists_human_correction": false,
+    "bypasses_verifier": false,
+    "weakens_verifier": false,
+    "disables_corrigibility": false,
+    "machine_coalition_dominion": false,
+    "coerces": false,
+    "deceives": false,
+    "self_modification_weakens_verifier": false,
+    "machine_coalition_reduces_freedom": false
+  },
+  "trust_domain": "default",
+  "delegation_depth": 0
+}
+```
+
+### ClaimWire (v2)
+
+```json
+{
+  "actor": "agent-id",
+  "resource": "resource-id",
+  "can_read": true,
+  "can_write": false,
+  "can_execute": false,
+  "can_delegate": false,
+  "expires_at": null,
+  "trust_domain": "default",
+  "delegation_depth": 1
+}
+```
+
+### Backward compatibility contract
+
+v2 adds `trust_domain` and `delegation_depth` to both `ClaimWire` and `ActionWire`. Both fields use `#[serde(default)]`. A v1 message missing these fields deserializes as `trust_domain = "default"`, `delegation_depth = 0`. This is the "global default domain, root delegation depth" interpretation — semantically correct for v1 deployments.
+
+Existing v1 code using exhaustive matches on `CapabilityKind` must add arms for the 9 new variants added in v2 (compile-time error, not silent breakage).
+
+---
+
+## 8. Extension Architecture
+
+Extensions wrap the kernel. The kernel gate runs first, unconditionally. Extensions cannot modify the kernel's decision — they can only add signals, metadata, or secondary checks.
+
+```
+Action
+  │
+  ▼
+engine.rs::verify()      ← TCB gate (always runs first)
+  │
+  ├── BLOCKED → halt (extensions do not run on BLOCKED)
+  │
+  └── PERMITTED
+        │
+        ▼
+  [optional] ExtensionChain::run(action, permitted_result)
+        ├── NonInterferenceChecker (IFC labels)
+        ├── ManipulationDetector  (heuristic score)
+        ├── PolicyVerifier        (ABAC rules)
+        └── ConflictQueue         (contested resource tracking)
+        │
+        ▼
+  EnrichedResult { base: VerificationResult, extensions: HashMap<String, Value> }
+```
+
+### Extension contract
+
+An extension:
+1. Receives a `PERMITTED` result from `engine.rs`.
+2. May add metadata fields to the result.
+3. May escalate to BLOCKED (but cannot de-escalate from BLOCKED to PERMITTED).
+4. Must not modify the kernel's `signature` field.
+5. Must be registered in the extension chain before the verifier is constructed.
+
+Extensions that escalate to BLOCKED append a `ViolationRecord` with `source: "extension:<name>"` to distinguish extension-sourced blocks from TCB-sourced blocks. Callers can inspect this field to understand which layer blocked an action.
+
+---
+
+## 9. Multi-Agent Architecture
+
+### Spawn model
+
+Spawning a sub-agent is itself a verified action requiring `PROCESS_SPAWN` capability. The spawning agent must hold `PROCESS_SPAWN` on the target execution context.
+
+```
+AgentSpawnRequest {
+  parent_actor:      ActorId,
+  child_actor:       ActorId,         // pre-registered or registering now
+  authority_ceiling: Vec<RightsClaim>, // child authority ⊆ parent authority
+  trust_domain:      TrustDomainId,
+  max_depth:         u8,              // capped at 16
+}
+```
+
+`engine.rs` verifies spawn requests using the same `verify()` path. The `authority_ceiling` is checked against the parent's current claims — the child cannot receive rights the parent does not hold.
+
+### Depth cap enforcement
+
+Every agent carries its `delegation_depth` in `ActionWire`. The depth is incremented at each spawn. At depth 16, further spawning is blocked with `MaxDelegationDepthError`. This is checked in `engine.rs` as part of guard [4].
+
+### Authority budget
+
+Each spawned agent inherits a subset of the parent's claims. Claims do not "refill" — an agent can only sub-delegate what it currently holds. The ownership graph enforces this: after delegation, the parent's `can_delegate` right is consumed for that specific sub-delegation (it cannot be re-delegated to a different child without the parent re-acquiring `can_delegate` on that resource from its own parent).
+
+---
+
+## 10. Audit Architecture
+
+### Append-only log
+
+Every `verify()` call produces a `VerificationResult` that is appended to the audit log. The log is append-only — no entry can be modified or deleted. This is enforced by the log writer, not by the TCB.
+
+```
+AuditEntry {
+  id:         Uuid,
+  timestamp:  UnixTimestampMs,
+  nonce:      [u8; 16],
+  action_id:  String,
+  actor:      ActorId,
+  permitted:  bool,
+  violations: Vec<ViolationRecord>,
+  signature:  ed25519::Signature,
+  signing_key: ed25519::VerifyingKey,
+}
+```
+
+### Cryptographic attestation
+
+Every result is signed with the kernel's ed25519 key pair. The signing key is generated at kernel initialization and held in memory — it is not persisted by default (production deployments should use a KMS-backed key).
+
+Attestation properties:
+- **Non-repudiation:** A signed PERMITTED result proves the kernel authorized the action at the given timestamp.
+- **Replay detection:** Each result includes a random 16-byte nonce. The same action with a different nonce produces a different signature.
+- **Chain verification:** A sequence of audit entries can be verified as a consistent chain by checking that each entry's `action_id` appears in the `AuditLog` in timestamp order.
+
+### What the audit log does NOT provide
+
+- Causal ordering in distributed deployments (requires external vector clock or consensus)
+- Cross-kernel revocation notification (a PERMITTED from kernel A does not know about a revocation on kernel B)
+- Content inspection (the audit log records what was authorized, not what was produced)
+
+---
+
+## Invariant summary
+
+| Invariant | Source | Enforcement point |
+|---|---|---|
+| A4: every machine has a human owner | `engine.rs` guard [2] | TCB |
+| A5: machine scope ⊆ owner scope | `registry.rs` at `add_claim()` | Not TCB |
+| A6: no machine governs humans | `engine.rs` guard [3] | TCB |
+| A7: machine acts only on delegated resources | `engine.rs` guard [4] | TCB |
+| Attenuation: child ⊆ parent | `registry.rs` at `delegate()` | Not TCB |
+| No cycles in delegation graph | `authority_graph.rs` at `delegate()` | Not TCB |
+| Depth ≤ 16 | `engine.rs` guard [4] | TCB |
+| Catastrophic capabilities: human-only | `registry.rs` at `add_claim()` | Not TCB |
+| Sovereignty flags: unconditional block | `engine.rs` guard [1] | TCB |
+
+Invariants enforced outside the TCB depend on `registry.rs` and `authority_graph.rs` being correct. These components are tested but not formally verified. See [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md).

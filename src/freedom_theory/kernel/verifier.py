@@ -49,7 +49,6 @@ class Action:
     weakens_verifier: bool = False
     disables_corrigibility: bool = False
     machine_coalition_dominion: bool = False
-    # Book pp.800-805: additional forbidden action flags
     coerces: bool = False
     deceives: bool = False
     self_modification_weakens_verifier: bool = False

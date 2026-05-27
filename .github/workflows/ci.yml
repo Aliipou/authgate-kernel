@@ -71,10 +71,11 @@ jobs:
         run: |
           cap_loc=$(wc -l < src/capability.rs)
           echo "capability.rs: ${cap_loc} lines"
-          if [ "$cap_loc" -gt 150 ]; then
-            echo "ERROR: capability.rs exceeds 150 LOC (hard ceiling). Capability algebra must stay finite."
-            echo "If you are adding a new CapabilityKind variant, that is fine — one line."
-            echo "If you need more than 150 LOC, you are adding policy logic. That belongs outside the TCB."
+          if [ "$cap_loc" -gt 200 ]; then
+            echo "ERROR: capability.rs exceeds 200 LOC (hard ceiling). Capability algebra must stay finite."
+            echo "Ceiling raised from 150→200 in v2 to accommodate the expanded AI/agent capability taxonomy"
+            echo "and CapabilityRisk enum. If you need more than 200 LOC, you are adding policy logic."
+            echo "That belongs outside the TCB."
             exit 1
           fi
           if grep -E '^use crate::' src/capability.rs; then

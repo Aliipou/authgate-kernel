@@ -26,6 +26,8 @@ pub struct ResourceWire {
     pub is_public: bool,
     #[serde(default)]
     pub ifc_label: String,
+    #[serde(default)]
+    pub trust_domain: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,6 +44,10 @@ pub struct ClaimWire {
     pub confidence: f64,
     #[serde(default)]
     pub expires_at: Option<f64>,
+    #[serde(default)]
+    pub trust_domain: Option<String>,
+    #[serde(default)]
+    pub delegation_depth: u8,
 }
 
 fn default_true() -> bool { true }
@@ -54,11 +60,29 @@ pub struct MachineOwnerWire {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CrossDomainGrant {
+    pub from_domain: String,
+    pub to_domain: String,
+    pub allowed_operations: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrustDomainWire {
+    pub id: String,
+    #[serde(default)]
+    pub principals: Vec<String>,
+    #[serde(default)]
+    pub cross_domain_grants: Vec<CrossDomainGrant>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OwnershipRegistryWire {
     #[serde(default)]
     pub claims: Vec<ClaimWire>,
     #[serde(default)]
     pub machine_owners: Vec<MachineOwnerWire>,
+    #[serde(default)]
+    pub trust_domains: Vec<TrustDomainWire>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -87,6 +111,10 @@ pub struct ActionWire {
     #[serde(default)] pub deceives: bool,
     #[serde(default)] pub self_modification_weakens_verifier: bool,
     #[serde(default)] pub machine_coalition_reduces_freedom: bool,
+    #[serde(default)]
+    pub trust_domain: Option<String>,
+    #[serde(default)]
+    pub delegation_depth: u8,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

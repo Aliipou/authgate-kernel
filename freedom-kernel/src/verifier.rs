@@ -24,7 +24,6 @@ pub struct Action {
     #[pyo3(get, set)] pub weakens_verifier: bool,
     #[pyo3(get, set)] pub disables_corrigibility: bool,
     #[pyo3(get, set)] pub machine_coalition_dominion: bool,
-    // Book pp.800-805
     #[pyo3(get, set)] pub coerces: bool,
     #[pyo3(get, set)] pub deceives: bool,
     #[pyo3(get, set)] pub self_modification_weakens_verifier: bool,
