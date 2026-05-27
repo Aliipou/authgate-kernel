@@ -8,7 +8,7 @@
 /// The root is identified by `IssuerRef::Root` — its signature is verified
 /// against the root key passed into verify(). No other node is implicitly trusted.
 use ed25519_dalek::{Signature, VerifyingKey, Verifier};
-use crate::v2::types::{CapabilityProof, IssuerRef};
+use crate::tcb::types::{CapabilityProof, IssuerRef};
 
 const MAX_CHAIN_DEPTH: usize = 16;
 
@@ -89,7 +89,7 @@ pub fn validate_chain(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::v2::types::{IssuerRef, RIGHT_READ, RIGHT_WRITE};
+    use crate::tcb::types::{IssuerRef, RIGHT_READ, RIGHT_WRITE};
     use ed25519_dalek::{SigningKey, Signer};
     use rand_core::OsRng;
     use sha2::{Digest, Sha256};

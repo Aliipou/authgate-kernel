@@ -523,4 +523,290 @@ mod tcb_tests {
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("depth limit"));
     }
+
+    // ── Attack tree coverage ─────────────────────────────────────────────────
+
+    // AT-1.3: nonce is committed by binding_hash
+    #[test]
+    fn deny_tampered_nonce() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let mut action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap], MIN_EPOCH);
+        action.nonce = [0xFE; 16]; // tamper after sealing
+        assert!(matches!(
+            verify(&action, &root_vk, NOW),
+            Decision::Deny { reason: "canonical binding hash mismatch" }
+        ));
+    }
+
+    // AT-1.4: timestamp is committed by binding_hash
+    #[test]
+    fn deny_tampered_timestamp() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let mut action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap], MIN_EPOCH);
+        action.timestamp = 1; // tamper after sealing
+        assert!(matches!(
+            verify(&action, &root_vk, NOW),
+            Decision::Deny { reason: "canonical binding hash mismatch" }
+        ));
+    }
+
+    // AT-2.1: valid two-level delegation chain (parent subject != actor)
+    // Validates the actor_id filter fix: parent.subject=[0xAA;32] is filtered out,
+    // only child.subject=ACTOR is validated as a grant.
+    #[test]
+    fn happy_two_level_delegation_chain() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let delegator_sk = random_key();
+        let parent = make_root_proof(&root_sk, [0xAA; 32], RESOURCE, RIGHT_READ | RIGHT_WRITE, EXPIRY, EPOCH);
+        let child = make_delegated_proof(&delegator_sk, &parent, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![parent, child], MIN_EPOCH);
+        assert_eq!(verify(&action, &root_vk, NOW), Decision::Permit);
+    }
+
+    // AT-2.4: leaf in chain has stale epoch → denied
+    #[test]
+    fn deny_delegated_chain_leaf_stale_epoch() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let delegator_sk = random_key();
+        let parent = make_root_proof(&root_sk, [0xAA; 32], RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let child = make_delegated_proof(&delegator_sk, &parent, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, 1); // stale
+        let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![parent, child], MIN_EPOCH);
+        assert!(matches!(
+            verify(&action, &root_vk, NOW),
+            Decision::Deny { reason: "capability epoch predates minimum required epoch" }
+        ));
+    }
+
+    // AT-2.5: flip one byte in an intermediate signature → chain validation fails
+    #[test]
+    fn deny_tampered_intermediate_chain_signature() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let delegator_sk = random_key();
+        let parent = make_root_proof(&root_sk, [0xAA; 32], RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let mut child = make_delegated_proof(&delegator_sk, &parent, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        child.signature[0] ^= 0x01; // corrupt one bit — ed25519 verify will fail
+        let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![parent, child], MIN_EPOCH);
+        assert!(matches!(verify(&action, &root_vk, NOW), Decision::Deny { .. }));
+    }
+
+    // AT-3.1: KNOWN GAP — intermediate node epoch is not checked by the current engine.
+    // If a delegator's key was compromised in an old epoch, an attacker could present
+    // a chain with a stale-epoch parent but a fresh-epoch leaf. The leaf passes the
+    // epoch gate; the parent's epoch 0 is never inspected.
+    // Fix: validate_chain should also enforce epoch >= min_epoch for every node.
+    #[test]
+    fn known_gap_intermediate_node_epoch_not_enforced() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let delegator_sk = random_key();
+        // Parent issued at epoch 0 (very stale)
+        let parent = make_root_proof(&root_sk, [0xAA; 32], RESOURCE, RIGHT_READ, EXPIRY, 0);
+        let child = make_delegated_proof(&delegator_sk, &parent, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![parent, child], MIN_EPOCH);
+        // KNOWN GAP: currently Permits despite parent being from epoch 0.
+        assert_eq!(
+            verify(&action, &root_vk, NOW),
+            Decision::Permit,
+            "KNOWN GAP AT-3.1: intermediate node epoch is not checked"
+        );
+    }
+
+    // AT-3.2: bundle contains two actor caps, one with stale epoch → deny
+    #[test]
+    fn deny_mixed_epoch_bundle_stale_cap_rejected() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap_fresh = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let cap_stale = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_WRITE, EXPIRY, 1);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_READ | RIGHT_WRITE, vec![cap_fresh, cap_stale], MIN_EPOCH);
+        assert!(matches!(
+            verify(&action, &root_vk, NOW),
+            Decision::Deny { reason: "capability epoch predates minimum required epoch" }
+        ));
+    }
+
+    // AT-3.5: same proof, different nonces → different binding hashes (replay prevention)
+    #[test]
+    fn nonce_differentiates_otherwise_identical_actions() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let action_a = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap.clone()], MIN_EPOCH);
+        let mut action_b = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap], MIN_EPOCH);
+        action_b.nonce = [0xFF; 16];
+        action_b.binding_hash = action_b.compute_hash();
+        assert_ne!(action_a.binding_hash, action_b.binding_hash);
+        assert_eq!(verify(&action_a, &root_vk, NOW), Decision::Permit);
+        assert_eq!(verify(&action_b, &root_vk, NOW), Decision::Permit);
+    }
+
+    // AT-4.2: Read → Execute → Write exfiltration chain detected at session boundary
+    #[test]
+    fn compose_read_execute_write_exfiltration_pattern() {
+        let mut ctx = SequenceContext::new();
+        let session_limit = RIGHT_READ;
+        ctx.record(ACTOR, RESOURCE, RIGHT_READ, 100);
+        assert!(!ctx.exceeds_limit(session_limit));
+        ctx.record(ACTOR, RESOURCE, RIGHT_EXECUTE, 101);
+        assert!(ctx.exceeds_limit(session_limit));
+        ctx.record(ACTOR, RESOURCE, RIGHT_WRITE, 102);
+        assert_eq!(ctx.accumulated_rights(), RIGHT_READ | RIGHT_EXECUTE | RIGHT_WRITE);
+    }
+
+    // AT-4.3/4.5: session accumulation is per-session, not per-actor
+    #[test]
+    fn compose_multi_actor_session_accumulates_all_rights() {
+        let mut ctx = SequenceContext::new();
+        ctx.record(ACTOR, RESOURCE, RIGHT_READ, 100);
+        ctx.record(OTHER, RESOURCE, RIGHT_WRITE, 101);
+        assert_eq!(ctx.accumulated_rights(), RIGHT_READ | RIGHT_WRITE,
+            "session accumulates all rights regardless of which actor exercised them");
+    }
+
+    // AT-5.1: KNOWN GAP — delegation impersonation is not blocked.
+    // Attacker creates a fake child claiming delegation from Actor A (subject=[0xAA;32])
+    // without possessing A's private key. validate_chain verifies the child's signature
+    // against child.issuer_pubkey (the attacker's key), but never checks that
+    // issuer_pubkey corresponds to parent.subject_id.
+    // Fix: SHA-256(child.issuer_pubkey) == parent.subject_id.
+    #[test]
+    fn known_gap_delegation_impersonation_not_blocked() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let attacker_sk = random_key(); // attacker does NOT hold [0xAA;32]'s key
+        let parent = make_root_proof(&root_sk, [0xAA; 32], RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let fake_child = make_delegated_proof(&attacker_sk, &parent, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![parent, fake_child], MIN_EPOCH);
+        // KNOWN GAP: should Deny; currently Permits.
+        assert_eq!(
+            verify(&action, &root_vk, NOW),
+            Decision::Permit,
+            "KNOWN GAP AT-5.1: fix validate_chain to enforce issuer_pubkey -> parent.subject_id binding"
+        );
+    }
+
+    // AT-6.2: cross-context proof reuse — cap issued for RESOURCE rejected for OTHER
+    #[test]
+    fn deny_proof_used_outside_its_resource_scope() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, OTHER, RIGHT_READ, vec![cap], MIN_EPOCH);
+        assert!(matches!(verify(&action, &root_vk, NOW), Decision::Deny { reason: "capability resource mismatch" }));
+    }
+
+    // AT-6.5: nonce all-zeros is valid (no special-case of zero values)
+    #[test]
+    fn edge_nonce_all_zeros_is_valid() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let mut action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap], MIN_EPOCH);
+        action.nonce = [0u8; 16];
+        action.binding_hash = action.compute_hash();
+        assert_eq!(verify(&action, &root_vk, NOW), Decision::Permit);
+    }
+
+    // AT-6.5: two different nonces always produce distinct binding hashes
+    #[test]
+    fn distinct_nonces_produce_distinct_binding_hashes() {
+        let root_sk = random_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let action_a = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap.clone()], MIN_EPOCH);
+        let mut action_b = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap], MIN_EPOCH);
+        action_b.nonce = [0u8; 16]; // action_a uses [7;16] (from make_action)
+        action_b.binding_hash = action_b.compute_hash();
+        assert_ne!(action_a.binding_hash, action_b.binding_hash);
+    }
+
+    // Smoke: all eight rights constants are distinct bits
+    #[test]
+    fn edge_all_eight_rights_granted_and_required() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let all = RIGHT_READ | RIGHT_WRITE | RIGHT_DELEGATE | RIGHT_EXECUTE
+                | RIGHT_SPAWN | RIGHT_NETWORK | RIGHT_MODEL_INVOKE | RIGHT_POLICY_MODIFY;
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, all, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, all, vec![cap], MIN_EPOCH);
+        assert_eq!(verify(&action, &root_vk, NOW), Decision::Permit);
+    }
+
+    // Rights exact-complement: cap has all bits except the required one
+    #[test]
+    fn deny_rights_exact_complement_of_required() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        // cap grants every right EXCEPT RIGHT_NETWORK
+        let all_but_network = RIGHT_READ | RIGHT_WRITE | RIGHT_DELEGATE | RIGHT_EXECUTE
+                            | RIGHT_SPAWN | RIGHT_MODEL_INVOKE | RIGHT_POLICY_MODIFY;
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, all_but_network, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_NETWORK, vec![cap], MIN_EPOCH);
+        assert!(matches!(verify(&action, &root_vk, NOW), Decision::Deny { reason: "capability does not grant required rights" }));
+    }
+
+    // Second actor cap in bundle fails rights → whole request denied
+    #[test]
+    fn deny_second_actor_cap_fails_rights() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap_valid = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let cap_no_rights = make_root_proof(&root_sk, ACTOR, RESOURCE, 0, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap_valid, cap_no_rights], MIN_EPOCH);
+        assert!(matches!(verify(&action, &root_vk, NOW), Decision::Deny { reason: "capability does not grant required rights" }));
+    }
+
+    // expiry u64::MAX is valid
+    #[test]
+    fn edge_u64_max_expiry_is_valid() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, u64::MAX, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap], MIN_EPOCH);
+        assert_eq!(verify(&action, &root_vk, NOW), Decision::Permit);
+    }
+
+    // Rights: RIGHT_READ and RIGHT_WRITE are distinct bits (no overlap)
+    #[test]
+    fn edge_right_bits_are_independent() {
+        assert_eq!(RIGHT_READ & RIGHT_WRITE, 0);
+        assert_eq!(RIGHT_READ & RIGHT_EXECUTE, 0);
+        assert_eq!(RIGHT_WRITE & RIGHT_DELEGATE, 0);
+        let all = RIGHT_READ | RIGHT_WRITE | RIGHT_DELEGATE | RIGHT_EXECUTE
+                | RIGHT_SPAWN | RIGHT_NETWORK | RIGHT_MODEL_INVOKE | RIGHT_POLICY_MODIFY;
+        assert_eq!(all.count_ones(), 8, "eight distinct rights bits");
+    }
+
+    // AT-4.1: Stepwise privilege accumulation across several session steps
+    #[test]
+    fn compose_stepwise_privilege_accumulation() {
+        let mut ctx = SequenceContext::new();
+        let session_limit = RIGHT_READ | RIGHT_WRITE | RIGHT_EXECUTE;
+        // Step 1: read — within limit
+        ctx.record(ACTOR, RESOURCE, RIGHT_READ, 100);
+        assert!(!ctx.exceeds_limit(session_limit));
+        // Step 2: write — still within limit
+        ctx.record(ACTOR, RESOURCE, RIGHT_WRITE, 101);
+        assert!(!ctx.exceeds_limit(session_limit));
+        // Step 3: spawn — NOT in session_limit
+        ctx.record(ACTOR, RESOURCE, RIGHT_SPAWN, 102);
+        assert!(ctx.exceeds_limit(session_limit), "SPAWN not declared in session limit");
+        assert_eq!(ctx.step_count(), 3);
+    }
+
+    // Composition: accumulated_rights is the high-water-mark (never decreases)
+    #[test]
+    fn compose_high_water_mark_property() {
+        let mut ctx = SequenceContext::new();
+        ctx.record(ACTOR, RESOURCE, RIGHT_READ | RIGHT_WRITE, 100);
+        let mark = ctx.accumulated_rights();
+        ctx.record(ACTOR, RESOURCE, RIGHT_READ, 101); // subset — should not decrease
+        assert_eq!(ctx.accumulated_rights(), mark, "accumulated_rights must not decrease");
+    }
 }

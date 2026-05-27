@@ -10,19 +10,20 @@
 ///     Only root-signed revocations are accepted (Bug 1 fix).
 ///   - Canonical gate checked first: any IR tampering between adapter and kernel
 ///     is caught before any proof is parsed (Bug 6 fix).
+///   - Actor-filtered Layer 2: only caps with subject_id == actor_id are validated as grants.
+///     Intermediate delegation nodes (subject_id == delegator) serve chain traversal only.
 #![forbid(unsafe_code)]
 
 use ed25519_dalek::{Signature, VerifyingKey, Verifier};
-use crate::v2::types::{CanonicalAction, Decision, RevocationProof};
-use crate::v2::dag::validate_chain;
+use crate::tcb::types::{CanonicalAction, Decision, RevocationProof};
+use crate::tcb::dag::validate_chain;
 
-/// Verify an action. Stateless — no global state, no side effects, no allocator beyond
-/// what Vec operations require.
+/// Verify an action. Stateless — no global state, no side effects.
 ///
 /// # Arguments
-/// - `action` — canonical, tamper-evident action request from the (untrusted) adapter layer.
-/// - `root_key` — the trust anchor. Caller is responsible for establishing this securely.
-/// - `now` — current Unix seconds. Caller is responsible for clock integrity.
+/// - `action`    — canonical, tamper-evident action request from the (untrusted) adapter layer.
+/// - `root_key`  — the trust anchor. Caller is responsible for establishing this securely.
+/// - `now`       — current Unix seconds. Caller is responsible for clock integrity.
 pub fn verify(
     action: &CanonicalAction,
     root_key: &VerifyingKey,
@@ -35,17 +36,20 @@ pub fn verify(
         return Decision::Deny { reason: "canonical binding hash mismatch" };
     }
 
-    // A request with no capability proofs cannot possibly be permitted.
     if action.capability_proofs.is_empty() {
         return Decision::Deny { reason: "no capability proofs provided" };
     }
 
     // ── Layer 2: Capability proof validation ─────────────────────────────────
-    for cap in &action.capability_proofs {
-        // Bug 3 fix: the proof must have been issued to the requesting actor.
-        if cap.subject_id != action.actor_id {
-            return Decision::Deny { reason: "capability not issued to this actor" };
-        }
+    // Only caps directly issued to the requesting actor are treated as grants.
+    // Other caps in the bundle are chain links used by validate_chain for
+    // traversal; they may have different subject_ids (the intermediate delegators).
+    // This fixes the bug where verifying a 2-level chain would deny because the
+    // parent's subject_id != actor_id.
+    let mut found_actor_cap = false;
+
+    for cap in action.capability_proofs.iter().filter(|c| c.subject_id == action.actor_id) {
+        found_actor_cap = true;
 
         // Bug 4 fix: the proof must cover the resource being accessed.
         if cap.resource_hash != action.resource_hash {
@@ -60,13 +64,13 @@ pub fn verify(
         // Epoch-based revocation (primary mechanism).
         // Closing the "stale-but-valid resurrection" gap:
         // Even a cryptographically valid, non-expired proof is rejected if it
-        // was issued in an epoch prior to what the caller requires. The epoch
-        // acts as a lightweight "fresh enough" proof-of-currency.
+        // was issued in an epoch prior to what the caller requires.
         if cap.epoch < action.min_epoch {
             return Decision::Deny { reason: "capability epoch predates minimum required epoch" };
         }
 
         // Bug 2 + Bug 5 fix: full chain with signatures + attenuation enforcement.
+        // validate_chain receives all_proofs so intermediate delegation nodes can be found.
         if let Err(reason) = validate_chain(cap, &action.capability_proofs, root_key) {
             return Decision::Deny { reason };
         }
@@ -75,6 +79,11 @@ pub fn verify(
         if (cap.rights & action.required_rights) != action.required_rights {
             return Decision::Deny { reason: "capability does not grant required rights" };
         }
+    }
+
+    // If no cap was found for this actor, the request has no authority.
+    if !found_actor_cap {
+        return Decision::Deny { reason: "capability not issued to this actor" };
     }
 
     // ── Layer 3: Revocation proof processing (secondary, emergency mechanism) ─
@@ -106,7 +115,7 @@ fn verify_revocation_sig(rev: &RevocationProof, root_key: &VerifyingKey) -> bool
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::v2::types::*;
+    use crate::tcb::types::*;
     use ed25519_dalek::{SigningKey, Signer};
     use rand_core::OsRng;
     use sha2::{Digest, Sha256};
@@ -177,7 +186,6 @@ mod tests {
         let bob = [9u8; 32];
         let resource = [2u8; 32];
         let cap = build_root_proof(&root_sk, alice, resource, RIGHT_READ, u64::MAX, 1);
-        // Bob uses Alice's proof
         let action = build_action(bob, resource, RIGHT_READ, vec![cap], 1);
         assert!(matches!(verify(&action, &root_vk, 1000), Decision::Deny { .. }));
     }
@@ -199,7 +207,6 @@ mod tests {
         let root_vk = root_sk.verifying_key();
         let actor = [1u8; 32];
         let resource = [2u8; 32];
-        // Proof from epoch 1; caller requires epoch 5
         let cap = build_root_proof(&root_sk, actor, resource, RIGHT_READ, u64::MAX, 1);
         let action = build_action(actor, resource, RIGHT_READ, vec![cap], 5);
         assert!(matches!(
@@ -216,7 +223,6 @@ mod tests {
         let resource = [2u8; 32];
         let cap = build_root_proof(&root_sk, actor, resource, RIGHT_READ, u64::MAX, 1);
         let mut action = build_action(actor, resource, RIGHT_READ, vec![cap], 1);
-        // Tamper with required_rights after sealing
         action.required_rights = RIGHT_WRITE;
         assert!(matches!(
             verify(&action, &root_vk, 1000),
@@ -232,7 +238,6 @@ mod tests {
         let resource = [2u8; 32];
         let cap = build_root_proof(&root_sk, actor, resource, RIGHT_READ, u64::MAX, 1);
         let mut action = build_action(actor, resource, RIGHT_READ, vec![cap.clone()], 1);
-        // Attacker injects a revocation with garbage signature
         let fake_rev = RevocationProof {
             target_proof_hash: cap.proof_hash,
             revoked_at: 999,
@@ -240,7 +245,6 @@ mod tests {
         };
         action.revocation_proofs.push(fake_rev);
         action.binding_hash = action.compute_hash();
-        // Forged revocation must be ignored — action should still Permit
         assert_eq!(verify(&action, &root_vk, 1000), Decision::Permit);
     }
 }

@@ -1,6 +1,2 @@
-[target.x86_64-unknown-linux-gnu]
-rustflags = [
-    "-C", "link-arg=-Wl,-z,relro",
-    "-C", "link-arg=-Wl,-z,now",
-    "-C", "link-arg=-Wl,-z,noexecstack",
-]
+[target.x86_64-pc-windows-gnu]
+linker = "C:/TDM-GCC-64/bin/gcc.exe"
