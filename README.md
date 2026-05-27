@@ -367,16 +367,25 @@ cd formal/lean4 && lake build
 
 **Proof scope:** TCB behaviors on typed inputs. Not proved: Python implementation, extensions, adapters, multi-agent semantics, or any property involving natural language. See [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md).
 
-### Attack harness (25 tests, all passing)
+### Attack harness (42 tests + adversarial simulation — all passing)
 
 ```bash
 cd attack_harness
-python mutation_attacks.py           # 10 tests: one per security check in engine.rs
-python canonicalization_attacks.py   # 5 tests: CA-1 through CA-5
-python sequence_attacks.py           # 5 tests: SA-1 through SA-4 + edge cases
+python mutation_attacks.py           # mutation tests
+python canonicalization_attacks.py   # canonicalization attack tests
+python sequence_attacks.py           # sequence / composition tests
+python attack_tree_coverage.py       # all 7 attack classes (AT-1 through AT-7)
+
+# Full adversarial simulation: 231 scenarios, 0 violations
+python simulation/run_simulation.py
 ```
 
-These are black-box regression tests for the security properties. They run against the Python model of the v2 TCB and serve as ground truth for what the Rust TCB must implement.
+These are black-box regression tests for the security properties. They run against
+the Python model of the v2 TCB and serve as ground truth for what the Rust TCB must
+implement. See `attack_harness/simulation/README.md` for simulation architecture.
+
+**Closed gaps:** AT-5.1 (delegation impersonation) and AT-3.1 (intermediate epoch).
+**Open gap:** AT-7.5 (shadow execution — requires call gate, v3 release gate).
 
 ---
 
@@ -392,15 +401,33 @@ The pull request template enforces this check. See [`CONTRIBUTING.md`](CONTRIBUT
 
 ---
 
+## Branch Strategy
+
+This repository uses a **Dual Reality Architecture** — three independent truths
+that must stay consistent but never contaminate each other:
+
+| Branch | Truth type | Purpose |
+|---|---|---|
+| `main` | Ground truth | The only branch that deploys |
+| `tcb-core` | Execution truth | Minimal Rust TCB, LOC gate ≤ 600 |
+| `spec-core` | Mathematical truth | TLA+ spec, Lean4 proofs, threat model |
+| `adversarial-lab` | Adversarial truth | Attack harness, simulation engine |
+| `integration` | Execution truth | Python adapters, MCP gate, LangGraph |
+
+**Rule:** findings from `adversarial-lab` reach `main` only via `spec-core` → `tcb-core` → `main`.
+No direct research → production path. See [`BRANCHES.md`](BRANCHES.md) for full rules and CBCT.
+
+---
+
 ## Ecosystem
 
 ```
 authgate-kernel   — this repo, engineering only
-freedom-specs    — formal RFCs and specifications
-authgate   — theoretical foundations (not required to use the kernel)
+authgate-specs    — formal RFCs and specifications
+freedom-theory    — theoretical foundations (not required to use the kernel)
 ```
 
-The theoretical foundations are in [authgate](https://github.com/Aliipou/authgate) — a separate repository by design. Using, auditing, or deploying the kernel requires no engagement with it.
+The theoretical foundations are in [freedom-theory](https://github.com/Aliipou/freedom-theory) — a separate repository by design. Using, auditing, or deploying the kernel requires no engagement with it.
 
 ---
 
