@@ -14,7 +14,7 @@
 mod tcb_tests {
     use crate::tcb::dag::validate_chain;
     use crate::tcb::engine::verify;
-    use crate::tcb::sequence::SequenceContext;
+    use crate::sequence::SequenceContext;
     use crate::tcb::types::*;
     use ed25519_dalek::{SigningKey, Signer};
     use rand_core::OsRng;
