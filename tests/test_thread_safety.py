@@ -260,34 +260,44 @@ class TestAuditLogConcurrency:
 
 
 class TestVerifierFreezeOnInit:
-    """FreedomVerifier should work correctly even when registry mutates after creation."""
+    """freeze=True gives a consistent snapshot; freeze=False (default) uses live registry."""
 
-    def test_verify_uses_registry_state_at_verify_time(self):
-        """Baseline: verify() currently uses live registry (not frozen snapshot).
-        This documents the TOCTOU window that freeze-on-init closes.
-        """
+    def test_live_registry_sees_mutations(self):
+        """Default (freeze=False): mutations after verifier creation are visible."""
         registry, human, bot, dataset = _build_base()
-        verifier = FreedomVerifier(registry)
+        verifier = FreedomVerifier(registry)  # live
 
-        # Verify passes before revocation
         r1 = verifier.verify(Action("before", actor=bot, resources_read=[dataset]))
         assert r1.permitted
 
-        # Remove the claim (simulating revocation)
-        # Note: this relies on internal implementation — in production,
-        # use epoch advancement (freeze snapshot before verify session)
+        # Remove the claim — live verifier sees this immediately
         original_claims = registry._claims[:]
         with registry._lock:
             registry._claims.clear()
             registry._index.clear()
 
         r2 = verifier.verify(Action("after", actor=bot, resources_read=[dataset]))
-        # With live registry (no freeze), revocation takes effect immediately
-        assert not r2.permitted, \
-            "Live registry: revocation should take effect immediately"
+        assert not r2.permitted, "Live registry: mutation should be visible immediately"
 
         # Restore
         with registry._lock:
             registry._claims.extend(original_claims)
             for claim in original_claims:
                 registry._index[(claim.holder.name, claim.resource.name)].append(claim)
+
+    def test_frozen_verifier_ignores_mutations(self):
+        """freeze=True: mutations after construction do NOT affect verify()."""
+        registry, human, bot, dataset = _build_base()
+        verifier = FreedomVerifier(registry, freeze=True)
+
+        r1 = verifier.verify(Action("before", actor=bot, resources_read=[dataset]))
+        assert r1.permitted
+
+        # Remove all claims from original registry
+        with registry._lock:
+            registry._claims.clear()
+            registry._index.clear()
+
+        # Frozen verifier still uses its snapshot — still permits
+        r2 = verifier.verify(Action("after-mutation", actor=bot, resources_read=[dataset]))
+        assert r2.permitted, "Frozen verifier must not be affected by post-freeze mutations"
