@@ -23,6 +23,7 @@ crate-type = ["cdylib"]
 [features]
 wasm     = ["dep:wasm-bindgen"]
 embedded = []
+sandbox  = ["dep:wasmtime"]
 
 [dependencies]
 pyo3               = { version = "0.22", features = ["extension-module"] }
@@ -35,10 +36,12 @@ hex                = "0.4"
 subtle             = "2"
 zeroize            = { version = "1", features = ["derive"] }
 wasm-bindgen       = { version = "0.2", optional = true }
+wasmtime           = { version = "25",  optional = true }
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }
 proptest  = "1"
+wat       = "1"
 
 [[bench]]
 name = "verify_bench"

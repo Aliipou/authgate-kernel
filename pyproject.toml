@@ -46,9 +46,11 @@ Issues = "https://github.com/Aliipou/authgate/issues"
 
 [project.scripts]
 authgate-server = "authgate.api.app:app"
+authgate-cli = "authgate.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/authgate"]
+include = ["src/authgate/py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

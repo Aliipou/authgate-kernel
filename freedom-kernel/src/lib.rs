@@ -6,6 +6,9 @@ pub mod authority_graph;
 pub mod tcb;
 /// Composition safety — session-scoped rights accumulation (NOT in TCB).
 pub mod sequence;
+/// Capability-constrained WASM tool executor. Enable with `--features sandbox`.
+#[cfg(feature = "sandbox")]
+pub mod sandbox;
 pub mod capability;
 mod crypto;
 pub(crate) mod engine;
