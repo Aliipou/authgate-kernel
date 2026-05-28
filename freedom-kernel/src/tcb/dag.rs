@@ -77,6 +77,14 @@ pub fn validate_chain(
                     .find(|p| p.proof_hash == *parent_hash)
                     .ok_or("parent proof not found in bundle")?;
 
+                // Resource propagation: a delegator may only grant caps for the
+                // same resource they were themselves granted. Without this check,
+                // a compromised delegator with a root-signed cap for R1 could issue
+                // a child cap for R2, redirecting root authority to an unauthorized resource.
+                if current.resource_hash != parent.resource_hash {
+                    return Err("delegation chain resource mismatch");
+                }
+
                 // AT-5.1 fix: the principal this node claims as issuer must be
                 // the same principal the parent capability was issued to.
                 // Identity model: subject_id = SHA-256(pubkey).
@@ -228,6 +236,23 @@ mod tests {
         let result = validate_chain(&child, &[parent.clone(), child.clone()], &root_vk, 5);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("epoch"));
+    }
+
+    // Resource propagation: delegator cannot redirect root-granted R1 authority to R2
+    #[test]
+    fn resource_mismatch_in_delegation_rejected() {
+        let root_sk = SigningKey::generate(&mut OsRng);
+        let root_vk = root_sk.verifying_key();
+        let delegator_sk = SigningKey::generate(&mut OsRng);
+        const R1: [u8; 32] = [0x11; 32];
+        const R2: [u8; 32] = [0x22; 32]; // different resource
+        // Root grants delegator access to R1.
+        let parent = make_root_proof(&root_sk, subject_id_of(&delegator_sk), R1, RIGHT_READ, u64::MAX, 1);
+        // Delegator issues child for R2 claiming parentage from R1 cap — invalid.
+        let child = make_delegated_proof(&delegator_sk, &parent, [0x01; 32], R2, RIGHT_READ, u64::MAX, 1);
+        let result = validate_chain(&child, &[parent.clone(), child.clone()], &root_vk, MIN_EPOCH);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("resource mismatch"));
     }
 
     // Valid two-level chain with proper identity binding
