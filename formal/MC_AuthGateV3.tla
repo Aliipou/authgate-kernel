@@ -3,7 +3,10 @@
   TLC model checking instance for AuthGateV3.
 
   Instantiates all abstract constants with small finite sets so TLC can
-  enumerate the full reachable state space and verify all 7 invariants.
+  enumerate the full reachable state space and verify all 9 invariants
+  (I1-I8 + BigSafety + PermitSoundness).
+
+  Note: audit_log entries now carry a revoked_at snapshot field (I4 fix).
 
   Model size (chosen to be feasible on a laptop in ~minutes):
     Actors       = {a0, a1, a2, a3}     4 actors

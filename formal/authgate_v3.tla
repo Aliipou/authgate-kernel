@@ -153,7 +153,8 @@ VARIABLES
   global_epoch,       \* Nat — current minimum epoch; only advances
   revoked_set,        \* SUBSET ProofHashes — explicitly revoked proof hashes
   session_rights,     \* [Actors -> SUBSET AllRights] — accumulated session rights
-  audit_log           \* Seq of [action, decision] records
+  audit_log           \* Seq of [action, decision, revoked_at] records
+                      \* revoked_at: snapshot of revoked_set AT decision time
 
 vars == <<global_epoch, revoked_set, session_rights, audit_log>>
 
@@ -164,6 +165,7 @@ TypeInvariant ==
   /\ \A i \in 1..Len(audit_log) :
        /\ audit_log[i].action \in CanonicalAction
        /\ audit_log[i].decision \in Decision
+       /\ audit_log[i].revoked_at \subseteq ProofHashes
 
 \* ── Safety invariants ───────────────────────────────────────────────────────
 
@@ -193,13 +195,20 @@ Attenuation ==
           LET parent == FindParent(c, audit_log[i].action.cap_bundle)
           IN c.rights \subseteq parent.rights
 
-\* I4: Revocation Safety — a revoked proof hash never contributes to Permit.
+\* I4: Revocation Safety — at the time a Permit was issued, no contributing cap
+\* was in the revoked set at that moment.
+\*
+\* BUG NOTE: The naive formulation `c.proof_hash \notin revoked_set` (current state)
+\* is WRONG — it would be violated by any subsequent Revoke(h) call on a proof hash
+\* that was legitimately permitted before the revocation. Revocation is prospective,
+\* not retroactive. The fix: record revoked_set as a snapshot (revoked_at field)
+\* at decision time. This invariant checks the snapshot, not the live state.
 RevocationSafety ==
   \A i \in 1..Len(audit_log) :
     audit_log[i].decision = "Permit" =>
       \A c \in audit_log[i].action.cap_bundle :
         c.subject_id = audit_log[i].action.actor_id =>
-          c.proof_hash \notin revoked_set
+          c.proof_hash \notin audit_log[i].revoked_at
 
 \* I5: Composition Monotonicity — session_rights never decreases for any actor.
 CompositionMono ==
@@ -251,12 +260,16 @@ Revoke(proof_hash) ==
   /\ UNCHANGED <<global_epoch, session_rights, audit_log>>
 
 \* Execute a verify() call. Records result in audit_log.
+\* Captures revoked_set snapshot at decision time (fixes I4 / RevocationSafety).
 \* On Permit: updates session_rights for the actor (composition tracking).
 ExecuteVerify(action, now) ==
   /\ action \in CanonicalAction
   /\ action.min_epoch = global_epoch   \* caller must use the current epoch
   /\ LET d == Verify(action, revoked_set, now)
-     IN /\ audit_log' = Append(audit_log, [action |-> action, decision |-> d])
+     IN /\ audit_log' = Append(audit_log,
+                               [action     |-> action,
+                                decision   |-> d,
+                                revoked_at |-> revoked_set])  \* snapshot
         /\ IF d = "Permit"
            THEN session_rights' =
                   [session_rights EXCEPT
@@ -275,8 +288,67 @@ Spec ==
   /\ [][Next]_vars
   /\ WF_vars(Next)
 
+\* ── I8: Chain Completeness ──────────────────────────────────────────────────
+\*
+\* Every Delegated cap in a Permit's bundle has its parent in the same bundle.
+\* This invariant is enforced inside ValidChain (via HasParent) but stated here
+\* explicitly so the lattice dependency I2,I3 ← I8 is visible.
+
+ChainComplete ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A c \in audit_log[i].action.cap_bundle :
+        c.issuer.type = "Delegated" =>
+          HasParent(c, audit_log[i].action.cap_bundle)
+
+\* ── Invariant Lattice ────────────────────────────────────────────────────────
+\*
+\* Dependency structure:
+\*
+\*   I7 (ChainEpoch)                   ─── strictly stronger than I1 ──► I1 (EpochSafety)
+\*   I8 (ChainComplete)                ─── prerequisite for I2 and I3 to be well-defined
+\*   I2 (IdentityBinding) ─depends─► I8
+\*   I3 (Attenuation)     ─depends─► I8
+\*   I4 (RevocationSafety)             ─── independent of I1-I3, I5-I8
+\*   I5 (CompositionMono)              ─── independent (different state variable)
+\*   I6 (ResourceBinding)              ─── independent of chain structure
+\*
+\* Minimal generating set: {I2, I3, I4, I5, I6, I7, I8}
+\*   (I1 is omitted: it is implied by I7 since ValidChain checks the leaf epoch first)
+\*
+\* ValidChain(leaf, bundle, mep) ≡ (I2 ∧ I3 ∧ I7 ∧ I8) applied recursively to the chain.
+
+\* BigSafety: the system-level safety invariant — conjunction of all 8 invariants.
+BigSafety ==
+  /\ TypeInvariant
+  /\ EpochSafety
+  /\ IdentityBinding
+  /\ Attenuation
+  /\ RevocationSafety
+  /\ CompositionMono
+  /\ ResourceBinding
+  /\ ChainEpoch
+  /\ ChainComplete
+
+\* PermitSoundness: every Permit in the log corresponds to an action that would
+\* be verified correctly against the revoked_set at the time of the decision.
+\* This is the primary safety claim of the authgate TCB kernel.
+PermitSoundness ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      LET a == audit_log[i].action
+          actor_caps == {c \in a.cap_bundle : c.subject_id = a.actor_id}
+          valid_caps == {c \in actor_caps :
+            /\ c.resource_hash = a.resource_hash
+            /\ c.epoch >= a.min_epoch
+            /\ ValidChain(c, a.cap_bundle, a.min_epoch)
+            /\ a.required_rights \subseteq c.rights
+            /\ c.proof_hash \notin audit_log[i].revoked_at}
+      IN valid_caps # {}
+
 \* ── Theorems (to be verified by TLC / TLAPS) ────────────────────────────────
 
+\* Individual invariants
 THEOREM Spec => []TypeInvariant
 THEOREM Spec => []EpochSafety
 THEOREM Spec => []IdentityBinding
@@ -284,6 +356,42 @@ THEOREM Spec => []Attenuation
 THEOREM Spec => []RevocationSafety
 THEOREM Spec => []ResourceBinding
 THEOREM Spec => []ChainEpoch
+THEOREM Spec => []ChainComplete
+THEOREM Spec => []PermitSoundness
+
+\* Lattice theorem T1: I7 implies I1.
+\* Proof sketch: ValidChain(leaf, bundle, mep) starts by checking leaf.epoch >= mep.
+\* If ValidChain holds (required for Permit via PermitSoundness), then I1 holds.
+THEOREM Spec => [](ChainEpoch => EpochSafety)
+
+\* Lattice theorem T2: BigSafety is the conjunction of the minimal generating set.
+\* I1 (EpochSafety) is NOT in the minimal set because T1 proves it is implied by I7.
+\* Adding it to BigSafety is redundant but makes the invariant list explicit.
+THEOREM Spec => []BigSafety
+
+\* Lattice theorem T3: PermitSoundness implies RevocationSafety.
+\* Proof sketch: PermitSoundness says valid_caps (which excludes revoked hashes
+\* at decision time) is non-empty for every Permit. RevocationSafety says no
+\* Permit's actor cap is in revoked_at. Both are checked in valid_caps.
+THEOREM Spec => [](PermitSoundness => RevocationSafety)
+
+\* Lattice theorem T4: PermitSoundness implies EpochSafety.
+\* Proof sketch: valid_caps requires c.epoch >= a.min_epoch (I1 leaf epoch)
+\* and ValidChain (which requires all chain nodes >= min_epoch, i.e., I7).
+THEOREM Spec => [](PermitSoundness => EpochSafety)
+
+\* Lattice theorem T5: ValidChain is the conjunction of I2, I3, I7, I8.
+\* This is an internal correctness theorem about the spec's own predicates.
+\* Proof: by unfolding ValidChain definition.
+THEOREM \A c \in CapabilityProof, b \in SUBSET CapabilityProof, mep \in Nat :
+  ValidChain(c, b, mep) =>
+    /\ c.epoch >= mep                                    \* I7 at this node
+    /\ c.sig_valid                                       \* signature valid
+    /\ (c.issuer.type = "Delegated" =>
+         /\ HasParent(c, b)                              \* I8
+         /\ LET p == FindParent(c, b) IN
+            /\ Hash(c.issuer_pubkey) = p.subject_id      \* I2
+            /\ c.rights \subseteq p.rights)              \* I3
 
 \* Liveness: every valid action eventually gets a decision.
 THEOREM Spec => \A a \in CanonicalAction :
