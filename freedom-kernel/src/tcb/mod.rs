@@ -19,9 +19,10 @@
 /// - INV-ROOTSIG:     the chain root is verified against the caller-supplied root key
 /// - INV-CANONICAL:   action.binding_hash == H(all other fields) before any processing
 /// - INV-REVOCATION:  only root-signed revocations affect permit/deny decisions
-pub mod dag;
-pub mod engine;
-pub mod sequence;
-pub mod types;
+pub mod call_gate;   // AT-7.5 closure: the only public execution entry point
+pub mod types;       // data types (CanonicalAction, Decision, ...) — needed by adapters
+pub mod sequence;    // SequenceContext — composition tracking
+pub(crate) mod engine;   // verify() — not pub; use CallGate::execute() instead
+pub(crate) mod dag;      // validate_chain() — internal chain walk
 #[cfg(test)]
 mod tests;
