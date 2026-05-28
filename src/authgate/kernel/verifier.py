@@ -19,11 +19,14 @@ Wire-in:
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 
 from authgate.kernel.entities import Entity, Resource
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.tracing import TraceCollector
+
+_log = logging.getLogger("authgate.kernel.verifier")
 
 CONFIDENCE_WARN_THRESHOLD = 0.8
 
@@ -220,6 +223,18 @@ class FreedomVerifier:
         )
         if self._audit_log is not None:
             self._audit_log.record(result)  # type: ignore[attr-defined]
+
+        if permitted:
+            _log.debug(
+                "PERMIT action=%s actor=%s confidence=%.2f",
+                action.action_id, action.actor.name, min_confidence,
+            )
+        else:
+            _log.warning(
+                "DENY action=%s actor=%s violations=%d",
+                action.action_id, action.actor.name, len(violations),
+            )
+
         return result
 
     def verify_plan(self, actions: list[Action]) -> list[VerificationResult]:
