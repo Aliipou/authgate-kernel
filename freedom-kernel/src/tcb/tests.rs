@@ -818,4 +818,500 @@ mod tcb_tests {
         ctx.record(ACTOR, RESOURCE, RIGHT_READ, 101); // subset — should not decrease
         assert_eq!(ctx.accumulated_rights(), mark, "accumulated_rights must not decrease");
     }
+
+    // ── SequenceContext::steps() snapshot ────────────────────────────────────
+
+    #[test]
+    fn compose_steps_snapshot_contains_all_records() {
+        let mut ctx = SequenceContext::new();
+        ctx.record(ACTOR, RESOURCE, RIGHT_READ, 100);
+        ctx.record(OTHER, RESOURCE, RIGHT_WRITE, 101);
+        let steps = ctx.steps();
+        assert_eq!(steps.len(), 2);
+        assert_eq!(steps[0].actor_id, ACTOR);
+        assert_eq!(steps[0].rights_used, RIGHT_READ);
+        assert_eq!(steps[0].timestamp, 100);
+        assert_eq!(steps[1].actor_id, OTHER);
+        assert_eq!(steps[1].rights_used, RIGHT_WRITE);
+        assert_eq!(steps[1].timestamp, 101);
+    }
+
+    // ── Decision::is_permit() helper ─────────────────────────────────────────
+
+    #[test]
+    fn decision_is_permit_true_for_permit() {
+        assert!(Decision::Permit.is_permit());
+    }
+
+    #[test]
+    fn decision_is_permit_false_for_deny() {
+        assert!(!Decision::Deny { reason: "test" }.is_permit());
+    }
+
+    // ── CanonicalAction::verify_binding consistency ───────────────────────────
+
+    #[test]
+    fn verify_binding_false_when_hash_zeroed() {
+        let root_sk = random_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let mut action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap], MIN_EPOCH);
+        action.binding_hash = [0u8; 32]; // corrupt the hash
+        assert!(!action.verify_binding());
+    }
+
+    #[test]
+    fn verify_binding_true_for_freshly_computed_action() {
+        let root_sk = random_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap], MIN_EPOCH);
+        assert!(action.verify_binding());
+    }
+
+    // ── Revocation: multiple valid caps, revocation of one causes deny ────────
+    // Both caps pass all L2 checks (same rights, same resource, valid chain).
+    // L3 then scans all bundle proofs — finds cap_a's hash in the revocation list → Deny.
+
+    #[test]
+    fn deny_revocation_of_one_cap_in_multi_cap_bundle() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap_a = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let cap_b = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        // Revoke cap_a only — cap_b is fine, but revocation check is bundle-level
+        let rev = make_valid_revocation(&root_sk, cap_a.proof_hash);
+        let mut action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap_a, cap_b], MIN_EPOCH);
+        action.revocation_proofs.push(rev);
+        action.binding_hash = action.compute_hash();
+        // Both caps pass L2; L3 finds cap_a in revocation list → Deny
+        assert!(matches!(verify(&action, &root_vk, NOW), Decision::Deny { reason: "capability has been explicitly revoked" }));
+    }
+
+    // ── Bundle contains chain node for delegator — L2 filters it, actor cap permits ──
+    // The delegation chain: root → delegator_sk (subject=OTHER) → ACTOR.
+    // The bundle has both the parent proof (subject=subject_id_of(delegator_sk), not ACTOR)
+    // and the child proof (subject=ACTOR). L2 only validates the child as an actor cap.
+
+    #[test]
+    fn happy_chain_node_in_bundle_not_processed_as_actor_cap() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let delegator_sk = random_key();
+        // Parent: subject is delegator's identity (not ACTOR) — filtered by L2
+        let parent = make_root_proof(&root_sk, subject_id_of(&delegator_sk), RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        // Child: subject is ACTOR — processed by L2
+        let child = make_delegated_proof(&delegator_sk, &parent, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![parent, child], MIN_EPOCH);
+        assert_eq!(verify(&action, &root_vk, NOW), Decision::Permit);
+    }
+
+    // ── Timestamp field committed by binding_hash (AT-1.4 variant) ───────────
+
+    #[test]
+    fn deny_tampered_timestamp_specifically() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let mut action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap], MIN_EPOCH);
+        action.timestamp = NOW + 1; // tamper after sealing
+        assert!(matches!(
+            verify(&action, &root_vk, NOW),
+            Decision::Deny { reason: "canonical binding hash mismatch" }
+        ));
+    }
+
+    // ── Rights: DELEGATE cannot be used for EXECUTE (no overlap) ─────────────
+
+    #[test]
+    fn deny_rights_no_overlap_delegate_vs_execute() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_DELEGATE, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_EXECUTE, vec![cap], MIN_EPOCH);
+        assert!(matches!(verify(&action, &root_vk, NOW), Decision::Deny { reason: "capability does not grant required rights" }));
+    }
+
+    // ── Delegation chain: three levels (root → A → B → actor) ───────────────
+
+    #[test]
+    fn happy_three_level_delegation_chain() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let a_sk = random_key();
+        let b_sk = random_key();
+        // root grants READ|WRITE to A
+        let root_cap = make_root_proof(&root_sk, subject_id_of(&a_sk), RESOURCE, RIGHT_READ | RIGHT_WRITE, EXPIRY, EPOCH);
+        // A grants READ|WRITE to B
+        let a_cap = make_delegated_proof(&a_sk, &root_cap, subject_id_of(&b_sk), RESOURCE, RIGHT_READ | RIGHT_WRITE, EXPIRY, EPOCH);
+        // B grants READ to ACTOR
+        let b_cap = make_delegated_proof(&b_sk, &a_cap, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![root_cap, a_cap, b_cap], MIN_EPOCH);
+        assert_eq!(verify(&action, &root_vk, NOW), Decision::Permit);
+    }
+
+    // ── Delegation chain: three levels, attenuation violation at middle ───────
+
+    #[test]
+    fn deny_three_level_chain_attenuation_at_middle() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let a_sk = random_key();
+        let b_sk = random_key();
+        // root grants READ only to A
+        let root_cap = make_root_proof(&root_sk, subject_id_of(&a_sk), RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        // A tries to grant READ|WRITE to B — attenuation violation
+        let a_cap = make_delegated_proof(&a_sk, &root_cap, subject_id_of(&b_sk), RESOURCE, RIGHT_READ | RIGHT_WRITE, EXPIRY, EPOCH);
+        let b_cap = make_delegated_proof(&b_sk, &a_cap, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![root_cap, a_cap, b_cap], MIN_EPOCH);
+        assert!(matches!(verify(&action, &root_vk, NOW), Decision::Deny { .. }));
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // Type-level tests: every field, method, and constant in types.rs
+    // ────────────────────────────────────────────────────────────────────────
+
+    // ── Rights constants: all 8 bits are distinct and non-overlapping ─────────
+
+    #[test]
+    fn types_all_rights_constants_are_power_of_two() {
+        let rights = [
+            RIGHT_READ, RIGHT_WRITE, RIGHT_DELEGATE, RIGHT_EXECUTE,
+            RIGHT_SPAWN, RIGHT_NETWORK, RIGHT_MODEL_INVOKE, RIGHT_POLICY_MODIFY,
+        ];
+        for r in &rights {
+            assert_eq!(r.count_ones(), 1, "each right must be a single bit: {r:#b}");
+        }
+    }
+
+    #[test]
+    fn types_all_rights_constants_are_pairwise_disjoint() {
+        let rights = [
+            RIGHT_READ, RIGHT_WRITE, RIGHT_DELEGATE, RIGHT_EXECUTE,
+            RIGHT_SPAWN, RIGHT_NETWORK, RIGHT_MODEL_INVOKE, RIGHT_POLICY_MODIFY,
+        ];
+        for i in 0..rights.len() {
+            for j in (i + 1)..rights.len() {
+                assert_eq!(rights[i] & rights[j], 0,
+                    "rights[{i}]={:#b} and rights[{j}]={:#b} must not overlap",
+                    rights[i], rights[j]);
+            }
+        }
+    }
+
+    // ── Each right works through verify() end-to-end ─────────────────────────
+
+    #[test]
+    fn types_right_spawn_permit_and_deny() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_SPAWN, EXPIRY, EPOCH);
+        let action_ok = make_action(ACTOR, RESOURCE, RIGHT_SPAWN, vec![cap.clone()], MIN_EPOCH);
+        assert_eq!(verify(&action_ok, &root_vk, NOW), Decision::Permit);
+        // Missing the right → deny
+        let action_bad = make_action(ACTOR, RESOURCE, RIGHT_NETWORK, vec![cap], MIN_EPOCH);
+        assert!(matches!(verify(&action_bad, &root_vk, NOW), Decision::Deny { .. }));
+    }
+
+    #[test]
+    fn types_right_network_permit_and_deny() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_NETWORK, EXPIRY, EPOCH);
+        let action_ok = make_action(ACTOR, RESOURCE, RIGHT_NETWORK, vec![cap.clone()], MIN_EPOCH);
+        assert_eq!(verify(&action_ok, &root_vk, NOW), Decision::Permit);
+        let action_bad = make_action(ACTOR, RESOURCE, RIGHT_EXECUTE, vec![cap], MIN_EPOCH);
+        assert!(matches!(verify(&action_bad, &root_vk, NOW), Decision::Deny { .. }));
+    }
+
+    #[test]
+    fn types_right_model_invoke_permit() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_MODEL_INVOKE, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_MODEL_INVOKE, vec![cap], MIN_EPOCH);
+        assert_eq!(verify(&action, &root_vk, NOW), Decision::Permit);
+    }
+
+    #[test]
+    fn types_right_policy_modify_permit() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_POLICY_MODIFY, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_POLICY_MODIFY, vec![cap], MIN_EPOCH);
+        assert_eq!(verify(&action, &root_vk, NOW), Decision::Permit);
+    }
+
+    #[test]
+    fn types_right_delegate_permit() {
+        let root_sk = random_key();
+        let root_vk = root_sk.verifying_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_DELEGATE, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_DELEGATE, vec![cap], MIN_EPOCH);
+        assert_eq!(verify(&action, &root_vk, NOW), Decision::Permit);
+    }
+
+    // ── CapabilityProof::signing_message() field order stability ─────────────
+    // Changing any field changes the signing message — otherwise a tampered
+    // proof would verify under the original signature.
+
+    #[test]
+    fn types_cap_signing_message_differs_by_subject() {
+        let root_sk = random_key();
+        let cap_a = make_root_proof(&root_sk, [0x01; 32], RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let cap_b = make_root_proof(&root_sk, [0x02; 32], RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        assert_ne!(cap_a.signing_message(), cap_b.signing_message());
+    }
+
+    #[test]
+    fn types_cap_signing_message_differs_by_resource() {
+        let root_sk = random_key();
+        let cap_a = make_root_proof(&root_sk, ACTOR, [0x01; 32], RIGHT_READ, EXPIRY, EPOCH);
+        let cap_b = make_root_proof(&root_sk, ACTOR, [0x02; 32], RIGHT_READ, EXPIRY, EPOCH);
+        assert_ne!(cap_a.signing_message(), cap_b.signing_message());
+    }
+
+    #[test]
+    fn types_cap_signing_message_differs_by_rights() {
+        let root_sk = random_key();
+        let cap_a = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let cap_b = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_WRITE, EXPIRY, EPOCH);
+        assert_ne!(cap_a.signing_message(), cap_b.signing_message());
+    }
+
+    #[test]
+    fn types_cap_signing_message_differs_by_expiry() {
+        let root_sk = random_key();
+        let cap_a = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, 1000, EPOCH);
+        let cap_b = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, 2000, EPOCH);
+        assert_ne!(cap_a.signing_message(), cap_b.signing_message());
+    }
+
+    #[test]
+    fn types_cap_signing_message_differs_by_epoch() {
+        let root_sk = random_key();
+        let cap_a = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, 1);
+        let cap_b = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, 2);
+        assert_ne!(cap_a.signing_message(), cap_b.signing_message());
+    }
+
+    #[test]
+    fn types_cap_signing_message_differs_root_vs_delegated() {
+        let root_sk = random_key();
+        // Build the root proof directly (IssuerRef::Root → push 0x00)
+        let issuer_pubkey = root_sk.verifying_key().to_bytes();
+        let cap_root = CapabilityProof {
+            proof_hash: [0u8; 32],
+            subject_id: ACTOR,
+            resource_hash: RESOURCE,
+            rights: RIGHT_READ,
+            expiry: EXPIRY,
+            epoch: EPOCH,
+            issuer: IssuerRef::Root,
+            signature: [0u8; 64],
+            issuer_pubkey,
+        };
+        let cap_delegated = CapabilityProof {
+            issuer: IssuerRef::Delegated { parent_hash: [0xAB; 32] },
+            ..cap_root.clone()
+        };
+        assert_ne!(cap_root.signing_message(), cap_delegated.signing_message());
+    }
+
+    // ── CapabilityProof::to_canonical_bytes() length and uniqueness ───────────
+
+    #[test]
+    fn types_cap_canonical_bytes_length_is_fixed() {
+        let root_sk = random_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        // Root: 32+32+32+8+8+8+64+32 = 196 bytes
+        // (proof_hash + subject + resource + rights + expiry + epoch + sig + pubkey)
+        assert_eq!(cap.to_canonical_bytes().len(), 196);
+    }
+
+    #[test]
+    fn types_cap_canonical_bytes_differ_by_proof_hash() {
+        let root_sk = random_key();
+        let mut cap_a = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let cap_b = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        cap_a.proof_hash = [0xFF; 32]; // force-set to something different
+        assert_ne!(cap_a.to_canonical_bytes(), cap_b.to_canonical_bytes());
+    }
+
+    // ── RevocationProof::signing_message() and to_canonical_bytes() ───────────
+
+    #[test]
+    fn types_revocation_signing_message_contains_target_and_timestamp() {
+        let rev_a = RevocationProof { target_proof_hash: [0x01; 32], revoked_at: 100, signature: [0u8; 64] };
+        let rev_b = RevocationProof { target_proof_hash: [0x02; 32], revoked_at: 100, signature: [0u8; 64] };
+        assert_ne!(rev_a.signing_message(), rev_b.signing_message(), "different targets → different message");
+        let rev_c = RevocationProof { target_proof_hash: [0x01; 32], revoked_at: 200, signature: [0u8; 64] };
+        assert_ne!(rev_a.signing_message(), rev_c.signing_message(), "different revoked_at → different message");
+    }
+
+    #[test]
+    fn types_revocation_canonical_bytes_length_is_fixed() {
+        let rev = RevocationProof { target_proof_hash: [0x01; 32], revoked_at: 100, signature: [0u8; 64] };
+        // 32 (target) + 8 (revoked_at) + 64 (sig) = 104 bytes
+        assert_eq!(rev.to_canonical_bytes().len(), 104);
+    }
+
+    // ── CanonicalAction::compute_hash() changes with every field ─────────────
+
+    #[test]
+    fn types_action_hash_differs_by_actor() {
+        let root_sk = random_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let action_a = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap.clone()], MIN_EPOCH);
+        let action_b = make_action(OTHER, RESOURCE, RIGHT_READ, vec![cap], MIN_EPOCH);
+        assert_ne!(action_a.binding_hash, action_b.binding_hash);
+    }
+
+    #[test]
+    fn types_action_hash_differs_by_resource() {
+        let root_sk = random_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let mut action_a = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap.clone()], MIN_EPOCH);
+        let mut action_b = action_a.clone();
+        action_b.resource_hash = OTHER;
+        action_b.binding_hash = action_b.compute_hash();
+        action_a.binding_hash = action_a.compute_hash();
+        assert_ne!(action_a.binding_hash, action_b.binding_hash);
+    }
+
+    #[test]
+    fn types_action_hash_differs_by_required_rights() {
+        let root_sk = random_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ | RIGHT_WRITE, EXPIRY, EPOCH);
+        let action_a = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap.clone()], MIN_EPOCH);
+        let action_b = make_action(ACTOR, RESOURCE, RIGHT_WRITE, vec![cap], MIN_EPOCH);
+        assert_ne!(action_a.binding_hash, action_b.binding_hash);
+    }
+
+    #[test]
+    fn types_action_hash_differs_by_min_epoch() {
+        let root_sk = random_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let action_a = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap.clone()], 1);
+        let action_b = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap], 2);
+        assert_ne!(action_a.binding_hash, action_b.binding_hash);
+    }
+
+    #[test]
+    fn types_action_hash_differs_by_cap_count() {
+        let root_sk = random_key();
+        let cap_a = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let cap_b = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_WRITE, EXPIRY, EPOCH);
+        let action_one = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap_a.clone()], MIN_EPOCH);
+        let action_two = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap_a, cap_b], MIN_EPOCH);
+        assert_ne!(action_one.binding_hash, action_two.binding_hash,
+            "different cap counts must produce different hashes (length-prefix prevents extension attacks)");
+    }
+
+    #[test]
+    fn types_action_hash_is_deterministic() {
+        let root_sk = random_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let action = make_action(ACTOR, RESOURCE, RIGHT_READ, vec![cap], MIN_EPOCH);
+        assert_eq!(action.compute_hash(), action.compute_hash(), "compute_hash must be deterministic");
+    }
+
+    // ── IssuerRef equality ───────────────────────────────────────────────────
+
+    #[test]
+    fn types_issuer_ref_root_eq() {
+        assert_eq!(IssuerRef::Root, IssuerRef::Root);
+    }
+
+    #[test]
+    fn types_issuer_ref_delegated_eq_same_hash() {
+        let h = [0xAB; 32];
+        assert_eq!(IssuerRef::Delegated { parent_hash: h }, IssuerRef::Delegated { parent_hash: h });
+    }
+
+    #[test]
+    fn types_issuer_ref_delegated_ne_different_hash() {
+        let a = IssuerRef::Delegated { parent_hash: [0x01; 32] };
+        let b = IssuerRef::Delegated { parent_hash: [0x02; 32] };
+        assert_ne!(a, b);
+    }
+
+    #[test]
+    fn types_issuer_ref_root_ne_delegated() {
+        let d = IssuerRef::Delegated { parent_hash: [0u8; 32] };
+        assert_ne!(IssuerRef::Root, d);
+    }
+
+    // ── Decision equality and is_permit() ─────────────────────────────────────
+
+    #[test]
+    fn types_decision_permit_eq() {
+        assert_eq!(Decision::Permit, Decision::Permit);
+    }
+
+    #[test]
+    fn types_decision_deny_eq_same_reason() {
+        assert_eq!(Decision::Deny { reason: "x" }, Decision::Deny { reason: "x" });
+    }
+
+    #[test]
+    fn types_decision_deny_ne_different_reason() {
+        assert_ne!(Decision::Deny { reason: "a" }, Decision::Deny { reason: "b" });
+    }
+
+    #[test]
+    fn types_decision_permit_ne_deny() {
+        assert_ne!(Decision::Permit, Decision::Deny { reason: "x" });
+    }
+
+    // ── SequenceContext: all public methods ───────────────────────────────────
+
+    #[test]
+    fn types_sequence_new_is_empty() {
+        let ctx = SequenceContext::new();
+        assert_eq!(ctx.accumulated_rights(), 0);
+        assert_eq!(ctx.step_count(), 0);
+        assert_eq!(ctx.steps().len(), 0);
+    }
+
+    #[test]
+    fn types_sequence_default_is_same_as_new() {
+        let ctx_new = SequenceContext::new();
+        let ctx_default = SequenceContext::default();
+        assert_eq!(ctx_new.accumulated_rights(), ctx_default.accumulated_rights());
+        assert_eq!(ctx_new.step_count(), ctx_default.step_count());
+    }
+
+    #[test]
+    fn types_sequence_record_fields_stored_correctly() {
+        let mut ctx = SequenceContext::new();
+        ctx.record([0x01; 32], [0x02; 32], RIGHT_READ, 42);
+        let step = &ctx.steps()[0];
+        assert_eq!(step.actor_id, [0x01; 32]);
+        assert_eq!(step.resource_hash, [0x02; 32]);
+        assert_eq!(step.rights_used, RIGHT_READ);
+        assert_eq!(step.timestamp, 42);
+    }
+
+    #[test]
+    fn types_sequence_exceeds_limit_false_for_zero_accumulation_any_limit() {
+        let ctx = SequenceContext::new();
+        // With 0 accumulated rights, no session limit can be exceeded
+        assert!(!ctx.exceeds_limit(0));
+        assert!(!ctx.exceeds_limit(u64::MAX));
+    }
+
+    #[test]
+    fn types_sequence_exceeds_limit_true_for_any_accumulation_zero_limit() {
+        let mut ctx = SequenceContext::new();
+        ctx.record(ACTOR, RESOURCE, RIGHT_READ, 100);
+        assert!(ctx.exceeds_limit(0), "any rights exceed a zero limit");
+    }
+
+    #[test]
+    fn types_sequence_all_rights_within_full_session_limit() {
+        let mut ctx = SequenceContext::new();
+        let all = RIGHT_READ | RIGHT_WRITE | RIGHT_DELEGATE | RIGHT_EXECUTE
+                | RIGHT_SPAWN | RIGHT_NETWORK | RIGHT_MODEL_INVOKE | RIGHT_POLICY_MODIFY;
+        ctx.record(ACTOR, RESOURCE, all, 100);
+        assert!(!ctx.exceeds_limit(all), "all rights fit within the full rights limit");
+    }
 }
