@@ -91,9 +91,12 @@ A violation of CBCT-2 is a **known gap** — documented explicitly in
 
 | Gap | Class | Status | Branch |
 |---|---|---|---|
-| AT-7.5 shadow execution | AT-7 | OPEN | tcb-core (call gate) + integration |
+| AT-7.5 shadow execution | AT-7 | **CLOSED** (CallGate, tcb-core e136edb) | tcb-core |
 | TLC model-check instance | formal | OPEN | spec-core |
-| TLAPS proofs for I1–I7 | formal | OPEN | spec-core |
+| TLAPS proofs for I1–I8 | formal | OPEN | spec-core |
+
+**CBCT-2 violations: 0.** All attack classes are either closed or explicitly
+documented as out-of-scope (semantic gap G1, clock trust G3, crypto assumptions G6).
 
 ---
 
@@ -122,7 +125,7 @@ invariant table in `THREAT_MODEL.md`, write a TLC configuration entry.
 ### `tcb-core` — Execution Truth (Rust kernel)
 
 What to find here: `freedom-kernel/src/tcb/` — engine.rs, dag.rs, types.rs,
-sequence.rs, call_gate.rs (pending)
+sequence.rs, call_gate.rs
 
 Hard rules (enforced by TCB_CONSTRAINTS.md):
 - engine.rs ≤ 120 LOC, dag.rs ≤ 120 LOC, total ≤ 600 LOC
