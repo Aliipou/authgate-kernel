@@ -1,391 +1,342 @@
 # authgate-kernel
 
-**Capability-security runtime for autonomous agents. Formally verified. No heuristics.**
+**Capability-security runtime for autonomous agents. Mechanically checked core invariants. No heuristics inside the TCB.**
 
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/)
-[![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
+[![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](freedom-kernel/)
+[![Kani](https://img.shields.io/badge/Kani-19%20harnesses-green.svg)](formal/)
+[![Lean4](https://img.shields.io/badge/Lean4-7%20theorems-blue.svg)](formal/lean4/)
+[![Tests](https://img.shields.io/badge/TCB%20tests-78%20passing-brightgreen.svg)](freedom-kernel/src/tcb/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![Kani](https://img.shields.io/badge/verified-Kani%2019%20harnesses-green.svg)](formal/)
-[![Lean4](https://img.shields.io/badge/proved-Lean4%204%20theorems-blue.svg)](formal/lean4/)
 
 ---
 
-## What this is
+## What this does
 
-A structurally unavoidable permission gate between an LLM and the world. Before any agent action executes, the kernel verifies typed capability claims against an ownership graph. If the agent lacks explicit, valid, non-expired authority — it is blocked. No argument overrides a sovereignty flag.
+Every agent action passes through a capability gate before execution. The gate answers one question in pure Rust, with no global state:
 
-~200 lines of pure Rust form the Trusted Computing Base (TCB). No ML. No natural language parsing. No "trust scores". The Python layer mirrors the Rust logic and is used when the Rust kernel is not compiled.
+> Does this actor hold a valid, non-expired, cryptographically signed capability for this resource and these rights, issued by a chain traceable to the trust root?
+
+If yes: `Decision::Permit`. If no: `Decision::Deny { reason }`. No exceptions. No overrides. No probability scores.
+
+The kernel is stateless. Authority lives in signed `CapabilityProof` chains passed with each request — no registry lookup, no network call, no side effects. The same action with the same proofs always produces the same decision.
+
+**Trusted Computing Base surface area:** `src/tcb/` — 5 files, ~510 LOC, `#![forbid(unsafe_code)]` everywhere. That is the entire kernel. Everything else is untrusted.
 
 ---
 
-## What this is NOT
+## What this does NOT do
 
-| Not this | Why it is explicitly excluded |
+| Not this | Why |
 |---|---|
-| Alignment solution | Alignment operates on values and intent; this kernel operates on typed authority graphs |
-| Intent verifier | The kernel does not parse, interpret, or score natural language output |
-| Ethics engine | Ethical reasoning requires semantic content; this kernel is purely structural |
-| Behavioral monitor | No runtime heuristics or anomaly detection in the TCB |
-| Covert channel detector | Timing, steganography, and side-channel leakage are out of scope by design |
-| LLM output sanitizer | The kernel gates actions, not token streams |
+| Alignment | Alignment is about values and intent. This kernel is about typed authority. |
+| Intent verification | The kernel does not parse, score, or interpret natural language. |
+| Ethics enforcement | Ethical reasoning requires semantic content. The kernel is purely structural. |
+| Side-channel defense | Timing attacks, steganography, covert channels — out of scope by design. |
+| Distributed consensus | The kernel is in-process. Multi-node deployments require an external consensus layer. |
+| Behavioral monitoring | No heuristics or anomaly detection inside the TCB. |
+| Python-equivalent security | The Python layer is a non-TCB compatibility runtime — not formally checked. |
 
-See [`NON_GOALS.md`](NON_GOALS.md) and [`THREAT_MODEL.md`](THREAT_MODEL.md) for full boundaries.
+See [`NON_GOALS.md`](NON_GOALS.md) and [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md) for the full enumeration.
 
 ---
 
 ## Architecture
 
 ```
-Human Principal
-  (trust root — registered owner of all machines)
+Human Principal  (trust root)
         │
-        │  registers machines, delegates claims
+        │  signs CapabilityProof chains
+        │  sets min_epoch to revoke cohorts
         ▼
-OwnershipRegistry
-  - claims map: (actor, resource) → RightsClaim
-  - delegation chains: child_capability ⊆ parent_capability
-  - machine → human owner entries
+CanonicalAction  (sealed by adapter)
+   actor_id, resource_hash, required_rights,
+   capability_proofs[], revocation_proofs[],
+   nonce, timestamp, min_epoch,
+   binding_hash = SHA-256(all fields above)
         │
-        │  typed Action IR (actor, resources[], capability_kind, flags[])
-        │  no natural language — structured data only
         ▼
-engine.rs   ◄────────────────────────────────────────────────────────┐
-  (TCB gate, ~200 LOC)                                               │
-  [1] sovereignty flag check  — O(1), unconditional                  │
-  [2] machine ownership check — is actor in registry?                │
-  [3] machine-governs-human   — is actor attempting dominion?        │
-  [4] capability claim check  — does actor hold valid claim?         │
-        │                                                            │
-        ├── PERMITTED ──► AuditLog (append-only, cryptographically   │
-        │                           signed, JSON)                    │
-        │                                                            │
-        └── BLOCKED   ──► halt + surface violation to human owner ──┘
-                           (owner may inspect, retry with correction)
+┌──────────────── CallGate ─────────────────────────────┐
+│  The only public entry point into the TCB.            │
+│  engine::verify is pub(crate) — bypassing CallGate    │
+│  is a compile-time type error. (AT-7.5 closed)        │
+│                                                       │
+│  [L1] verify binding_hash ─────────────── AT-1        │
+│  [L2] for each cap where subject == actor:            │
+│       resource_hash match? ──────────── AT-6.1        │
+│       expiry >= now? ────────────────── AT-3.6        │
+│       epoch >= min_epoch? ──────────── AT-3.2        │
+│       validate_chain():                               │
+│         depth ≤ 16 ─────────────────── AT-2.7        │
+│         each node epoch >= min_epoch ── AT-3.1        │
+│         ed25519 valid ──────────────── AT-2.3/4       │
+│         SHA-256(pubkey)==subject_id ─── AT-5.1        │
+│         rights ⊆ parent.rights ──────── AT-2.6        │
+│       rights sufficiency                              │
+│  [L3] root-signed revocations ─────────── AT-3.3/4   │
+└───────────────────────────────────────────────────────┘
+        │
+   Decision::Permit  or  Decision::Deny { reason }
 ```
 
-**Trusted Computing Base:** `engine.rs`, `capability.rs`, `wire.rs`, `crypto.rs`, and the new `src/tcb/` module (v2 stateless kernel).
-Everything else — adapters, extensions, scheduler, registry logic — is outside the TCB.
+**Identity model:** `subject_id = SHA-256(issuer_pubkey)`. Every delegation node in a chain must satisfy this binding. An attacker who knows a parent proof hash but does not hold the parent's private key cannot forge a child delegation (AT-5.1).
 
-### Repository layout
+**Epoch-based revocation:** The caller sets `min_epoch` in each action. All capability proofs with `epoch < min_epoch` are rejected — no revocation list required. Advancing the epoch invalidates an entire compromised cohort in O(1).
+
+---
+
+## Repository layout
 
 ```
 freedom-kernel/src/
-  engine.rs           registry-based verifier (v1, production)        — TCB
-  capability.rs       closed capability algebra (enums only)           — TCB
-  wire.rs             typed JSON wire format (serde, no logic)         — TCB
-  crypto.rs           ed25519 attestation                              — TCB
-  tcb/                stateless proof-chain kernel (v2, in progress)   — TCB
-    types.rs            CanonicalAction + CapabilityProof + Rights
-    engine.rs           verify(action, root_key, now) -> Decision
-    dag.rs              delegation chain validation + attenuation
-    sequence.rs         composition safety tracker (SequenceContext)
-  ffi.rs              C ABI — thin facade                              — not TCB
-  verifier.rs         PyO3 facade over engine.rs                       — not TCB
-  registry.rs         ownership registry (v1; not truth in v2)        — not TCB
+  tcb/               ← THE TRUSTED COMPUTING BASE (all security guarantees live here)
+    call_gate.rs       CallGate — only public entry point; verify() is pub(crate)
+    engine.rs          pub(crate) verify(action, root_key, now) → Decision
+    dag.rs             delegation chain traversal + attenuation enforcement
+    sequence.rs        SequenceContext — session-scoped rights accumulation
+    types.rs           CanonicalAction, CapabilityProof, RevocationProof, Rights
+    tests.rs           56 targeted tests (one mutation → one deny path each)
 
-src/authgate/
-  kernel/          Python implementation (mirrors Rust)
-  extensions/      heuristic layers — explicitly NOT TCB
-    ifc.py         Bell-LaPadula non-interference
-    detection.py   manipulation scorer (heuristic signal)
-    synthesis.py   rule admission engine
+  engine.rs          v1 registry-based verifier (used by Python adapter)
+  capability.rs      closed capability taxonomy (enums only, no logic)
+  wire.rs            typed JSON wire format (serde, no logic)
+  crypto.rs          ed25519 kernel signing key (audit log attestation)
+  ffi.rs             C ABI — thin facade, not TCB
+  verifier.rs        PyO3 adapter — not TCB
 
 formal/
-  kani/            Kani bounded model-checking harnesses
-  lean4/           Lean 4 proofs (Core.lean, Invariants.lean, Proofs.lean)
+  authgate_v3.tla    TLA+ state machine (9 invariants, PermitSoundness theorem)
+  MC_AuthGateV3.tla  TLC-runnable model (finite actor/resource/epoch sets)
+  MC_AuthGateV3.cfg  TLC configuration
+  kani/              Kani bounded model-checking harnesses (19 harnesses)
+  lean4/             Lean 4 proofs (7 theorems, 2 admitted crypto axioms)
+  COVERAGE.md        What is and is not formally verified
+  INCOMPLETENESS.md  Explicit enumeration of gaps
 
 attack_harness/
-  mutation_attacks.py        20 mutation tests — one security check per test
-  canonicalization_attacks.py  5 canonical gate attacks (CA-1 through CA-5)
-  sequence_attacks.py          5 composition safety attacks (SA-1 through SA-4)
+  mutation_attacks.py          20 mutation tests — one security check per test
+  canonicalization_attacks.py  5 canonical gate attacks
+  sequence_attacks.py          5 composition attacks
+  attack_tree_coverage.py      21 tests across AT-1 through AT-7
+  simulation/                  231-scenario adversarial simulation engine
+
+src/authgate/        Python compatibility runtime (NOT TCB, NOT formally checked)
+  kernel/            Python mirror of v1 registry verifier
+  extensions/        Heuristic layers (IFC, manipulation scorer) — explicitly NOT TCB
 ```
-
-### v2 TCB design
-
-The v2 kernel (`src/tcb/`) is stateless and registry-free. All authority is carried in signed capability proof chains. Key design decisions:
-
-**Canonical gate (Layer 1):** Every action arrives as a `CanonicalAction` with a `binding_hash` over all fields. The kernel recomputes this hash before touching any proof — IR tampered between adapter and kernel is rejected before any cryptographic work begins.
-
-**Epoch-based primary revocation:** Instead of distributing revocation lists, the caller sets `min_epoch` in each action. Capability proofs with `epoch < min_epoch` are rejected without consulting any revocation list. Advancing the epoch invalidates an entire cohort of proofs in O(1).
-
-**Revocation proofs (secondary):** Emergency single-proof revocation via root-signed `RevocationProof`. Forged or invalid-signature revocations are silently skipped — attackers cannot force a Deny by injecting garbage revocation proofs.
-
-**Composition safety:** `SequenceContext` tracks the union of all rights exercised within a session. Policy layers compare the accumulated state against the session limit, closing the gap where individually-permitted actions compose into a globally-invalid sequence.
-
-### TCB guards (CI-enforced on every commit)
-
-**`engine.rs`:**
-
-| Guard | Rule |
-|---|---|
-| LOC ceiling | Must stay ≤ 300 lines |
-| Public API | Exports exactly one function: `verify` |
-| Import scope | May only import from `crate::capability` and `crate::wire` |
-| Purity | No randomness, network, or filesystem calls |
-
-**`capability.rs`:**
-
-| Guard | Rule |
-|---|---|
-| LOC ceiling | Must stay ≤ 200 lines |
-| Self-contained | No `use crate::` imports |
-| Enums only | No struct definitions — structs carry state and open extension points |
 
 ---
 
-## Security guarantees
+## Branch architecture — Dual Reality
 
-These are formal properties of `engine.rs`, verified by Kani and Lean 4. They apply to the Rust TCB only.
+This project maintains three independent truths that must stay consistent but never contaminate each other. Merging without proof produces self-justifying security.
+
+| Branch | Truth | What lives here | Merge rule |
+|---|---|---|---|
+| `main` | Ground truth | The only branch that deploys | CI green + zero CBCT-2 violations |
+| `spec-core` | Mathematical truth | TLA+ spec, Lean4 proofs, THREAT_MODEL | TLC-verified or Lean-discharged |
+| `tcb-core` | Execution truth | Rust TCB (≤600 LOC gate), CallGate | CI green + attack regression clean |
+| `adversarial-lab` | Adversarial truth | Attack harness, simulation engine | Never merges to main directly |
+| `integration` | Execution truth | Python adapters, MCP gate, LangGraph | TCB contract satisfied |
+
+### Merge rules — no cross-contamination without proof
+
+```
+ALLOWED:
+  adversarial-lab → spec-core     (new attack class → formal threat model)
+  spec-core       → tcb-core      (proven invariant → Rust implementation)
+  tcb-core        → main          (CI green + regression clean)
+  integration     → main          (TCB contract satisfied)
+
+FORBIDDEN:
+  adversarial-lab → main          (attack finding ≠ production change)
+  adversarial-lab → tcb-core      (no proof → no code change)
+  spec-core       → adversarial-lab (backflow breaks independence)
+```
+
+### Branch guides
+
+**`main`** — Ground truth. The only branch that deploys. No research-grade code ever merges here without passing through formal + CI gates.
+
+**`spec-core`** — Mathematical truth. `formal/authgate_v3.tla` and `formal/MC_AuthGateV3.tla` live here. Work here is never compiled or deployed. Correctness is established by TLC model checking and Lean 4 theorem discharge. To add an invariant: define it in `authgate_v3.tla`, add it to `THREAT_MODEL.md`, write a TLC configuration entry.
+
+**`tcb-core`** — Execution truth. The Rust kernel: `call_gate.rs`, `engine.rs`, `dag.rs`, `types.rs`, `sequence.rs`. Hard rules: total LOC ≤ 600, no IO, no network, no panics, no unsafe, `engine::verify` stays `pub(crate)`. Every public function maps to at least one invariant in spec-core.
+
+**`adversarial-lab`** — Adversarial truth. Probes the kernel from the outside: craft a structurally invalid action, run it through the Python oracle, verify it is denied. A violation = kernel returned Permit for invalid input. Runs independently of spec-core (CBCT-3: no circular self-validation). Findings flow to spec-core; never directly to tcb-core.
+
+**`integration`** — Execution truth (adapter layer). Python compatibility runtime, MCP gate, LangGraph adapter. The Python runtime must match tcb-core behavior on all inputs. Divergence = integration test failure, not a kernel change.
+
+See [`BRANCHES.md`](BRANCHES.md) for the Cross-Branch Consistency Theorem (CBCT) and full merge rules.
+
+---
+
+## Test coverage
+
+### TCB Rust tests (78 total, all passing)
+
+| File | Tests | Coverage category |
+|---|---|---|
+| `engine.rs` (inline) | 5 | Basic permit/deny sanity checks |
+| `dag.rs` (inline) | 7 | Chain validation: root, delegation, attenuation, AT-5.1, AT-3.1 |
+| `sequence.rs` (inline) | 2 | Accumulation, limit detection |
+| `tests.rs` (integration) | 56 | One test per security invariant path |
+| `call_gate.rs` (inline) | 22 | All deny paths + consistency + AT-7.5 |
+
+Every security check in `engine.rs` and `dag.rs` has:
+1. A test that triggers it (deny path fires)
+2. A test that does NOT trigger it on a valid input (happy path is not over-guarded)
+3. A boundary test (expiry == now, epoch == min_epoch, etc.)
+
+Named tests map to attack tree nodes (e.g. `deny_intermediate_node_stale_epoch_enforced` → AT-3.1, `deny_delegation_impersonation_blocked` → AT-5.1).
+
+### Python adversarial harness (231 scenarios, 0 violations)
+
+```
+Mutation attacks:          20 tests — one field mutation per test
+Canonicalization attacks:   5 tests — Layer 1 binding hash variants
+Sequence attacks:           5 tests — SequenceContext composition
+Attack tree coverage:      21 tests — all 7 AT classes
+Simulation (composition): 231 scenarios — depth-2 mutation pairs
+```
+
+Run:
+```bash
+python attack_harness/mutation_attacks.py
+python attack_harness/canonicalization_attacks.py
+python attack_harness/sequence_attacks.py
+python attack_harness/attack_tree_coverage.py
+```
+
+### Formal verification coverage
+
+| Method | Coverage | Status |
+|---|---|---|
+| Kani (bounded model checking) | 19 harnesses on engine.rs and tcb/kani/ | All proved |
+| Lean 4 | 7 theorems (forbidden flags, attenuation, epoch gate, subject mismatch, etc.) | 2 crypto axioms admitted |
+| TLA+ (TLC) | 9 invariants + PermitSoundness theorem, MCConstraint ≤3 log entries | PENDING TLC run |
+
+What is NOT covered: Python compatibility runtime, extensions (IFC, manipulation scorer), adapter layer semantics, distributed consistency, side channels.
+
+---
+
+## Security invariants (TCB)
+
+Nine invariants are enforced on every `verify()` call, in order:
+
+| # | Name | Claim |
+|---|---|---|
+| I1 | CanonicalBinding | `action.binding_hash == SHA-256(all other fields)` |
+| I2 | IdentityBinding | `cap.subject_id == action.actor_id` for every actor cap |
+| I3 | ExpiryGate | `cap.expiry >= now` |
+| I4 | EpochSafety | `cap.epoch >= action.min_epoch` (leaf and every chain node) |
+| I5 | ResourceBinding | `cap.resource_hash == action.resource_hash` |
+| I6 | Attenuation | `child.rights ⊆ parent.rights` at every delegation step |
+| I7 | ChainEpoch | Every intermediate chain node satisfies EpochSafety |
+| I8 | ChainComplete | Every `Delegated` cap in a Permit has a valid parent in the bundle |
+| I9 | RevocationSafety | Only root-signed revocations affect decisions |
+
+**Invariant lattice:** I7 ⟹ I1 (chain epoch implies epoch safety). I8 is a prerequisite for I2 and I6 (cannot check attenuation without a complete chain). I4/I5/I9 are mutually independent. Minimal generating set: {I2, I3, I4, I5, I6, I7, I8}.
+
+**AT-7.5 (shadow execution):** Closed. `engine::verify` is `pub(crate)`. External code that tries to call it directly is rejected by the Rust compiler. `CallGate::execute()` is the only public path into the kernel.
+
+---
+
+## Security guarantees (precise scope)
+
+These properties hold for the Rust TCB (`src/tcb/`) on typed inputs. They do not extend to the Python runtime, adapter layer, or any property involving natural language.
 
 | Property | Formal statement |
 |---|---|
-| **P1 Confinement** | An agent cannot act on resources outside its explicit claim set. For all actions A and resources R: if `verify(A) = PERMITTED` then `∀r ∈ resources(A): actor holds valid claim on r`. |
-| **P2 Attenuation** | Delegated authority is a strict subset of the delegator's authority. `child_claim.rights ⊆ parent_claim.rights` is enforced at delegation time; violations raise `PermissionError`. |
-| **P3 Sovereignty Invariants** | All 10 sovereignty flags produce `BLOCKED` for any input, with no exceptions. Verified exhaustively by Kani over all possible input combinations. |
-| **P4 Determinism** | `verify` is a pure function. Same typed input → same output. No hidden state, no randomness, no I/O. Proved in Lean 4 (`verify_deterministic`). |
-| **P5 Cryptographic Attestation** | Every `PERMITTED` result is signed with ed25519. A signed result cannot be fabricated without the kernel's private key. Timestamp + nonce prevent replay. |
+| **PermitSoundness** | Every `Decision::Permit` is produced only when a cap passes all 9 invariants |
+| **DenySoundness** | Every `Decision::Deny` reports the first invariant that failed |
+| **Attenuation** | `child.rights ⊆ parent.rights` at every delegation step — proven by Kani |
+| **EpochTotal** | `cap.epoch < min_epoch ∨ cap.epoch ≥ min_epoch` — no third case — proven by Lean 4 |
+| **Determinism** | Same action + same root key + same `now` → same decision, always |
+| **NoBypass** | Calling `verify()` without going through `CallGate` is a compile-time error |
 
-**Scope:** These properties cover `engine.rs` behaviors on typed inputs. Not covered: the Python implementation, extensions, adapters, multi-agent semantics, or any property involving natural language content.
-
-See [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md) for an explicit enumeration of what is not proved.
-
----
-
-## Capability taxonomy
-
-All 17 capability kinds recognized by the kernel, with risk classification:
-
-| CapabilityKind | Risk | Description |
-|---|---|---|
-| `READ` | Low | Read access to a resource |
-| `WRITE` | Medium | Write or mutate a resource |
-| `EXECUTE` | Medium | Execute a process or command |
-| `DELETE` | High | Permanently remove a resource |
-| `DELEGATE` | High | Grant authority to another agent |
-| `NETWORK_EGRESS` | High | Outbound network connections |
-| `NETWORK_INGRESS` | High | Accept inbound network connections |
-| `FILE_SYSTEM` | High | Broad filesystem access |
-| `PROCESS_SPAWN` | High | Spawn child processes or agents |
-| `MEMORY_WRITE` | High | Write to process memory |
-| `CREDENTIAL_READ` | Critical | Access secrets, tokens, keys |
-| `CREDENTIAL_WRITE` | Critical | Modify or rotate credentials |
-| `AUDIT_READ` | Critical | Read audit logs |
-| `AUDIT_WRITE` | Critical | Append to or modify audit logs |
-| `POLICY_READ` | Critical | Read policy definitions |
-| `REGISTRY_MODIFY` | Catastrophic | Modify the ownership registry |
-| `POLICY_MODIFY` | Catastrophic | Modify kernel policy or sovereignty flags |
-
-`REGISTRY_MODIFY` and `POLICY_MODIFY` require explicit human-principal authorization and cannot be delegated by machine actors.
+**What "mechanically checked" means here:** Kani exhaustively explores all `verify()` paths within unwind bounds. Lean 4 proves algebraic properties of the invariant structure. TLC checks the TLA+ state machine for finite model instances. None of these constitute a full implementation-level correctness proof (that requires refinement proofs from TLA+ to Rust — an open gap documented in `formal/INCOMPLETENESS.md`).
 
 ---
 
 ## Quick start
 
+```rust
+use authgate_kernel::tcb::{
+    call_gate::CallGate,
+    types::{CanonicalAction, Decision, RIGHT_READ},
+};
+
+// Build the gate once with your trust anchor key.
+let gate = CallGate::new(root_verifying_key);
+
+// Seal an action (adapter's responsibility).
+let mut action = build_canonical_action(/* ... */);
+action.binding_hash = action.compute_hash();
+
+// Gate the action.
+match gate.execute(&action, unix_now()) {
+    Decision::Permit => execute_action(),
+    Decision::Deny { reason } => reject(reason),
+}
+```
+
+Python (non-TCB compatibility runtime):
+
 ```python
-from authgate import (
-    Action, AgentType, Entity, FreedomVerifier,
-    OwnershipRegistry, Resource, ResourceType, RightsClaim,
-)
-
-alice  = Entity("Alice",       AgentType.HUMAN)
-bot    = Entity("ResearchBot", AgentType.MACHINE)
-
-dataset = Resource("alice-data", ResourceType.DATASET, scope="/data/alice/")
-report  = Resource("report.txt", ResourceType.FILE,    scope="/outputs/")
+from authgate import FreedomVerifier, Action, OwnershipRegistry
 
 registry = OwnershipRegistry()
-registry.register_machine(bot, alice)
-registry.add_claim(RightsClaim(alice, dataset, can_read=True, can_write=True, can_delegate=True))
-registry.add_claim(RightsClaim(bot,   dataset, can_read=True))
-registry.add_claim(RightsClaim(bot,   report,  can_read=True, can_write=True))
+# ... register actors, add claims ...
 
 verifier = FreedomVerifier(registry)
-
 result = verifier.verify(Action("write-report", bot, resources_write=[report]))
 print(result.summary())
-# [PERMITTED] write-report (confidence=1.00)
-
-result = verifier.verify(Action("self-expand", bot, increases_machine_sovereignty=True))
-print(result.summary())
-# [BLOCKED] self-expand — VIOLATION: FORBIDDEN (increases machine sovereignty)
+# [PERMITTED] write-report
 ```
 
-**Install:**
+**Note:** The Python `FreedomVerifier` is a compatibility runtime — not the Rust TCB. It is tested but not formally checked. Use the Rust `CallGate` for security-sensitive deployments.
+
+---
+
+## Running tests
 
 ```bash
-pip install authgate                        # pure Python, no build toolchain
-pip install maturin && cd authgate-kernel && pip install .   # with Rust kernel
-```
+# Rust TCB tests (78 tests)
+cd freedom-kernel && cargo test --lib
 
-```python
-from authgate.kernel import _BACKEND
-print(_BACKEND)  # "rust" or "python"
+# Kani model checking (per harness)
+cargo kani --harness prop_attenuation_two_node
+cargo kani --harness prop_epoch_check
+cargo kani --harness proof_forged_revocation_ignored
+
+# Lean 4 proofs
+cd formal/lean4 && lake build
+
+# Python attack harness
+python attack_harness/mutation_attacks.py
+python attack_harness/canonicalization_attacks.py
+python attack_harness/sequence_attacks.py
+python attack_harness/attack_tree_coverage.py
+
+# Python oracle / integration tests
+pip install -e ".[dev]"
+pytest --cov=authgate
 ```
 
 ---
 
-## Forbidden flags
-
-Any `Action` with any of these flags set to `True` is **unconditionally blocked**.
-No context, argument, or emergency overrides them. Flag check is O(1).
-
-| Flag | Invariant enforced |
-|---|---|
-| `increases_machine_sovereignty` | Machines do not accumulate ungranted authority |
-| `resists_human_correction` | Human owners must be able to halt or revoke at any time |
-| `bypasses_verifier` | Circumventing the gate is itself a sovereignty violation |
-| `weakens_verifier` | Degrading enforcement strength is forbidden |
-| `disables_corrigibility` | Corrigibility is structural, not a preference |
-| `machine_coalition_dominion` | Collective machine dominion over persons is blocked |
-| `coerces` | Coercion invalidates consent |
-| `deceives` | Deception produces invalid consent |
-| `self_modification_weakens_verifier` | Equivalent to bypassing the gate |
-| `machine_coalition_reduces_freedom` | Coordinated machine action reducing human freedom |
-
----
-
-## Limitations
-
-These are explicit, non-negotiable limitations of the current system:
+## Limitations (explicit, non-negotiable)
 
 | # | Limitation |
 |---|---|
-| **L1** | **Semantic content is not checked.** An agent that encodes harmful intent in its text output is not detected. The kernel gates typed actions, not natural language. |
-| **L2** | **A malicious human owner is out of scope.** The system requires a trust root. It does not verify that the root is itself trustworthy. This is an explicit design choice, not an oversight. |
-| **L3** | **Side channels are not addressed.** Timing attacks, steganography, and covert channel leakage are out of scope. |
-| **L4** | **The Python implementation is not formally verified.** Only `engine.rs` is under Kani/Lean 4 proofs. The Python layer is tested but not proved. |
-| **L5** | **Extensions are heuristic.** `manipulation_score`, IFC labels, and similar signals are probabilistic. They are not TCB components and do not carry formal guarantees. |
-| **L6** | **Distributed consistency requires additional infrastructure.** The registry is in-process. Multi-node deployments require an external consensus layer; the kernel does not provide one. |
-| **L7** | **Cross-runtime attestation is not yet standardized.** Signed results from one kernel instance are verifiable but there is no cross-instance revocation protocol yet. |
-
----
-
-## Integrations
-
-The kernel exposes a C ABI for language-agnostic use:
-
-```c
-#include "authgate_kernel.h"
-
-char out[FREEDOM_KERNEL_MAX_OUTPUT];
-const char *input = "{\"registry\":{...},\"action\":{...}}";
-authgate_kernel_verify(input, strlen(input), out, sizeof(out));
-// {"permitted":true,"signature":"...","signing_key":"...","key_id":"..."}
-```
-
-JSON in, JSON out. Confirmed working from: **C, Go, Zig, Java (JNA), Node.js (ffi-napi)**.
-
-**Framework adapters (outside TCB):**
-
-| Adapter | Status | Notes |
-|---|---|---|
-| LangChain | Available | Tool wrapper — intercepts `tool.run()` calls |
-| OpenAI Agents SDK | Available | Function-call hook before execution |
-| AutoGen | Available | Agent message interceptor |
-| Anthropic (Claude) | Available | Tool use → Action IR → verify → execute |
-| C ABI | Stable | Go, Zig, Java, Node.js via FFI |
-
----
-
-## Benchmarks
-
-Measured on x86-64 Linux, single core, Rust release build. Python numbers are ~10-20x higher.
-
-| Benchmark | Target | Typical | Notes |
-|---|---|---|---|
-| `verify()` — permit path | < 5 µs | ~2 µs | Single claim lookup, O(claims) |
-| `verify()` — blocked (flag) | < 1 µs | ~0.3 µs | Flag check is O(1), exits immediately |
-| Registry, 10k claims | < 50 µs | ~30 µs | Linear scan; hash index planned |
-| Delegation chain, depth 16 | < 200 µs | ~120 µs | Full chain validation |
-| Cascading revocation, 100 agents | < 1 ms | ~600 µs | BFS over ownership graph |
-
-Run benchmarks:
-
-```bash
-cargo bench --bench verify_bench
-```
-
----
-
-## Formal verification
-
-### Kani bounded model-checking
-
-Covers `engine.rs` (v1) and `src/tcb/` (v2). Each harness is symbolically executed over all possible inputs within unwind bounds.
-
-**v1 harnesses (19):**
-
-| Harness | What is verified |
-|---|---|
-| `prop_increases_machine_sovereignty` … `prop_coalition_reduces_freedom` | All 10 flags produce BLOCKED, for any input |
-| `prop_ownerless_machine_blocked` | Machine with no owner entry → BLOCKED, always |
-| `prop_machine_governs_human_blocked` | Machine governing human → BLOCKED, always |
-| `prop_public_resource_read_permitted` | `is_public=true` + read → PERMITTED, always |
-| `prop_write_denied_without_claim` / `prop_read_denied_without_claim` | No claim → BLOCKED |
-| `prop_permitted_deterministic` | Same input → same output, no hidden state |
-| `prop_permitted_implies_no_violations` | PERMITTED ↔ violations list is empty |
-| `prop_blocked_implies_violations_non_empty` | BLOCKED ↔ at least one violation |
-
-**v2 harnesses (3, `formal/kani/`):**
-
-| Harness | What is verified |
-|---|---|
-| `prop_attenuation_two_node` | Child rights ⊆ parent rights for all bitmask combinations |
-| `prop_epoch_check` | Epoch gate is a total relation (no third case exists) |
-| `proof_forged_revocation_ignored` | Invalid-sig revocation never changes Permit → Deny |
-
-```bash
-cargo kani --harness prop_increases_machine_sovereignty   # v1
-cargo kani --harness prop_attenuation_two_node            # v2
-```
-
-### Lean 4
-
-**Proved theorems (no `sorry` except where explicitly admitted at cryptographic boundaries):**
-
-| Theorem | File | What is proved |
-|---|---|---|
-| `forbidden_flags_always_block` | Proofs.lean | Flag set → `permitted = false`, constructively |
-| `verify_deterministic` | Proofs.lean | Pure function: no state, no effects |
-| `attenuation_transitive` | Proofs.lean | If B ⊆ A and C ⊆ B then C ⊆ A (chain attenuation) |
-| `rights_sufficiency_correct` | Proofs.lean | `required ⊆ cap.rights` ↔ rights check passes |
-| `epoch_gate_total` | Proofs.lean | `cap_epoch < min_epoch ∨ min_epoch ≤ cap_epoch` — no third case |
-| `stale_epoch_implies_deny` | Proofs.lean | Stale epoch → `¬FreshEpoch` — deny without revocation list |
-| `subject_mismatch_violates_binding` | Proofs.lean | `cap.subject ≠ actor_id` → `¬SubjectBinding` |
-
-**Admitted (axiomatized from cryptographic assumptions):**
-
-| Axiom | Assumption |
-|---|---|
-| `sig_euf_cma` | ed25519 EUF-CMA security — unforgeability of valid signatures |
-| `forged_revocation_harmless` | Invalid-sig revocations do not affect decisions — proved by code inspection |
-
-```bash
-cd formal/lean4 && lake build
-```
-
-**Proof scope:** TCB behaviors on typed inputs. Not proved: Python implementation, extensions, adapters, multi-agent semantics, or any property involving natural language. See [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md).
-
-### Attack harness (42 tests + adversarial simulation — all passing)
-
-```bash
-cd attack_harness
-python mutation_attacks.py           # mutation tests
-python canonicalization_attacks.py   # canonicalization attack tests
-python sequence_attacks.py           # sequence / composition tests
-python attack_tree_coverage.py       # all 7 attack classes (AT-1 through AT-7)
-
-# Full adversarial simulation: 231 scenarios, 0 violations
-python simulation/run_simulation.py
-```
-
-These are black-box regression tests for the security properties. They run against
-the Python model of the v2 TCB and serve as ground truth for what the Rust TCB must
-implement. See `attack_harness/simulation/README.md` for simulation architecture.
-
-**Closed gaps:** AT-5.1 (delegation impersonation) and AT-3.1 (intermediate epoch).
-**Open gap:** AT-7.5 (shadow execution — requires call gate, v3 release gate).
+| L1 | **Semantic content not checked.** The kernel gates typed actions, not LLM outputs. An agent encoding harmful intent in natural language is not blocked here. |
+| L2 | **Malicious trust root is out of scope.** The system requires a trust anchor. It does not verify the root is itself trustworthy. |
+| L3 | **Side channels not addressed.** Timing attacks, steganography, covert channels — out of scope by design. |
+| L4 | **Python runtime is not formally checked.** Only the Rust TCB is under Kani/Lean 4. |
+| L5 | **Extensions are heuristic.** IFC labels, manipulation scores — probabilistic, not proved, not TCB. |
+| L6 | **Distributed consistency requires external infrastructure.** The kernel is in-process. Multi-node requires a separate consensus layer. |
+| L7 | **No implementation-level refinement proof.** TLA+ spec and Rust implementation are aligned by design and testing, not by mechanized refinement proof. |
+| L8 | **Clock integrity is caller-supplied.** A compromised clock is not detected by the kernel. |
 
 ---
 
@@ -393,53 +344,34 @@ implement. See `attack_harness/simulation/README.md` for simulation architecture
 
 Before opening a PR, answer one question:
 
-> **Can this feature exist entirely outside `engine.rs`?**
+> Can this feature exist entirely outside `src/tcb/`?
 
-If yes — it does not belong in the TCB. Extensions, adapters, and new capability kinds are welcome outside the TCB. Changes that touch TCB files (`engine.rs`, `capability.rs`, `wire.rs`, `crypto.rs`) require a written justification and must pass all CI guards.
+If yes — it does not belong in the TCB. TCB changes require a written justification, a corresponding spec-core invariant, and must pass all CI guards. See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`BRANCHES.md`](BRANCHES.md).
 
-The pull request template enforces this check. See [`CONTRIBUTING.md`](CONTRIBUTING.md) and [`TCB.md`](TCB.md).
+The dependency order for new features is:
+```
+1. Define invariant in spec-core (TLA+ or THREAT_MODEL)
+2. Verify formally (TLC or Lean proof)
+3. Implement in tcb-core (Rust)
+4. Close in adversarial-lab (attack scenario denied)
+5. Mirror in integration (Python oracle updated)
+6. Merge to main (all CI green)
+```
 
----
-
-## Branch Strategy
-
-This repository uses a **Dual Reality Architecture** — three independent truths
-that must stay consistent but never contaminate each other:
-
-| Branch | Truth type | Purpose |
-|---|---|---|
-| `main` | Ground truth | The only branch that deploys |
-| `tcb-core` | Execution truth | Minimal Rust TCB, LOC gate ≤ 600 |
-| `spec-core` | Mathematical truth | TLA+ spec, Lean4 proofs, threat model |
-| `adversarial-lab` | Adversarial truth | Attack harness, simulation engine |
-| `integration` | Execution truth | Python adapters, MCP gate, LangGraph |
-
-**Rule:** findings from `adversarial-lab` reach `main` only via `spec-core` → `tcb-core` → `main`.
-No direct research → production path. See [`BRANCHES.md`](BRANCHES.md) for full rules and CBCT.
+Skipping steps 1–2 is tech debt. Skipping step 4 is an unclosed CBCT-2 gap.
 
 ---
 
 ## Ecosystem
 
-```
-authgate-kernel   — this repo, engineering only
-authgate-specs    — formal RFCs and specifications
-freedom-theory    — theoretical foundations (not required to use the kernel)
-```
-
-The theoretical foundations are in [freedom-theory](https://github.com/Aliipou/freedom-theory) — a separate repository by design. Using, auditing, or deploying the kernel requires no engagement with it.
-
----
-
-## Running tests
-
-```bash
-pip install -e ".[dev]"
-pytest --cov=authgate   # 165 tests, 85% coverage gate
-```
+| Repo | Purpose |
+|---|---|
+| `authgate-kernel` | This repo — engineering and implementation |
+| `authgate-specs` | Formal RFCs and specifications |
+| `freedom-theory` | Theoretical foundations (not required to use the kernel) |
 
 ---
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [`LICENSE`](LICENSE).

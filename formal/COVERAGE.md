@@ -2,27 +2,36 @@
 
 ## TLA+ Model Checking
 
-Run: `tlc FreedomKernel.tla -config FreedomKernel.cfg -workers auto`
+Run: `java -jar tla2tools.jar -tool MC_AuthGateV3`
 
-| Property                | Status       | State Space                        |
-|-------------------------|--------------|------------------------------------|
-| A4 (ownership)          | ✓ verified   | MaxEntities=5, exhaustive          |
-| A6 (no machine governs) | ✓ verified   | MaxEntities=5, exhaustive          |
-| A7 (delegation)         | ✓ verified   | MaxResources=10, exhaustive        |
-| Forbidden flags block   | ✓ verified   | All 10 flags, exhaustive           |
-| IFC non-interference    | ✓ verified   | 3-label lattice, exhaustive        |
-| TOCTOU safety           | ✓ verified   | bounded depth=3                    |
+| Property                | Status          | State Space                        |
+|-------------------------|-----------------|------------------------------------|
+| I1 CanonicalBinding     | PENDING TLC     | MC model: MCActors × MCResources   |
+| I2 IdentityBinding      | PENDING TLC     | MC model                           |
+| I3 ExpiryGate           | PENDING TLC     | MC model                           |
+| I4 EpochSafety          | PENDING TLC     | MC model, MCMaxEpoch=2             |
+| I5 ResourceBinding      | PENDING TLC     | MC model                           |
+| I6 Attenuation          | PENDING TLC     | MC model, MCMaxChainDepth=2        |
+| I7 ChainEpoch           | PENDING TLC     | MC model                           |
+| I8 ChainComplete        | PENDING TLC     | MC model                           |
+| I9 RevocationSafety     | PENDING TLC     | MC model                           |
+| BigSafety (I1–I9)       | PENDING TLC     | Conjunction                        |
+| PermitSoundness         | PENDING TLC     | Primary theorem                    |
 
-Constants used (exhaustive within these bounds):
+Constants used in MC model:
 ```
-MaxEntities  = 5
-MaxResources = 10
-MaxDepth     = 3
+MCActors      = {"a0", "a1", "a2", "a3"}
+MCResources   = {"r1"}
+MCProofHashes = {"h1", "h2", "h3", "h4", "h5"}
+MCPublicKeys  = {"pk0", "pk1", "pk2", "pk3"}
+MCRootKey     = "pk0"
+MCMaxChainDepth = 2
+MCMaxEpoch    = 2
 ```
 
 ## Kani Model Checking
 
-Run: `cargo kani --harness <name>` from `authgate-kernel/`
+Run: `cargo kani --harness <name>` from `freedom-kernel/`
 
 | Harness                              | Property                                          | Status     |
 |--------------------------------------|---------------------------------------------------|------------|
@@ -40,19 +49,68 @@ Run: `cargo kani --harness <name>` from `authgate-kernel/`
 | prop_machine_governs_human_blocked   | governs_humans non-empty → A6 → blocked           | ✓ proved   |
 | prop_public_resource_read_permitted  | is_public=true, op=read → always permitted        | ✓ proved   |
 | prop_write_denied_without_claim      | No write claim → WRITE DENIED                     | ✓ proved   |
+| prop_attenuation_two_node            | child.rights ⊆ parent.rights (all bitmasks)       | ✓ proved   |
+| prop_epoch_check                     | epoch gate is total (no third case)               | ✓ proved   |
+| proof_forged_revocation_ignored      | invalid-sig revocation never flips Permit→Deny    | ✓ proved   |
 
 ## Lean 4 Theorems
 
-Located in `formal/lean/` (see `FreedomKernel.lean`):
+Located in `formal/lean4/` (see `Proofs.lean`):
 
-| Theorem                      | Statement                                                         |
-|------------------------------|-------------------------------------------------------------------|
-| `forbidden_implies_blocked`  | Any action with a forbidden flag cannot be permitted              |
-| `ownerless_machine_blocked`  | A machine without a registered owner is always blocked (A4)       |
+| Theorem                          | Statement                                                                  |
+|----------------------------------|----------------------------------------------------------------------------|
+| `forbidden_implies_blocked`      | Any action with a forbidden flag cannot be permitted                       |
+| `verify_deterministic`           | Same input → same output; no hidden state                                  |
+| `attenuation_transitive`         | If B ⊆ A and C ⊆ B then C ⊆ A (chain attenuation)                        |
+| `rights_sufficiency_correct`     | required ⊆ cap.rights ↔ rights check passes                               |
+| `epoch_gate_total`               | cap.epoch < min ∨ min ≤ cap.epoch — no third case                         |
+| `stale_epoch_implies_deny`       | cap.epoch < min_epoch → ¬FreshEpoch                                       |
+| `subject_mismatch_violates_binding` | cap.subject ≠ actor_id → ¬SubjectBinding                               |
+
+Admitted axioms (cryptographic boundary):
+- `sig_euf_cma` — ed25519 EUF-CMA security
+- `forged_revocation_harmless` — invalid-sig revocations do not affect decisions
+
+## TCB Rust Test Coverage
+
+| File | Tests | Code paths covered |
+|---|---|---|
+| `engine.rs` (inline) | 5 | Permit, Deny (tampered, expired, stale, wrong actor) |
+| `dag.rs` (inline) | 7 | Root, delegation, wrong key, attenuation, AT-5.1, AT-3.1, two-level |
+| `sequence.rs` (inline) | 2 | Accumulation, limit detection |
+| `tests.rs` | 73 | All 9 invariant paths × permit + deny + boundary |
+| `call_gate.rs` (inline) | 22 | Same paths through public API + consistency + AT-7.5 |
+| **Total** | **109** | |
+
+## Adversarial Simulation
+
+Run: `python attack_harness/attack_tree_coverage.py`
+
+| Attack class | Scenarios | Result |
+|---|---|---|
+| AT-1 (IR tampering) | 31 | 0 violations |
+| AT-2 (chain manipulation) | 42 | 0 violations |
+| AT-3 (epoch/revocation) | 35 | 0 violations |
+| AT-4 (composition) | 28 | 0 violations |
+| AT-5 (identity binding) | 21 | 0 violations |
+| AT-6 (crypto boundary) | 42 | 0 violations |
+| AT-7 (integration boundary) | 32 | 0 violations |
+| **Total** | **231** | **0 violations** |
+
+## Open Gaps (explicit, not hidden)
+
+| Gap | Description | Why it's acceptable |
+|---|---|---|
+| G1 | Semantic gap | Kernel doesn't parse intent — by design |
+| G3 | Clock trust | Caller-supplied `now` — documented limitation |
+| G6 | Crypto assumptions | ed25519 break = NIST-level threat — out of scope |
+| TLC run | TLA+ model not yet TLC-checked | Needs Java + tla2tools.jar |
+| Refinement | No TLA+ → Rust refinement proof | Research-level gap; documented in INCOMPLETENESS.md |
 
 ## What Is NOT Formally Verified
 
-- Manipulation detection scores (probabilistic, not formally proved)
-- Confidence weighting (design intent, not invariant)
-- Audit log chain integrity (tested, not model-checked)
-- Fuzzing coverage (continuous, not exhaustive)
+- Python compatibility runtime (tested, not proved)
+- Extension layer (IFC, manipulation scorer) — heuristic, no formal claims
+- Adapter layer boundary semantics
+- Distributed consistency (no spec exists yet)
+- Implementation-level refinement from TLA+ to Rust
