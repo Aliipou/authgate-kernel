@@ -76,11 +76,12 @@ Admitted axioms (cryptographic boundary):
 | File | Tests | Code paths covered |
 |---|---|---|
 | `engine.rs` (inline) | 5 | Permit, Deny (tampered, expired, stale, wrong actor) |
-| `dag.rs` (inline) | 7 | Root, delegation, wrong key, attenuation, AT-5.1, AT-3.1, two-level |
-| `sequence.rs` (inline) | 2 | Accumulation, limit detection |
+| `dag.rs` (inline) | 8 | Root, delegation, wrong key, attenuation, AT-5.1, AT-3.1, two-level, resource propagation |
+| `sequence.rs` (now `src/sequence.rs`, outside TCB) | 2 | Accumulation, limit detection |
 | `tests.rs` | 73 | All 9 invariant paths × permit + deny + boundary |
 | `call_gate.rs` (inline) | 22 | Same paths through public API + consistency + AT-7.5 |
-| **Total** | **109** | |
+| `hardening_tests.rs` | 31 | Resource redirection, malformed crypto, bundle manipulation, depth limit, rights/epoch edge cases, 6 proptest properties |
+| **Total** | **141** | |
 
 ## Adversarial Simulation
 
@@ -97,12 +98,20 @@ Run: `python attack_harness/attack_tree_coverage.py`
 | AT-7 (integration boundary) | 32 | 0 violations |
 | **Total** | **231** | **0 violations** |
 
+## Newly Closed Gaps (this hardening pass)
+
+| ID | Fix | What it closes |
+|---|---|---|
+| INV-RESOURCE-PROP | Resource propagation in `dag.rs` | Compromised delegator cannot redirect root-granted authority to a different resource. Previously, a delegator with a root-signed cap for R1 could issue a child cap for R2 and the chain would validate. Now rejected with "delegation chain resource mismatch". |
+| TCB boundary | Moved `sequence.rs` out of `tcb/` | `SequenceContext` is a policy helper, not a security enforcer. Moving it clarifies the TCB boundary (engine + dag + call_gate + types = ~255 LOC). |
+
 ## Open Gaps (explicit, not hidden)
 
 | Gap | Description | Why it's acceptable |
 |---|---|---|
 | G1 | Semantic gap | Kernel doesn't parse intent — by design |
 | G3 | Clock trust | Caller-supplied `now` — documented limitation |
+| G5 | No replay protection | Kernel is stateless; replay protection belongs in the orchestration layer |
 | G6 | Crypto assumptions | ed25519 break = NIST-level threat — out of scope |
 | TLC run | TLA+ model not yet TLC-checked | Needs Java + tla2tools.jar |
 | Refinement | No TLA+ → Rust refinement proof | Research-level gap; documented in INCOMPLETENESS.md |
