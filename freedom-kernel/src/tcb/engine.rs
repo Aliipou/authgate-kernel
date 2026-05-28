@@ -24,7 +24,6 @@ use crate::tcb::dag::validate_chain;
 /// - `action`    — canonical, tamper-evident action request from the (untrusted) adapter layer.
 /// - `root_key`  — the trust anchor. Caller is responsible for establishing this securely.
 /// - `now`       — current Unix seconds. Caller is responsible for clock integrity.
-/// Not `pub` — the only external path is through `CallGate::execute()`.
 pub(crate) fn verify(
     action: &CanonicalAction,
     root_key: &VerifyingKey,

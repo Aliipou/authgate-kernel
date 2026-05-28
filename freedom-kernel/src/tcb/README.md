@@ -1,77 +1,86 @@
 # TCB — Trusted Computing Base
 
-Branch: `tcb-core` | Track: Execution Truth
+The `tcb/` module is the entire security kernel. Everything outside it is untrusted.
 
-## What Is Here
+## Public API
 
-The authgate-kernel Trusted Computing Base: the minimal set of Rust code that
-all security guarantees depend on. Every line here is part of the attack surface.
-Less code = smaller attack surface = easier audit.
-
-```
-engine.rs    ≤ 120 LOC   verify() entry point, main decision loop
-dag.rs       ≤ 120 LOC   validate_chain() — BFS proof-chain verification
-types.rs     ≤ 220 LOC   CanonicalAction, CapabilityProof, Decision IR
-sequence.rs  ≤ 120 LOC   SequenceContext — accumulated rights across a session
-─────────────────────────
-TOTAL        ≤ 600 LOC   hard CI gate
+```rust
+// The only way to call the kernel from outside this crate:
+let gate = CallGate::new(root_key);
+let decision = gate.execute(&action, now);
 ```
 
-## Files
+`engine::verify` is `pub(crate)`. Calling it from outside the crate is a compile-time error (AT-7.5 structural closure).
 
-| File | Invariants enforced | Key functions |
+## Module map
+
+| File | Role | LOC budget |
 |---|---|---|
-| `engine.rs` | I1, I3, I4, I6 (leaf checks) | `verify()`, `check_cap()` |
-| `dag.rs` | I2, I3, I7 (chain checks) | `validate_chain()` |
-| `types.rs` | binding_valid (canonical gate) | `CanonicalAction::verify_binding()` |
-| `sequence.rs` | I5 CompositionMono | `SequenceContext::accumulate()` |
-| `tests.rs` | All (56 tests) | integration + unit coverage |
+| `call_gate.rs` | Public entry point; wraps `engine::verify` | ≤ 50 |
+| `engine.rs` | `pub(crate) verify()` — 3-layer decision logic | ≤ 120 |
+| `dag.rs` | Delegation chain traversal and validation | ≤ 120 |
+| `sequence.rs` | Session-scoped rights accumulation | ≤ 100 |
+| `types.rs` | Data types: zero logic, zero IO | ≤ 120 |
+| `tests.rs` | Integration test suite (56+ tests) | — |
 
-## Invariant Mapping
+## Invariant mapping
 
-Every security check traces to a TLA+ invariant in `spec-core/formal/authgate_v3.tla`:
+Every security check in `engine.rs` maps to a formal invariant in `formal/authgate_v3.tla`:
 
 | Code check | TLA+ invariant | Attack class closed |
 |---|---|---|
-| `action.verify_binding()` | binding_valid | AT-7 post-seal tamper |
-| `cap.epoch < action.min_epoch` | I1 EpochSafety | AT-3 leaf epoch |
-| `current.epoch < min_epoch` in dag | I7 ChainEpoch | AT-3.1 intermediate epoch |
-| `SHA-256(issuer_pubkey) == parent.subject_id` | I2 IdentityBinding | AT-5.1 delegation impersonation |
-| `(child.rights & !parent.rights) != 0` | I3 Attenuation | AT-2 attenuation violation |
-| `cap.proof_hash == rev.target_proof_hash` | I4 RevocationSafety | AT-3 revocation |
-| `cap.resource_hash != action.resource_hash` | I6 ResourceBinding | AT-6 cross-resource |
+| `action.verify_binding()` | `I1 (CanonicalBinding)` | AT-1 (IR tampering) |
+| `cap.subject_id == action.actor_id` | `I2 (IdentityBinding)` | AT-2.1, AT-5.2 |
+| `cap.resource_hash == action.resource_hash` | `I5 (ResourceBinding)` | AT-6.1, AT-2.2 |
+| `cap.expiry >= now` | `I3 (ExpiryGate)` | AT-3.6 |
+| `cap.epoch >= action.min_epoch` | `I4 (EpochSafety)` — leaf | AT-3.2 |
+| `validate_chain(cap, ...)` | `I6 (Attenuation)`, `I7 (ChainEpoch)` | AT-2.3–2.7, AT-3.1, AT-5.1 |
+| `(cap.rights & required) == required` | rights sufficiency (implied by I2+I6) | AT-2.6 |
+| revocation proof check | `I4 (RevocationSafety)` | AT-3.3, AT-3.4 |
+| CallGate structural closure | — | AT-7.5 (shadow execution) |
 
-## Rules (enforced by TCB_CONSTRAINTS.md)
+## Identity model
 
-- No `std::io`, `std::net`, `std::fs`
-- No `unwrap()`, `expect()`, `panic!()` — use `?` or explicit `Err`
-- No `unsafe` (`#![forbid(unsafe_code)]` in lib.rs)
-- Every new check needs a corresponding TLA+ invariant in spec-core
+`subject_id = SHA-256(issuer_pubkey)`
 
-## Running Tests
+Every node in a delegation chain must satisfy this binding (AT-5.1). It is enforced in `dag::validate_chain` by computing `SHA-256(current.issuer_pubkey)` and comparing it to `parent.subject_id`.
 
-```bash
-cd freedom-kernel
-cargo test --lib tcb -- --nocapture   # TCB unit tests (56)
-cargo test --lib                       # full suite
+## Decision layers
+
+```
+engine::verify()
+  [L1] action.verify_binding()           ← AT-1: any IR tamper caught here
+  [L2] for each cap where subject == actor:
+       resource_hash match?              ← AT-6.1
+       expiry >= now?                   ← AT-3.6
+       epoch >= min_epoch?              ← AT-3.2
+       validate_chain(cap, bundle):
+           depth ≤ 16                   ← AT-2.7
+           each node epoch >= min_epoch ← AT-3.1
+           ed25519 signature valid      ← AT-2.3, AT-2.4
+           parent found in bundle       ← AT-2.5
+           SHA-256(pubkey) == subject   ← AT-5.1
+           rights ⊆ parent.rights       ← AT-2.6 (attenuation)
+       rights sufficiency               ← rights gap
+  [L3] revocation proofs (root-signed only) ← AT-3.3, AT-3.4
 ```
 
-## Identity Model
+## Test suite
 
-`subject_id = SHA-256(pubkey)` — established in AT-5.1 fix (commit bf23248).
+`tests.rs` contains 56 tests organized by category:
 
-All delegation chain construction must use `subject_id_of(sk)` in tests:
-```rust
-fn subject_id_of(sk: &SigningKey) -> [u8; 32] {
-    Sha256::digest(sk.verifying_key().to_bytes()).into()
-}
-```
+- **happy_***: valid inputs that should Permit
+- **deny_***: one mutation that triggers exactly one deny path
+- **edge_***: boundary values (expiry == now, epoch == min_epoch, etc.)
+- **chain_***: delegation chain scenarios (depth limit, missing parent)
+- **compose_***: SequenceContext composition tests
+- **AT-N.M_***: named test for a specific attack tree node
 
-## Open Gap: AT-7.5 Call Gate (v3 release gate)
+`call_gate.rs` adds 22 tests that verify the same logic through the public API, plus a consistency test confirming gate output matches `engine::verify` directly.
 
-The kernel cannot prevent adapters that bypass `verify()` entirely.
+## Hard rules (never break these)
 
-Design: a `CallGate` wrapper will be the only exported entry point.
-Raw `verify()` will be private. Adapters receive a `CallGate` handle.
-
-Status: design pending. This is a hard gate before v3 ships to production.
+- No `unsafe` anywhere in this module (`#![forbid(unsafe_code)]` in every file)
+- No IO, no network, no global state, no panics
+- `engine::verify` stays `pub(crate)` — never `pub`
+- Total TCB LOC ≤ 600 (enforced by `TCB_CONSTRAINTS.md`)
