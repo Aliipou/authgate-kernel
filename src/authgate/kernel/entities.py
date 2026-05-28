@@ -43,13 +43,24 @@ class Resource:
         return f"{self.rtype.value}:{self.name}"
 
 
+def _has_traversal(path: str) -> bool:
+    """Return True if path contains any .. path-traversal segment."""
+    parts = path.replace("\\", "/").split("/")
+    return ".." in parts
+
+
 def scope_contains(parent_scope: str, child_path: str) -> bool:
     """
     Returns True iff child_path falls within parent_scope (prefix matching).
 
     Formal rule: scope_contains(P, C) iff C == P or C starts with normalize(P) + "/"
     An empty parent_scope matches everything (root / universal scope).
+
+    Path traversal: any path containing '..' segments returns False — no normalization
+    is performed, since normalization of untrusted input is itself an attack surface.
     """
+    if _has_traversal(parent_scope) or _has_traversal(child_path):
+        return False
     if not parent_scope:
         return True
     normalized = parent_scope.rstrip("/")

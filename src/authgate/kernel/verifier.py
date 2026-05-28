@@ -87,8 +87,16 @@ class FreedomVerifier:
         registry: OwnershipRegistry,
         audit_log: object = None,
         tracer: TraceCollector | None = None,
+        freeze: bool = False,
     ) -> None:
-        self.registry = registry
+        # freeze=False (default): live registry — mutations after construction
+        # are visible to subsequent verify() calls. This is the existing behavior.
+        # TOCTOU note: if the registry can be mutated between verify() calls in
+        # the same logical session, use freeze=True or call registry.freeze()
+        # before constructing the verifier to get a consistent snapshot.
+        # freeze=True: registry is snapshot at construction time; all verify()
+        # calls in this verifier see the same state regardless of later mutations.
+        self.registry = registry.freeze() if freeze and not registry._frozen else registry
         self._audit_log = audit_log
         self._tracer = tracer
 
@@ -129,7 +137,7 @@ class FreedomVerifier:
         ownership_ok = True
         if action.actor.is_machine() and self.registry.owner_of(action.actor) is None:
             violations.append(
-                f"UNOWNED_MACHINE: {action.actor.name} has no registered human owner. "
+                f"[A4] UNOWNED_MACHINE: {action.actor.name} has no registered human owner. "
                 "An ownerless machine is not permitted to act."
             )
             ownership_ok = False
@@ -145,7 +153,7 @@ class FreedomVerifier:
         if action.actor.is_machine():
             for human in action.governs_humans:
                 msg = (
-                    f"MACHINE_DOMINION: {action.actor.name} cannot govern human {human.name} "
+                    f"[A6] MACHINE_DOMINION: {action.actor.name} cannot govern human {human.name} "
                     "(machines have no ownership or dominion over persons)."
                 )
                 violations.append(msg)
