@@ -7,27 +7,31 @@
 /// - `types`     — data types only; zero logic, zero IO
 /// - `dag`       — delegation chain validation
 /// - `call_gate` — the ONLY public entry point into the kernel (AT-7.5 closure)
-/// - `sequence`  — composition safety: tracks accumulated rights across an action sequence
 /// - `engine`    — `pub(crate)` verify(); reachable only through `call_gate`
+///
+/// # NOT in the TCB (policy/orchestration layer)
+/// - `crate::sequence` — SequenceContext; tracks accumulated rights, enforces nothing
 ///
 /// # Public API surface
 /// External callers use `CallGate::execute()`. The `engine::verify` function is
 /// `pub(crate)` — it is a compile-time type error to call it from outside this crate.
 ///
 /// # Invariants enforced here (see formal/lean4/Invariants.lean for proofs)
-/// - INV-ATTENUATION: child.rights ⊆ parent.rights in every chain
-/// - INV-SUBJECT:     capability.subject_id == action.actor_id
-/// - INV-RESOURCE:    capability.resource_hash == action.resource_hash
-/// - INV-EXPIRY:      capability.expiry >= now
-/// - INV-EPOCH:       capability.epoch >= action.min_epoch
-/// - INV-SIGCHAIN:    every node in the chain has a valid ed25519 signature
-/// - INV-ROOTSIG:     the chain root is verified against the caller-supplied root key
-/// - INV-CANONICAL:   action.binding_hash == H(all other fields) before any processing
-/// - INV-REVOCATION:  only root-signed revocations affect permit/deny decisions
+/// - INV-ATTENUATION:  child.rights ⊆ parent.rights in every chain
+/// - INV-RESOURCE-PROP: every delegation node covers the same resource as its parent
+/// - INV-SUBJECT:      capability.subject_id == action.actor_id
+/// - INV-RESOURCE:     capability.resource_hash == action.resource_hash
+/// - INV-EXPIRY:       capability.expiry >= now
+/// - INV-EPOCH:        capability.epoch >= action.min_epoch (every chain node)
+/// - INV-SIGCHAIN:     every node in the chain has a valid ed25519 signature
+/// - INV-ROOTSIG:      the chain root is verified against the caller-supplied root key
+/// - INV-CANONICAL:    action.binding_hash == H(all other fields) before any processing
+/// - INV-REVOCATION:   only root-signed revocations affect permit/deny decisions
 pub mod call_gate;
 pub mod dag;
-pub mod sequence;
 pub mod types;
 pub(crate) mod engine;
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod hardening_tests;
