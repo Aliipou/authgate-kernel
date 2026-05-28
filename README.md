@@ -92,10 +92,12 @@ freedom-kernel/src/
   tcb/               ← THE TRUSTED COMPUTING BASE (all security guarantees live here)
     call_gate.rs       CallGate — only public entry point; verify() is pub(crate)
     engine.rs          pub(crate) verify(action, root_key, now) → Decision
-    dag.rs             delegation chain traversal + attenuation enforcement
-    sequence.rs        SequenceContext — session-scoped rights accumulation
+    dag.rs             delegation chain traversal + attenuation + resource propagation
     types.rs           CanonicalAction, CapabilityProof, RevocationProof, Rights
-    tests.rs           56 targeted tests (one mutation → one deny path each)
+    tests.rs           73 targeted tests (one mutation → one deny path each)
+    hardening_tests.rs 31 adversarial tests (resource redirection, crypto, depth, proptest)
+
+  sequence.rs        SequenceContext — session-scoped rights accumulation (NOT in TCB)
 
   engine.rs          v1 registry-based verifier (used by Python adapter)
   capability.rs      closed capability taxonomy (enums only, no logic)
@@ -115,9 +117,11 @@ formal/
 
 attack_harness/
   mutation_attacks.py          20 mutation tests — one security check per test
-  canonicalization_attacks.py  5 canonical gate attacks
-  sequence_attacks.py          5 composition attacks
+  canonicalization_attacks.py  5 canonical gate attacks (binding hash integrity)
+  sequence_attacks.py          5 composition attacks (SequenceContext)
   attack_tree_coverage.py      21 tests across AT-1 through AT-7
+  wire_attacks.py              27 wire boundary tests (TIER 3 I3, TIER 4 A1-A3)
+  differential_tests.py        20 differential tests (Python model semantics)
   simulation/                  231-scenario adversarial simulation engine
 
 src/authgate/        Python compatibility runtime (NOT TCB, NOT formally checked)
@@ -168,15 +172,16 @@ See [`BRANCHES.md`](BRANCHES.md) for full merge rules and closure requirements.
 
 ## Test coverage
 
-### TCB Rust tests (109 total, all passing)
+### TCB Rust tests (141 total, all passing)
 
 | File | Tests | Coverage category |
 |---|---|---|
 | `engine.rs` (inline) | 5 | Basic permit/deny sanity checks |
-| `dag.rs` (inline) | 7 | Chain validation: root, delegation, attenuation, AT-5.1, AT-3.1 |
-| `sequence.rs` (inline) | 2 | Accumulation, limit detection |
-| `tests.rs` (integration) | 56 | One test per security invariant path |
+| `dag.rs` (inline) | 8 | Chain validation: root, delegation, attenuation, AT-5.1, AT-3.1, resource propagation |
+| `src/sequence.rs` (inline) | 2 | Accumulation, limit detection (outside TCB — policy helper only) |
+| `tests.rs` (integration) | 73 | One test per security invariant path |
 | `call_gate.rs` (inline) | 22 | All deny paths + consistency + AT-7.5 |
+| `hardening_tests.rs` | 31 | Resource redirection, malformed crypto, bundle manipulation, depth limit, rights/epoch edge, 6 proptest properties |
 
 Every security check in `engine.rs` and `dag.rs` has:
 1. A test that triggers it (deny path fires)
@@ -192,6 +197,8 @@ Mutation attacks:          20 tests — one field mutation per test
 Canonicalization attacks:   5 tests — Layer 1 binding hash variants
 Sequence attacks:           5 tests — SequenceContext composition
 Attack tree coverage:      21 tests — all 7 AT classes
+Wire boundary attacks:     27 tests — TIER 3 I3 + TIER 4 A1-A3 (JSON deserialization)
+Differential model tests:  20 tests — Python model semantics, boundary values
 Simulation (composition): 231 scenarios — depth-2 mutation pairs
 ```
 
