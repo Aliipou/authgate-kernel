@@ -98,6 +98,37 @@ the kernel does not automatically propagate delegation — each link must be exp
 or moral responsibility when a chain of machines causes harm. The kernel enforces authority
 boundaries; it does not model legal or ethical responsibility chains.
 
+### 4. Resource Scope Containment
+
+**Formal rule (Phase 1.3 — closed):**
+
+```
+normalize(P) := P.rstrip("/")
+
+scope_contains(P: String, C: String) :=
+    has_traversal(P) ∨ has_traversal(C) → False
+    ∨ P = ""                             → True   (universal / root scope)
+    ∨ C = normalize(P)                   → True   (exact match after normalization)
+    ∨ C.startswith(normalize(P) + "/")   → True   (C falls within P's prefix)
+    otherwise                            → False
+
+has_traversal(path) := ".." ∈ path.split("/")
+```
+
+**Properties:**
+- Reflexive: `scope_contains(P, P)` is True for all P without traversal
+- Transitive: if `scope_contains(P, Q)` and `scope_contains(Q, R)` then `scope_contains(P, R)`
+- Antisymmetric: if `scope_contains(P, Q)` and `scope_contains(Q, P)` then `normalize(P) = normalize(Q)`
+- Path traversal: any path containing `..` returns False — no normalization is performed, as normalizing untrusted input is itself an attack surface
+
+**Implementation:** `authgate.kernel.entities.scope_contains` — 40+ tests in `tests/test_scope.py`.
+
+**What this does NOT cover:**
+- Symbolic links or filesystem-level path aliasing
+- URL encoding / percent-encoding normalization
+- Case-insensitive matching (Windows paths)
+- Resource content access control — only namespace containment is checked
+
 ### 5. The Verification Gate
 
 ```
@@ -209,11 +240,11 @@ Honest path to "formally specified":
    to verify that `engine.rs` implements `Permitted(a, R)` exactly as specified above.
    This closes the gap between the mathematical spec and the running code.
 
-5. **Define resource scope semantics**: Formally specify what it means for a resource path
-   `/data/alice/` to "contain" a sub-resource `/data/alice/file.csv`. Currently this is
-   application-layer convention, not kernel-enforced.
+5. **~~Define resource scope semantics~~**: ✓ CLOSED — Phase 1.3. `scope_contains` is
+   formally specified (§4 above), implemented in `kernel/entities.py`, and covered by
+   40+ tests including path traversal cases.
 
-Items 1 and 3 are tractable in the short term. Items 2, 4, and 5 require dedicated research.
+Items 1 and 3 remain open. Items 2 and 4 require dedicated research.
 
 ---
 
@@ -227,6 +258,11 @@ Items 1 and 3 are tractable in the short term. Items 2, 4, and 5 require dedicat
 | Sovereignty flags unconditionally block | ✓ True |
 | Complete ownership semantics | ✗ Out of scope; application-layer concern |
 | Behavioral plan verification | ✗ Not provided; see verify_plan limitations |
+| Resource scope containment rule | ✓ Formally specified (§4) and tested (40+ cases) |
+| Typed error hierarchy | ✓ `authgate.errors` — structured exceptions with machine-readable fields |
+| Key rotation protocol | ✓ `RotationCertificate` with grace period, emergency path, wire roundtrip |
+| Audit log tamper-evidence | ✓ SHA-256 chain, concurrent-safe, forensic replay |
+| Thread-safe concurrent verification | ✓ Proven by stress tests (1000 concurrent calls) |
 | Formally verified implementation | ✗ Not yet; TLC model checking is the next step |
 | Sufficient for behavioral alignment | ✗ Necessary structural precondition only |
 
