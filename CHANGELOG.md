@@ -5,6 +5,94 @@ All notable changes to Freedom Kernel are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.1.0 — 2026-05-28/29
+
+### Added
+
+**Phase 1 — Production Hardening (complete)**
+- `AuditLog.load_from_file(path)` — reconstruct audit log from .jsonl for forensics
+- `AuditLog.load_and_verify(path)` — load + chain verification in one call
+- `AuditLog.replay(idx)` — forensic replay of single entry with tamper detection
+- `AuditLog.replay_range(start, stop)` — forensic replay of entry range
+- `AuditLog.head_hash()` — current chain head (GENESIS_HASH if empty)
+- `AuditLog.chain_errors()` — detailed chain error list (for incident response)
+- `GENESIS_HASH` constant exported from `authgate.kernel.audit`
+- Thread-safety fix: `_last_hash` is now read+set inside the lock in `record()`
+  (previously a race condition allowed concurrent appends to produce duplicate prev_hash)
+- `FreedomVerifier(freeze=False)` parameter — explicit TOCTOU-safe session mode
+- `[A4]` / `[A6]` axiom codes in violation messages for structured external processing
+- Structured logging (`authgate.kernel.verifier` logger): DEBUG on PERMIT, WARNING on DENY
+
+**Phase C3 — Key Rotation Protocol**
+- `src/authgate/key_rotation.py`: `RotationCertificate`, `issue_rotation()`, `verify_rotation()`
+- Grace period overlap window, emergency rotation (zero overlap), wire/JSON roundtrip
+- `ActiveKeySet`: tracks current + pending cert, `accepted_keys(now)` returns valid keys
+
+**Phase C2 — Typed Error Hierarchy**
+- `src/authgate/errors.py`: `AuthgateError → CapabilityError, RightsError, IntegrityError,
+  WireError, RegistryError, KeyRotationError` — structured dataclass exceptions with
+  machine-readable fields; exported from top-level `authgate` package
+
+**Phase C4 — CLI Tool**
+- `authgate-cli` entry point with `verify`, `audit {verify,replay,stats}`, `key` subcommands
+- Exit codes: 0=permit, 1=deny, 2=usage/parse error
+- `--json` flag for machine-readable output
+- `--audit LOG.jsonl` flag to append audit entry during verify
+
+**Phase 1.3 — Resource Scope Formal Rule**
+- `scope_contains()`: path traversal rejection via `_has_traversal()` — any `..` segment
+  returns False without normalization (normalization of untrusted paths is attack surface)
+- Scope containment rule formally specified in `SEMANTICS.md §4`
+- 40+ tests in `tests/test_scope.py` covering all edge cases
+
+**Phase D2 — Real Integration**
+- `examples/langchain_integration/demo.py`: end-to-end demo — registry→freeze→verify→audit
+  All assertions pass: 2 permits, 3 denies, chain intact
+
+**Phase A — WASM Sandbox**
+- `freedom-kernel/src/sandbox.rs`: `SandboxedExecutor` with rights bitmask → host functions
+- Unlisted host imports → WASM instantiation failure (structural, not runtime check)
+- 11 sandbox tests
+
+**Phase 2.1 — IFC (closed)**
+- `tests/test_ifc.py`: 21 Bell-LaPadula tests (SecurityLattice, check_action, check_plan)
+- Documented: PUBLIC cannot flow to unlabeled ("") — unknown label treated conservatively
+
+**Phase 2 seed — ConsentCapability**
+- `src/authgate/kernel/consent.py`: ConsentCapability, ConsentVerifier, ConsentViolation
+- Formal rule: ConsentValid(cap) iff ¬consent_required ∨ (human giver ∧ not expired ∧ scope)
+- 18 tests in `tests/test_consent.py`
+
+**Engineering / Package**
+- `src/authgate/py.typed`: PEP 561 marker — package is typed for mypy/pyright
+- `src/authgate/settings.py`: `AuthgateSettings` from env vars (`AUTHGATE_*` prefix)
+- `pyproject.toml`: `authgate-cli` entry point, py.typed in wheel include
+- `__init__.py`: errors and key_rotation exported from top-level package
+
+**Documentation**
+- `README.md`: complete rewrite — numbers table, CLI section, WASM section, 273 tests
+- `GUIDE.md`: full operational guide — install, registry, verify, audit, key rotation,
+  CLI reference, thread safety, integration patterns, failure modes, operational checklist
+- `SEMANTICS.md`: §4 Resource Scope Containment added (formal rule + properties);
+  status table updated with all closed items
+- `SILICON_VALLEY.md`: technical positioning — comparison table, WASM enforcement gap,
+  explicit non-claims, roadmap, who should use it
+- `TODO.md`: updated master roadmap with MASTER_PLAN success criteria tracking
+
+### Changed
+- `FreedomVerifier` default: `freeze=False` (live registry semantics preserved)
+- `scope_contains`: now rejects `..` path traversal segments
+- Tests: 236 → 294 (added IFC, consent, scope, CLI, thread safety, audit hardening,
+  key rotation)
+
+### Security
+- **AuditLog race condition fixed**: concurrent appends no longer produce duplicate
+  prev_hash values; proven by 200-concurrent-append stress test
+- **Path traversal hardened**: `scope_contains` now rejects any `..` segment
+- **Frozen registry enforced**: `RuntimeError` on any mutation of a frozen snapshot
+
+---
+
 ## v2.0.0-alpha — 2026-05-27
 
 ### Breaking Changes
