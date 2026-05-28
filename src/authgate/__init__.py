@@ -36,6 +36,16 @@ from authgate.kernel.audit import AuditLog
 from authgate.kernel.context import ExecutionContext
 from authgate.kernel.goals import GoalNode, GoalVerificationResult, verify_goal_tree
 from authgate.kernel.policy import Policy, PolicyRule, PolicyVerifier
+from authgate.errors import (
+    AuthgateError,
+    CapabilityError,
+    IntegrityError,
+    KeyRotationError,
+    RegistryError,
+    RightsError,
+    WireError,
+)
+from authgate.key_rotation import ActiveKeySet, RotationCertificate, issue_rotation, verify_rotation
 
 __all__ = [
     # Core kernel
@@ -77,4 +87,17 @@ __all__ = [
     "SecurityLattice",
     # Audit
     "AuditLog",
+    # Errors
+    "AuthgateError",
+    "CapabilityError",
+    "IntegrityError",
+    "KeyRotationError",
+    "RegistryError",
+    "RightsError",
+    "WireError",
+    # Key rotation
+    "RotationCertificate",
+    "ActiveKeySet",
+    "issue_rotation",
+    "verify_rotation",
 ]
