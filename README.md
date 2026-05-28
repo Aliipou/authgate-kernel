@@ -1,12 +1,12 @@
 # authgate-kernel
 
-**Capability-security runtime for autonomous agents. Mechanically checked core invariants. No heuristics inside the TCB.**
+**Capability-constrained authorization kernel for agent tool execution. ~255 LOC security-enforcing Rust path. No heuristics inside the TCB.**
 
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](freedom-kernel/)
 [![Kani](https://img.shields.io/badge/Kani-19%20harnesses-green.svg)](formal/)
 [![Lean4](https://img.shields.io/badge/Lean4-7%20theorems-blue.svg)](formal/lean4/)
-[![Tests](https://img.shields.io/badge/TCB%20tests-78%20passing-brightgreen.svg)](freedom-kernel/src/tcb/)
+[![Tests](https://img.shields.io/badge/TCB%20tests-109%20passing-brightgreen.svg)](freedom-kernel/src/tcb/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
@@ -21,7 +21,7 @@ If yes: `Decision::Permit`. If no: `Decision::Deny { reason }`. No exceptions. N
 
 The kernel is stateless. Authority lives in signed `CapabilityProof` chains passed with each request — no registry lookup, no network call, no side effects. The same action with the same proofs always produces the same decision.
 
-**Trusted Computing Base surface area:** `src/tcb/` — 5 files, ~510 LOC, `#![forbid(unsafe_code)]` everywhere. That is the entire kernel. Everything else is untrusted.
+**Security-enforcing critical path:** `engine.rs` (114 LOC) + `dag.rs` (101 LOC) + `call_gate.rs` (40 LOC) = ~255 LOC. These three files contain all security logic. `types.rs` (data structs) and `sequence.rs` (policy helper) are also in `src/tcb/` but contain no security enforcement. `#![forbid(unsafe_code)]` across all five files. Everything outside `src/tcb/` is untrusted.
 
 ---
 
@@ -127,52 +127,48 @@ src/authgate/        Python compatibility runtime (NOT TCB, NOT formally checked
 
 ---
 
-## Branch architecture — Dual Reality
+## Branch layout
 
-This project maintains three independent truths that must stay consistent but never contaminate each other. Merging without proof produces self-justifying security.
+Five branches with controlled merge gates. Each branch has a defined role and a fixed path to production.
 
-| Branch | Truth | What lives here | Merge rule |
-|---|---|---|---|
-| `main` | Ground truth | The only branch that deploys | CI green + zero CBCT-2 violations |
-| `spec-core` | Mathematical truth | TLA+ spec, Lean4 proofs, THREAT_MODEL | TLC-verified or Lean-discharged |
-| `tcb-core` | Execution truth | Rust TCB (≤600 LOC gate), CallGate | CI green + attack regression clean |
-| `adversarial-lab` | Adversarial truth | Attack harness, simulation engine | Never merges to main directly |
-| `integration` | Execution truth | Python adapters, MCP gate, LangGraph | TCB contract satisfied |
+| Branch | Role | Merge rule |
+|---|---|---|
+| `main` | Production — the only branch that deploys | CI green + all attack classes closed |
+| `spec-core` | Formal spec — TLA+ model, Lean4 proofs, threat model | TLC-verified or Lean-discharged |
+| `tcb-core` | Rust kernel — `call_gate.rs`, `engine.rs`, `dag.rs` | CI green + attack regression clean |
+| `adversarial-lab` | Attack harness — black-box probes of the Python oracle | Never merges to main directly |
+| `integration` | Adapters — Python runtime, MCP gate, LangGraph | TCB contract satisfied |
 
-### Merge rules — no cross-contamination without proof
+### Merge path
 
 ```
-ALLOWED:
-  adversarial-lab → spec-core     (new attack class → formal threat model)
-  spec-core       → tcb-core      (proven invariant → Rust implementation)
-  tcb-core        → main          (CI green + regression clean)
-  integration     → main          (TCB contract satisfied)
-
-FORBIDDEN:
-  adversarial-lab → main          (attack finding ≠ production change)
-  adversarial-lab → tcb-core      (no proof → no code change)
-  spec-core       → adversarial-lab (backflow breaks independence)
+adversarial-lab → spec-core   (attack finding → formal invariant update)
+spec-core       → tcb-core    (proved invariant → Rust implementation)
+tcb-core        → main        (CI green + regression clean)
+integration     → main        (Python oracle matches kernel behavior)
 ```
 
-### Branch guides
+Attack findings reach production only after formal closure and CI verification. There is no direct path from adversarial-lab or spec-core to main.
 
-**`main`** — Ground truth. The only branch that deploys. No research-grade code ever merges here without passing through formal + CI gates.
+### Per-branch rules
 
-**`spec-core`** — Mathematical truth. `formal/authgate_v3.tla` and `formal/MC_AuthGateV3.tla` live here. Work here is never compiled or deployed. Correctness is established by TLC model checking and Lean 4 theorem discharge. To add an invariant: define it in `authgate_v3.tla`, add it to `THREAT_MODEL.md`, write a TLC configuration entry.
+**`main`** — The only branch that deploys. Nothing merges here without CI passing and all known attack classes either closed or explicitly documented as out-of-scope.
 
-**`tcb-core`** — Execution truth. The Rust kernel: `call_gate.rs`, `engine.rs`, `dag.rs`, `types.rs`, `sequence.rs`. Hard rules: total LOC ≤ 600, no IO, no network, no panics, no unsafe, `engine::verify` stays `pub(crate)`. Every public function maps to at least one invariant in spec-core.
+**`spec-core`** — Contains `formal/authgate_v3.tla`, `formal/MC_AuthGateV3.tla`, Lean 4 proofs. Never compiled or deployed. To add an invariant: define it in `authgate_v3.tla`, add a TLC configuration entry, reference it in `THREAT_MODEL.md`.
 
-**`adversarial-lab`** — Adversarial truth. Probes the kernel from the outside: craft a structurally invalid action, run it through the Python oracle, verify it is denied. A violation = kernel returned Permit for invalid input. Runs independently of spec-core (CBCT-3: no circular self-validation). Findings flow to spec-core; never directly to tcb-core.
+**`tcb-core`** — The Rust kernel. Hard constraints: security-enforcing files ≤ 300 LOC each, no IO, no network, no panics, no unsafe, `engine::verify` stays `pub(crate)`.
 
-**`integration`** — Execution truth (adapter layer). Python compatibility runtime, MCP gate, LangGraph adapter. The Python runtime must match tcb-core behavior on all inputs. Divergence = integration test failure, not a kernel change.
+**`adversarial-lab`** — Black-box attack harness. Tests run against the Python oracle, never against the Rust source. Independence from spec-core is required — circular self-validation would defeat the purpose.
 
-See [`BRANCHES.md`](BRANCHES.md) for the Cross-Branch Consistency Theorem (CBCT) and full merge rules.
+**`integration`** — Python compatibility runtime, adapter layer. The Python oracle must match Rust TCB behavior on all inputs. Divergence is a test failure, not a kernel change.
+
+See [`BRANCHES.md`](BRANCHES.md) for full merge rules and closure requirements.
 
 ---
 
 ## Test coverage
 
-### TCB Rust tests (78 total, all passing)
+### TCB Rust tests (109 total, all passing)
 
 | File | Tests | Coverage category |
 |---|---|---|
