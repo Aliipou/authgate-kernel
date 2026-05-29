@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\policy_dsl.py
+# hypothesis_version: 6.148.7
+
+['#', '*', 'ALLOW', 'DELEGATE', 'DENY', 'EXPIRES', 'MAX_DELEGATION_DEPTH', 'NETWORK_ACCESS', 'POLICY_MODIFY', 'READ', 'SYSTEM_PROMPT_EDIT', 'TRUST_DOMAIN', 'UNLESS', 'WRITE', 'deny', 'permit']

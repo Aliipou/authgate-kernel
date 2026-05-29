@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\__init__.py
+# hypothesis_version: 6.148.7
+
+['Action', 'ActiveKeySet', 'AgentType', 'AuditLog', 'AuthgateError', 'AutoGenKernelAdapter', 'CapabilityError', 'ConflictRecord', 'Entity', 'ExecutionContext', 'FreedomTool', 'FreedomVerifier', 'GoalNode', 'IFCViolation', 'IntegrityError', 'KeyRotationError', 'OwnershipRegistry', 'Policy', 'PolicyRule', 'PolicyVerifier', 'ProposedRule', 'RegistryError', 'Resource', 'ResourceType', 'RightsClaim', 'RightsError', 'RotationCertificate', 'SecurityLattice', 'SynthesisEngine', 'VerificationResult', 'WireError', 'WorldState', 'compass_score', 'detect_manipulation', 'issue_rotation', 'kernel_gate', 'verify_goal_tree', 'verify_rotation']

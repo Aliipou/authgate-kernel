@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\sovereign_identity.py
+# hypothesis_version: 6.148.7
+
+[3600.0, 'CapabilityCommitment', 'IdentityBlinder', 'claim_hash', 'nonce']

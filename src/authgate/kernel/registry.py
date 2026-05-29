@@ -250,15 +250,49 @@ class OwnershipRegistry:
         return max(candidates, key=lambda c: c.confidence)
 
     def can_act(
-        self, holder: Entity, resource: Resource, operation: str
+        self, holder: Entity, resource: Resource, operation: str,
+        min_epoch: int = 0,
     ) -> tuple[bool, float, str]:
-        """Returns (permitted, confidence, reason)."""
+        """Returns (permitted, confidence, reason).
+
+        min_epoch: reject claims issued before this epoch (C-3 fix).
+        Mirrors the Rust TCB's epoch-based primary revocation mechanism.
+        """
         if resource.is_public and operation == "read":
             return True, 1.0, "public resource"
         claim = self.best_claim(holder, resource, operation)
         if claim is None:
             return False, 0.0, f"{holder.name} holds no valid {operation} claim on {resource}"
+        if claim.epoch < min_epoch:
+            return (
+                False, 0.0,
+                f"{holder.name} claim on {resource} is from epoch {claim.epoch} "
+                f"but action requires min_epoch={min_epoch} — use advance_epoch() to reissue"
+            )
         return True, claim.confidence, f"claim confidence={claim.confidence:.2f}"
+
+    def advance_epoch(self, new_epoch: int, holder_name: str | None = None) -> int:
+        """
+        Epoch-based revocation: reissue all matching claims at new_epoch.
+
+        Any action that sets min_epoch > old_epoch will reject old claims in O(1)
+        without removing them from the registry. This mirrors the Rust TCB's
+        primary revocation mechanism.
+
+        holder_name=None: advance epoch for ALL claims (global revocation).
+        holder_name=X: advance only claims held by X (targeted revocation).
+
+        Returns count of claims updated.
+        """
+        self._check_mutable()
+        with self._lock:
+            updated = 0
+            for claim in self._claims:
+                if holder_name is None or claim.holder.name == holder_name:
+                    if claim.epoch < new_epoch:
+                        claim.epoch = new_epoch
+                        updated += 1
+            return updated
 
     def owner_of(self, machine: Entity) -> Entity | None:
         return self._machine_owners.get(machine)

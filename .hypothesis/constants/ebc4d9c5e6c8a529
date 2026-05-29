@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\exit_guarantees.py
+# hypothesis_version: 6.148.7
+
+[0.8, 1.0, 'EXIT_BLOCKED', 'IDENTITY_LOCKED', 'MIGRATION_BLOCKED', '_claims', '_machine_owners', 'delegated_by', 'name', 'unknown']

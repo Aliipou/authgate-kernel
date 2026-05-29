@@ -1,6 +1,6 @@
 # authgate-kernel
 
-**Capability-constrained authorization kernel for agent tool execution. ~255 LOC security-enforcing Rust path. 905 tests. Zero heuristics inside the TCB.**
+**Capability-constrained authorization kernel for agent tool execution. `engine.rs`: 250 LOC. Full security-critical Rust path (`engine.rs` + `dag.rs` + `call_gate.rs`): ~934 LOC. 983 tests. Zero heuristics inside the TCB.**
 
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](freedom-kernel/)
@@ -61,7 +61,7 @@ Full enumeration: [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md)
 
 | Metric | Value |
 |---|---|
-| Security-enforcing Rust LOC | ~255 (`engine.rs` + `dag.rs` + `call_gate.rs`) |
+| Security-enforcing Rust LOC | `engine.rs`: 250 LOC. Full path (`engine.rs` + `dag.rs` + `call_gate.rs`): ~934 LOC |
 | TCB Rust tests | 141 (all passing) |
 | Python integration tests | 905 (all passing) |
 | Kani harnesses (bounded model checking) | 19 (all proved) |

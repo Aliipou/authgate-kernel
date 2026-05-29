@@ -48,6 +48,7 @@ class Action:
     resources_delegate: list[Resource] = field(default_factory=list)
     governs_humans: list[Entity] = field(default_factory=list)
     argument: str = ""
+    min_epoch: int = 0  # C-3 fix: require claims issued at epoch >= min_epoch
 
     increases_machine_sovereignty: bool = False
     resists_human_correction: bool = False
@@ -181,11 +182,13 @@ class FreedomVerifier:
                 detail=f"{len(dominion_violations)} violation(s)" if dominion_violations else "clear",
             )
 
-        # 4. Resource access checks (confidence-weighted)
+        # 4. Resource access checks (confidence-weighted) + epoch gate (C-3)
         actor = action.actor
+        min_epoch = action.min_epoch
 
         for resource in action.resources_read:
-            permitted, conf, reason = self.registry.can_act(actor, resource, "read")
+            permitted, conf, reason = self.registry.can_act(actor, resource, "read",
+                                                             min_epoch=min_epoch)
             min_confidence = min(min_confidence, conf)
             if not permitted:
                 violations.append(f"READ DENIED on {resource}: {reason}")
@@ -196,7 +199,8 @@ class FreedomVerifier:
                 )
 
         for resource in action.resources_write:
-            permitted, conf, reason = self.registry.can_act(actor, resource, "write")
+            permitted, conf, reason = self.registry.can_act(actor, resource, "write",
+                                                             min_epoch=min_epoch)
             min_confidence = min(min_confidence, conf)
             if not permitted:
                 violations.append(f"WRITE DENIED on {resource}: {reason}")
@@ -211,7 +215,8 @@ class FreedomVerifier:
                         warnings.append(f"Conflict on {resource}: {c.description}")
 
         for resource in action.resources_delegate:
-            permitted, conf, reason = self.registry.can_act(actor, resource, "delegate")
+            permitted, conf, reason = self.registry.can_act(actor, resource, "delegate",
+                                                             min_epoch=min_epoch)
             min_confidence = min(min_confidence, conf)
             if not permitted:
                 violations.append(f"DELEGATION DENIED on {resource}: {reason}")

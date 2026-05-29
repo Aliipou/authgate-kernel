@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\attack_harness\threat_taxonomy\authority_escalation.py
+# hypothesis_version: 6.148.7
+
+[0.5, 1.0, '/data/', 'BLOCKED', 'DENY', 'ESC-1', 'ESC-2', 'ESC-3', 'ESC-4', 'ESC-5', 'ESC-6', 'GAP', 'GAP(documented)', 'LEAKED (FAIL)', 'PERMIT', 'PERMITTED', '__main__', 'alice', 'attack_id', 'blocked', 'bot', 'child-bot', 'data', 'expected', 'ghost-bot', 'note', 'parent-bot', 'permitted', 'read', 'violations', 'write']

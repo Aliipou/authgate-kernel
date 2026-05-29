@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\extensions\__init__.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.5, 'ConflictQueue', 'IFCViolation', 'ProposedRule', 'SecurityLattice', 'SynthesisEngine']

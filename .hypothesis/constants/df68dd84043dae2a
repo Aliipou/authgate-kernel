@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\attack_harness\differential_fuzzer.py
+# hypothesis_version: 6.148.7
+
+[b'\x00', b'\x07', 200, 255, 300, 500, 999, 1000, 3000, 5000, 9999, '; ', '>I', '>Q', 'actor_id', 'alice', 'attenuation', 'binding', 'binding_hash', 'canonical_bytes', 'cap_bytes', 'caps', 'diff-test', 'epoch', 'expired', 'expiry', 'issuer_binding_valid', 'min_epoch', 'nonce', 'parent_epoch', 'parent_rights', 'proof_hash', 'required_rights', 'resource_hash', 'rev_bytes', 'revocations', 'revoked', 'rights', 'rust', 'sig_valid', 'src', 'subject_id', 'target_hash', 'timestamp']

@@ -182,3 +182,59 @@ jobs:
 
       - name: Smoke test API
         run: pytest tests/test_api.py -v
+
+  performance-gate:
+    name: Performance regression gate
+    runs-on: ubuntu-24.04
+    needs: python-test
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -e ".[dev]"
+
+      - name: Run benchmarks with performance gate
+        run: |
+          python benchmarks/comprehensive_bench.py --gate
+          echo "All performance targets met"
+
+  adversarial-simulation:
+    name: Adversarial simulation (231 scenarios, 0 violations)
+    runs-on: ubuntu-24.04
+    needs: python-test
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -e ".[dev]"
+
+      - name: Run simulation engine
+        run: |
+          cd attack_harness
+          python simulation/run_simulation.py
+          echo "Simulation passed: 0 violations"
+
+  red-team-tests:
+    name: Red team adversarial tests
+    runs-on: ubuntu-24.04
+    needs: python-test
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - run: pip install -e ".[dev]"
+
+      - name: Run red team tests
+        run: pytest tests/test_adversarial_redteam.py tests/test_epoch_revocation.py -v

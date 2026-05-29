@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\cli.py
+# hypothesis_version: 6.148.7
+
+[1.0, '--action', '--audit', '--json', '--registry', 'ACTION.json', 'Action JSON file', 'Audit log operations', 'CERT.json', 'INDEX', 'LOG.jsonl', 'REG.json', 'Registry JSON file', '__main__', 'action', 'action_id', 'actor', 'agents', 'audit', 'audit_command', 'authgate-cli', 'bypasses_verifier', 'can_delegate', 'can_read', 'can_write', 'cert', 'certificate', 'claims', 'cli-action', 'coerces', 'command', 'confidence', 'deceives', 'description', 'empty log', 'holder', 'id', 'index', 'is_public', 'key', 'key_command', 'kind', 'logfile', 'machine', 'machine_owners', 'owner', 'permitted', 'registry', 'replay', 'resource', 'resources', 'resources_delegate', 'resources_read', 'resources_write', 'scope', 'stats', 'store_true', 'type', 'utf-8', 'verify', 'verify-cert', 'violations', 'warnings', 'weakens_verifier']

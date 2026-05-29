@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\authority\human_delegation.py
+# hypothesis_version: 6.148.7
+
+[0.7, 3600.0, 600, 'action_id', 'can_delegate', 'can_read', 'can_write', 'delegate', 'human_delegation', 'human_principal', 'market_oracle', 'read', 'registry', 'registry_id', 'reputation_gate', 'write']

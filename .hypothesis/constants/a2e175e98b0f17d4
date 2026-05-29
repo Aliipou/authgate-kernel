@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\attack_harness\threat_taxonomy\delegation_abuse.py
+# hypothesis_version: 6.148.7
+
+[0.9, '/data/', '/data/sales/', 'DEL-1', 'DEL-1b', 'DEL-2', 'DEL-3', 'DEL-4', 'DEL-5', 'DENY', 'FAIL', 'PASS', 'PERMIT', '__main__', 'alice', 'all-data', 'attack_id', 'blocked', 'bot', 'child', 'child-bot', 'data', 'delegator', 'expected', 'note', 'parent', 'passed', 'permitted', 'read', 'sales', 'violations', 'write']

@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\call_gate.py
+# hypothesis_version: 6.148.7
+
+['; ', 'CallGate', '_GatedTool__fn', '_gate', '_name', 'action_id', 'delegate', 'denied', 'model_invoke', 'network', 'read', 'resources_delegate', 'resources_read', 'resources_write', 'write']

@@ -50,12 +50,18 @@ class AuditLog:
 
     Usage:
         log = AuditLog(path="/var/log/authgate.jsonl")
+        log = AuditLog(path="/var/log/authgate.jsonl", max_entries=100_000)
         verifier = FreedomVerifier(registry, audit_log=log)
         # every verify() call is automatically logged
 
     path=None: in-memory only (for testing / ephemeral sessions).
+    max_entries: rotate in-memory buffer when this size is reached.
+                 Entries beyond max_entries are flushed to path (if set)
+                 and dropped from memory. Chain integrity is preserved across rotations.
+                 None = unbounded (S-2 fix: use this only for short-lived sessions).
     """
     path: str | None = None
+    max_entries: int | None = None   # S-2 fix: cap in-memory growth
     _records: list[dict[str, Any]] = field(
         default_factory=list, init=False, repr=False
     )
@@ -63,14 +69,15 @@ class AuditLog:
         default_factory=threading.Lock, init=False, repr=False
     )
     _last_hash: str = field(default=GENESIS_HASH, init=False, repr=False)
+    _total_count: int = field(default=0, init=False, repr=False)  # includes rotated
 
     def record(self, result: Any) -> None:
         """
         Append a verification result. Thread-safe.
 
-        The entire hash computation + append is inside the lock so that
-        concurrent calls always produce a valid linear chain — no two entries
-        share the same prev_hash.
+        When max_entries is set and the buffer is full, the oldest entries are
+        flushed to disk (if path is set) and removed from memory. The chain
+        hash is preserved so integrity can still be verified from disk.
         """
         entry: dict[str, Any] = {
             "ts":         time.time(),
@@ -86,9 +93,19 @@ class AuditLog:
             entry["entry_hash"] = _compute_hash(entry)
             self._last_hash     = entry["entry_hash"]
             self._records.append(entry)
+            self._total_count  += 1
             if self.path is not None:
                 with open(self.path, "a", encoding="utf-8") as f:
                     f.write(json.dumps(entry) + "\n")
+            # S-2 fix: rotate in-memory buffer if max_entries is set
+            if self.max_entries is not None and len(self._records) > self.max_entries:
+                self._records = self._records[-self.max_entries:]
+
+    @property
+    def total_count(self) -> int:
+        """Total decisions recorded, including those rotated out of memory."""
+        with self._lock:
+            return self._total_count
 
     # ------------------------------------------------------------------
     # Read interface

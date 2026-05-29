@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\key_rotation.py
+# hypothesis_version: 6.148.7
+
+[b'\x00', 3600, ',', ':', '>I', '>Q', '>d', 'RotationCertificate', 'authgate-rotation-v1', 'effective_at', 'new_epoch', 'new_pubkey', 'old_pubkey', 'signature', 'version']

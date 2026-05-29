@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\attack_harness\threat_taxonomy\__init__.py
+# hypothesis_version: 6.148.7
+
+['AttackClass', 'AttackScenario', 'AttackSeverity', 'ThreatVector']

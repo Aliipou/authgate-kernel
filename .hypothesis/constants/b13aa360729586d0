@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\hooks.py
+# hypothesis_version: 6.148.7
+
+[0.0, 100, 'arbitration_required', 'avg_duration_ms', 'denied', 'permitted', 'total', 'total_violations', 'total_warnings']

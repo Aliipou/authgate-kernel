@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\extensions\ifc.py
+# hypothesis_version: 6.148.7
+
+['INTERNAL', 'PUBLIC', 'SECRET', 'ifc_label', 'resources_read', 'resources_write']

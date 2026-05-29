@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\api\app.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, 404, 422, '/claim', '/conflict/resolve', '/conflicts', '/health', '/machine', '/verify', '1.0.0', '^(HUMAN|MACHINE)$', 'conflicts', 'count', 'description', 'message', 'ok', 'resource', 'status', 'version']

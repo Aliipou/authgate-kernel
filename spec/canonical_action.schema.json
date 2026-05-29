@@ -1,0 +1,143 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Aliipou/authgate-kernel/spec/canonical_action.schema.json",
+  "title": "CanonicalAction",
+  "description": "Typed, tamper-evident action request sent from adapter layer to the authgate kernel. All fields are committed to the binding_hash before verification begins.",
+  "type": "object",
+  "required": ["actor_id", "resource_hash", "required_rights", "nonce", "timestamp", "min_epoch", "binding_hash"],
+  "additionalProperties": false,
+  "properties": {
+    "actor_id": {
+      "type": "string",
+      "description": "SHA-256 of the actor's public key, hex-encoded. 64 hex characters = 32 bytes.",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "resource_hash": {
+      "type": "string",
+      "description": "SHA-256 of the canonical resource identifier, hex-encoded.",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "required_rights": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255,
+      "description": "Bitmask of rights required. See Rights bitmask below."
+    },
+    "nonce": {
+      "type": "string",
+      "description": "16-byte random nonce, hex-encoded. Prevents replay. Must be unique per action.",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "timestamp": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Unix timestamp in seconds. Used for expiry checks. Caller is responsible for clock integrity."
+    },
+    "min_epoch": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Minimum required epoch. Capability proofs with epoch < min_epoch are rejected (primary revocation mechanism)."
+    },
+    "binding_hash": {
+      "type": "string",
+      "description": "SHA-256 over all fields above, hex-encoded. Computed before any caps are added. Any field mutation after sealing is detected here.",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "capability_proofs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/CapabilityProof" },
+      "description": "Signed capability proof chain. Must contain at least one proof for the actor."
+    },
+    "revocation_proofs": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/RevocationProof" },
+      "description": "Optional root-signed revocation proofs. Invalid signatures are silently ignored."
+    }
+  },
+  "$defs": {
+    "CapabilityProof": {
+      "type": "object",
+      "required": ["proof_hash", "subject_id", "resource_hash", "rights", "expiry", "epoch", "issuer", "signature", "issuer_pubkey"],
+      "additionalProperties": false,
+      "properties": {
+        "proof_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 of canonical proof bytes, hex-encoded."
+        },
+        "subject_id": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256(subject_pubkey) — the identity this proof grants authority to."
+        },
+        "resource_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "SHA-256 of the resource this proof covers."
+        },
+        "rights": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255,
+          "description": "Rights bitmask granted by this proof. Must be a subset of parent rights (attenuation)."
+        },
+        "expiry": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Unix timestamp after which this proof is invalid."
+        },
+        "epoch": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Revocation epoch. Rejected if epoch < action.min_epoch."
+        },
+        "issuer": {
+          "oneOf": [
+            { "type": "object", "required": ["type"], "properties": { "type": { "const": "Root" } } },
+            {
+              "type": "object",
+              "required": ["type", "parent_hash"],
+              "properties": {
+                "type": { "const": "Delegated" },
+                "parent_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+              }
+            }
+          ],
+          "description": "Root: signed by trust root. Delegated: signed by another capability holder."
+        },
+        "signature": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{128}$",
+          "description": "ed25519 signature over signing_message(), hex-encoded. 64 bytes = 128 hex chars."
+        },
+        "issuer_pubkey": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "Public key of the signing principal. For Delegated proofs: SHA-256(issuer_pubkey) must equal parent.subject_id (AT-5.1)."
+        }
+      }
+    },
+    "RevocationProof": {
+      "type": "object",
+      "required": ["target_proof_hash", "revoked_at", "signature"],
+      "additionalProperties": false,
+      "properties": {
+        "target_proof_hash": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$",
+          "description": "proof_hash of the capability being revoked."
+        },
+        "revoked_at": {
+          "type": "integer",
+          "description": "Unix timestamp of revocation decision."
+        },
+        "signature": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{128}$",
+          "description": "ed25519 root key signature over signing_message(). Invalid signatures are silently ignored."
+        }
+      }
+    }
+  },
+  "$comment": "Rights bitmask (v1.0.0 semantics — see schema_version.py): READ=1, WRITE=2, DELEGATE=4, EXECUTE=8, SPAWN=16, NETWORK=32, MODEL_INVOKE=64, POLICY_MODIFY=128"
+}

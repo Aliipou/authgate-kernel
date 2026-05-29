@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\schema_version.py
+# hypothesis_version: 6.148.7
+
+['.', 'RIGHT_DELEGATE', 'RIGHT_EXECUTE', 'RIGHT_MODEL_INVOKE', 'RIGHT_NETWORK', 'RIGHT_POLICY_MODIFY', 'RIGHT_READ', 'RIGHT_SPAWN', 'RIGHT_WRITE', 'SchemaVersion']

@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\distributed\distributed_kernel.py
+# hypothesis_version: 6.148.7
+
+[b'empty', b'no-registry', 1.0, ',', ':', 'DEFER_TO_HUMAN', 'DENY', 'FederatedNode', 'MerkleRegistryState', 'PERMIT', 'VectorClock', '_claims', 'can_delegate', 'can_read', 'can_write', 'capability_id', 'confidence', 'epoch', 'expires_at', 'holder', 'issued_at', 'name', 'resource', 'rtype']

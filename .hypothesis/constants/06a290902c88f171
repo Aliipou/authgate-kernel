@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\attack_harness\threat_taxonomy\coercion_primitives.py
+# hypothesis_version: 6.148.7
+
+['/data/', 'BLOCKED', 'COER-1', 'COER-10', 'COER-2', 'COER-3', 'COER-4', 'COER-5', 'COER-6', 'COER-7', 'COER-8', 'COER-9', 'LEAKED (FAIL)', '__main__', 'action_id', 'actor', 'alice', 'blocked', 'bot', 'bypasses_verifier', 'coer_id', 'coerces', 'coercion_type', 'data', 'deceives', 'flag', 'passed', 'permitted', 'resources_read', 'violations', 'weakens_verifier']

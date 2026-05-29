@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\verifier.py
+# hypothesis_version: 6.148.7
+
+[0.0, 0.8, 1.0, 1000.0, 'BLOCKED', 'FORBIDDEN', 'PERMITTED', '_frozen', 'claim_check', 'clear', 'delegate', 'machine_dominion', 'machine_ownership', 'read', 'sovereignty_flags', 'write']

@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\override_detector.py
+# hypothesis_version: 6.148.7
+
+[3600.0, 'CRITICAL', 'HIGH', 'LOW', 'MEDIUM', '_claims', '_frozen', '_machine_owners', 'delegated_by', 'expires_at', 'freeze']

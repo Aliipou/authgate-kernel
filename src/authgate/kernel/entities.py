@@ -120,7 +120,13 @@ class Entity:
 
 @dataclass
 class RightsClaim:
-    """A right is not a binary flag — it has scope, confidence, expiry, and delegation lineage."""
+    """A right is not a binary flag — it has scope, confidence, expiry, epoch, and delegation lineage.
+
+    epoch: the revocation epoch at which this claim was issued.
+    Actions can require min_epoch >= N, invalidating all claims from prior epochs in O(1).
+    This mirrors the Rust TCB's primary revocation mechanism (C-3 fix).
+    Default epoch=1 keeps all existing claims valid when min_epoch=0 (default Action).
+    """
     holder: Entity
     resource: Resource
     can_read: bool = True
@@ -129,6 +135,7 @@ class RightsClaim:
     confidence: float = 1.0
     expires_at: float | None = None
     delegated_by: "Entity | None" = field(default=None, compare=False, hash=False)
+    epoch: int = 1
 
     def __post_init__(self) -> None:
         import math

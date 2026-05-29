@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\adapters\crewai.py
+# hypothesis_version: 6.148.7
+
+['_execute_core', 'action', 'delegate', 'description', 'execute', 'execute_sync', 'read', 'resources_delegate', 'resources_read', 'resources_write', 'tasks', 'write']

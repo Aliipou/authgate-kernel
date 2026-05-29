@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\_pure.py
+# hypothesis_version: 6.148.7
+
+['Action', 'AgentType', 'ConflictRecord', 'Entity', 'FreedomVerifier', 'OwnershipRegistry', 'Resource', 'ResourceType', 'RightsClaim', 'VerificationResult']

@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\sandbox_executor.py
+# hypothesis_version: 6.148.7
+
+['_claims', 'delegate', 'delegated_by', 'model_invoke', 'network', 'read', 'resources_delegate', 'resources_read', 'resources_write', 'write']

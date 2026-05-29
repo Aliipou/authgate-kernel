@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\audit.py
+# hypothesis_version: 6.148.7
+
+[',', '0', ':', 'AuditLog', 'a', 'action_id', 'confidence', 'entry_count', 'entry_hash', 'export_ts', 'head_hash', 'permitted', 'prev_hash', 'r', 'signature', 'ts', 'utf-8', 'verifying_key', 'violations', 'warnings']

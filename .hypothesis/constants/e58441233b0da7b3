@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\entities.py
+# hypothesis_version: 6.148.7
+
+[0.0, 1.0, '..', '/', 'Entity | None', '\\', 'api_endpoint', 'attention', 'autonomous_capital', 'behavioral_profile', 'biological_telemetry', 'compute_slot', 'credential', 'database_table', 'dataset', 'digital_twin', 'file', 'identity', 'memory_region', 'message_channel', 'model_derivative', 'model_weights', 'network_endpoint', 'reputation']
