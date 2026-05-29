@@ -46,6 +46,7 @@ from authgate.errors import (
     WireError,
 )
 from authgate.key_rotation import ActiveKeySet, RotationCertificate, issue_rotation, verify_rotation
+from authgate.kernel.hooks import HookRegistry, MetricsCollector, VerificationEvent
 
 __all__ = [
     # Core kernel
@@ -100,4 +101,8 @@ __all__ = [
     "ActiveKeySet",
     "issue_rotation",
     "verify_rotation",
+    # Observability hooks
+    "HookRegistry",
+    "MetricsCollector",
+    "VerificationEvent",
 ]
