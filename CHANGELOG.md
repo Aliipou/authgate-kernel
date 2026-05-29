@@ -5,6 +5,44 @@ All notable changes to Freedom Kernel are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.3.0 — 2026-05-29
+
+### Added
+
+**Wire hardening pytest integration (Phase B4 → pytest)**
+- `tests/test_wire_hardening.py`: 37 tests asserting wire attack classes WA-1 through WA-18
+  Each class has REJECTED / MITIGATED / ACCEPTED+documented tests with explicit assertions
+- `Action.__post_init__`: rejects whitespace-only `action_id` (`.strip()` check added)
+  previously only rejected empty string; now also rejects `"   "` as a valid id
+
+**Policy DSL parser coverage (51 new tests)**
+- `tests/test_policy_dsl.py`: 51 tests covering `PolicyDSL.parse()`, `to_policy()`,
+  `compile()`; error paths with line numbers (`PolicyDSLSyntaxError`); comment/blank
+  handling; all four condition keywords (UNLESS, MAX_DELEGATION_DEPTH, EXPIRES,
+  TRUST_DOMAIN); wildcard subjects; end-to-end DSL → Policy → evaluate() flows
+- `policy_dsl.py`: `_logical_lines()` now applies `textwrap.dedent()` so that
+  triple-quoted Python strings work naturally (the docstring example in `compile()`
+  previously would have raised `PolicyDSLSyntaxError`)
+
+**SEMANTICS.md section numbering fix**
+- Duplicate `§4` resolved: `§4` Delegation Lattice (definition), `§5` Resource Scope
+  Containment, `§6` Delegation Transitivity Proofs (T1–T4), `§7` Verification Gate
+- All back-references updated (§5, §6 in "What Would Make This Formally Complete")
+
+### Changed
+- `tests/test_proptest.py`: Hypothesis action_id strategy restricted to ASCII
+  printable alphabet (was all-Unicode letters — too slow on Python 3.13, triggering
+  `HealthCheck.too_slow` after the whitespace-only rejection was added)
+- `README.md`: badge and numbers table updated to **418 tests**
+
+### Test counts
+- Python: **418 tests** (all passing)
+- Rust TCB: 141 tests + 11 wire.rs tests
+- Kani harnesses: 17 (all proved)
+- Lean 4 theorems: 11
+
+---
+
 ## v2.2.0 — 2026-05-29
 
 ### Added
