@@ -20,9 +20,11 @@ Wire-in:
 from __future__ import annotations
 
 import logging
+import time
 from dataclasses import dataclass, field
 
 from authgate.kernel.entities import Entity, Resource
+from authgate.kernel.hooks import HookRegistry, VerificationEvent
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.tracing import TraceCollector
 
@@ -104,6 +106,7 @@ class FreedomVerifier:
         self._tracer = tracer
 
     def verify(self, action: Action) -> VerificationResult:
+        _t0 = time.monotonic()
         violations: list[str] = []
         warnings: list[str] = []
         min_confidence = 1.0
@@ -224,6 +227,8 @@ class FreedomVerifier:
         if self._audit_log is not None:
             self._audit_log.record(result)  # type: ignore[attr-defined]
 
+        _duration_ms = (time.monotonic() - _t0) * 1000.0
+
         if permitted:
             _log.debug(
                 "PERMIT action=%s actor=%s confidence=%.2f",
@@ -234,6 +239,17 @@ class FreedomVerifier:
                 "DENY action=%s actor=%s violations=%d",
                 action.action_id, action.actor.name, len(violations),
             )
+
+        HookRegistry.emit(VerificationEvent(
+            action_id=action.action_id,
+            actor_name=action.actor.name,
+            permitted=permitted,
+            confidence=min_confidence,
+            violation_count=len(violations),
+            warning_count=len(warnings),
+            requires_arbitration=requires_arbitration,
+            duration_ms=_duration_ms,
+        ))
 
         return result
 
