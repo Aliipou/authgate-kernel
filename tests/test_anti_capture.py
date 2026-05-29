@@ -1,7 +1,7 @@
 """Tests for Phase 4/O2: Anti-Capture Detection."""
 import pytest
 
-from authgate.kernel.anti_capture import AntiCaptureChecker, CapturePattern, check_capture
+from authgate.analysis.anti_capture import AntiCaptureChecker, CapturePattern, check_capture
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action
@@ -170,7 +170,7 @@ class TestSignalDetails:
             assert s.action_id == "suspicious-op"
 
     def test_is_high_risk_critical(self):
-        from authgate.kernel.anti_capture import CaptureSignal
+        from authgate.analysis.anti_capture import CaptureSignal
         s = CaptureSignal(
             machine_name="bot", pattern=CapturePattern.CREDENTIAL_ACCESS,
             severity="CRITICAL", action_id="x", description="test"
@@ -178,7 +178,7 @@ class TestSignalDetails:
         assert s.is_high_risk()
 
     def test_is_not_high_risk_medium(self):
-        from authgate.kernel.anti_capture import CaptureSignal
+        from authgate.analysis.anti_capture import CaptureSignal
         s = CaptureSignal(
             machine_name="bot", pattern=CapturePattern.RESOURCE_TYPE_DRIFT,
             severity="MEDIUM", action_id="x", description="test"

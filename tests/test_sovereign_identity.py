@@ -4,7 +4,7 @@ import time
 import pytest
 
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from authgate.kernel.sovereign_identity import (
+from authgate.analysis.sovereign_identity import (
     CapabilityCommitment,
     CommitmentVerifier,
     IdentityBlinder,
