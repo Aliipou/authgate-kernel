@@ -1,17 +1,67 @@
 # authgate-kernel — Implementation TODO
 
-> Identity: "A formally constrained capability-security kernel for agent tool execution."
-> Analogy: seccomp/SELinux for agentic AI. Narrow. Deployable. Operationally real.
+> Aligned with `ultimate-plan.md`: sovereignty-preserving execution substrate →
+> constitutional infrastructure for autonomous digital civilization.
 >
-> MASTER_PLAN.md success criteria (required to call this "foundational infrastructure"):
->   [ ] 1. TLC has run — at least one finite instance model-checked to exhaustion
->   [x] 2. engine.rs has one mechanically verified property — Kani, 19 harnesses
->   [ ] 3. SEMANTICS.md has no known gaps
->   [ ] 4. Sub-microsecond Rust benchmark + Python latency baseline documented
->   [ ] 5. One real integration — non-trivial AI system, documented
+> Status key: [x] done | [~] partial | [ ] not started | [!] blocked
 >
-> Current honest label: "well-architected research prototype with production-grade aspirations."
-> Target label:         "foundational infrastructure for capability-security in agentic AI."
+> Current state (2026-05-29): 562 tests passing, Phase 0 complete, Phase 1 in progress.
+
+---
+
+## ultimate-plan.md Phase Alignment
+
+### PHASE 0 — FOUNDATIONAL PURIFICATION [COMPLETE]
+- [x] O1: TCB ≤300 LOC, zero unsafe, deterministic (engine.rs + dag.rs + call_gate.rs ~255 LOC)
+- [x] O2: Philosophy/enforcement separation (formal/ vs tcb/ vs src/authgate/)
+- [x] O3: Complete threat taxonomy (ESC-1..6, DEL-1..5, COER-1..10, WA-1..18)
+- [~] O4: Formal language (SEMANTICS.md, Lean4, Kani ✓; TLC run pending)
+
+### PHASE 1 — REAL EXECUTION CONSTRAINTS [IN PROGRESS]
+- [!] O1: WASI/Sandbox execution (blocked: Rust/MSVC not available in shell)
+- [~] O2: Typed Tool ABI (ResourceType enum + RightsClaim ✓; Tool<T> schema pending)
+- [x] O3: Agent framework integrations (LangChain, OpenAI, AutoGen, Anthropic, MCP, LangGraph, CrewAI)
+- [~] O4: Deterministic audit trails (AuditLog hash-chain ✓; signed export pending)
+
+### PHASE 2 — FORMAL SOVEREIGNTY MODEL [NOT STARTED]
+- [ ] O1: Consent algebra (ConsentCapability: revocable, contextual, non-delegable)
+- [ ] O2: Inalienable rights layer (invalid contract detection)
+- [~] O3: Human override preservation (flags ✓; lock-in detection pending)
+- [~] O4: Coercion semantics (COER taxonomy ✓; formal boundary conditions pending)
+
+### PHASE 3 — ECONOMIC/CIVILIZATION [NOT STARTED]
+- [ ] O1: Economic property ontology (ATTENTION, IDENTITY, REPUTATION resource types)
+- [~] O2: Multi-agent coordination (coalition flags ✓; dependency graph analysis pending)
+- [ ] O3: Sovereign identity layer (zk-capabilities)
+- [ ] O4: Constitutional agent markets
+
+### PHASE 4 — COGNITIVE SOVEREIGNTY [NOT STARTED]
+- [~] O1: Persuasion boundaries (manipulation_score heuristic ✓; formal model pending)
+- [ ] O2: Anti-capture systems
+- [ ] O3: Sovereignty metrics (agency score, reversibility index, autonomy degradation)
+
+### PHASE 5–6 — DISTRIBUTED/CIVILIZATION [FUTURE]
+- [ ] Cross-kernel federation
+- [ ] Constitutional consensus
+- [ ] Recursive agent governance
+
+---
+
+## IMMEDIATE SPRINT (unblocked, Python-layer work)
+
+| # | Item | Phase | Effort | Priority |
+|---|------|-------|--------|----------|
+| A | ConsentCapability class | 2/O1 | Medium | HIGH |
+| B | InnalienableRights layer | 2/O2 | Medium | HIGH |
+| C | SovereigntyMetrics module | 4/O3 | Small | MEDIUM |
+| D | Thread safety tests | 5.1 | Small | MEDIUM |
+| E | Python benchmarks | 5.4 | Small | MEDIUM |
+| F | DSPy adapter | 1/O3 | Small | LOW |
+| G | Signed audit export | 1/O4 | Small | LOW |
+
+---
+
+## Original TODO (legacy items below)
 
 ---
 

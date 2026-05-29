@@ -19,7 +19,7 @@ import time
 
 import pytest
 
-from authgate.kernel.consent import ConsentCapability, ConsentVerifier
+from authgate.kernel.consent import ConsentAnnotation as ConsentCapability, ConsentVerifier
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.policy import Policy, PolicyRule, PolicyVerifier
 from authgate.kernel.registry import OwnershipRegistry
