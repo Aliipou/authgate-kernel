@@ -61,8 +61,8 @@ class Action:
     machine_coalition_reduces_freedom: bool = False
 
     def __post_init__(self) -> None:
-        if not self.action_id:
-            raise ValueError("action_id must be a non-empty string")
+        if not self.action_id or not self.action_id.strip():
+            raise ValueError("action_id must be a non-empty, non-whitespace string")
 
 
 @dataclass(frozen=True)

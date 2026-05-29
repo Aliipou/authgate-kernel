@@ -5,6 +5,55 @@ All notable changes to Freedom Kernel are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.2.0 — 2026-05-29
+
+### Added
+
+**Observability hooks (Phase observability)**
+- `src/authgate/kernel/hooks.py`: `VerificationEvent`, `HookRegistry`, `MetricsCollector`
+- Every `FreedomVerifier.verify()` call now emits a `VerificationEvent` to `HookRegistry`
+- `HookRegistry`: thread-safe, registration-order dispatch, exceptions in hooks are swallowed
+- `MetricsCollector`: zero-dependency permit/deny counter, avg latency, arbitration count
+- 29 tests in `tests/test_hooks.py` covering registry lifecycle, exception isolation, concurrency
+
+**Input validation hardening (Phase B4)**
+- `RightsClaim.__post_init__`: rejects confidence outside [0.0, 1.0] and IEEE 754 special values
+- `Entity.__post_init__`: enforces AgentType enum (rejects string "MACHINE" as kind)
+- `Action.__post_init__`: rejects empty action_id
+- `attack_harness/wire_attacks.py`: Phase B4 simulation — 15 attack classes, 12 defended
+
+**Formal proof — Delegation Lattice (Phase 1.2 closed)**
+- `SEMANTICS.md §5`: Theorems T1–T4 proved (transitivity, anti-monotonicity, DAG, bounded distributive lattice)
+- Any n-hop delegation chain can be collapsed to meet of its links; confidence never increases
+- Closes MASTER_PLAN criterion #3 "SEMANTICS.md has no known gaps"
+- `formal/COVERAGE.md`: delegation lattice theorem table added
+
+**Rust strict wire validator (Phase B3)**
+- `freedom-kernel/src/wire.rs`: `WireValidationError`, `validate_action_wire()`, `validate_claim_wire()`
+- Covers WA-2/3/7/8 attack classes; 11 inline tests
+
+**TLC model checker setup**
+- `formal/TLC_SETUP.md`: step-by-step Java + tla2tools.jar install and run instructions
+
+### Performance
+
+| Benchmark | Result |
+|---|---|
+| `verify()` p50 (10-claim registry) | 23.6µs |
+| `verify()` p50 (1000-claim registry) | 23.7µs |
+| `verify_plan()` 10 actions p50 | 258µs (3,873 plans/s) |
+| `verify() + audit` p50 | 51.2µs |
+| Rust target (cargo bench) | <1µs (not runnable without MSVC) |
+
+### Test counts
+
+- Python: **330 tests** (all passing)
+- Rust TCB: 141 tests (plus 11 wire.rs tests)
+- Kani harnesses: 17 (all proved)
+- Lean 4 theorems: 11
+
+---
+
 ## v2.1.0 — 2026-05-28/29
 
 ### Added
