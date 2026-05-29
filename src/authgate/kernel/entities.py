@@ -18,7 +18,24 @@ class AgentType(Enum):
 
 
 class ResourceType(Enum):
-    """Only concrete, machine-context resource types are operational."""
+    """
+    Typed resource classification — Phase 3/O1 adds economic/civilization primitives.
+
+    Machine-context resources (Phases 0-1):
+      FILE, API_ENDPOINT, DATABASE_TABLE, NETWORK_ENDPOINT, COMPUTE_SLOT,
+      MESSAGE_CHANNEL, CREDENTIAL, MODEL_WEIGHTS, DATASET, MEMORY_REGION
+
+    Economic/civilization resources (Phase 3, O1 — ultimate-plan.md):
+      ATTENTION       — principal's cognitive attention (time-bounded, non-transferable)
+      IDENTITY        — principal's identity record or identity claim
+      REPUTATION      — reputation score or attestation aggregate
+      BEHAVIORAL_PROFILE — behavioral data record (high sensitivity; P1 protection)
+      AUTONOMOUS_CAPITAL — machine-controlled financial/computational capital
+      BIOLOGICAL_TELEMETRY — biometric or physiological data stream
+      DIGITAL_TWIN    — authoritative digital representation of a physical entity
+      MODEL_DERIVATIVE — model fine-tuned or derived from another model
+    """
+    # Phase 0-1: operational machine-context resources
     FILE = "file"
     API_ENDPOINT = "api_endpoint"
     DATABASE_TABLE = "database_table"
@@ -29,6 +46,16 @@ class ResourceType(Enum):
     MODEL_WEIGHTS = "model_weights"
     DATASET = "dataset"
     MEMORY_REGION = "memory_region"
+
+    # Phase 3: economic/civilization resources
+    ATTENTION = "attention"
+    IDENTITY = "identity"
+    REPUTATION = "reputation"
+    BEHAVIORAL_PROFILE = "behavioral_profile"
+    AUTONOMOUS_CAPITAL = "autonomous_capital"
+    BIOLOGICAL_TELEMETRY = "biological_telemetry"
+    DIGITAL_TWIN = "digital_twin"
+    MODEL_DERIVATIVE = "model_derivative"
 
 
 @dataclass(frozen=True)
