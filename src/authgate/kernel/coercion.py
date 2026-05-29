@@ -120,7 +120,7 @@ class CoercionAnalyzer:
             if delegated_by is not None and delegated_by.kind == AgentType.HUMAN:
                 all_humans.add(delegated_by.name)
         # Also check registered owners
-        machines_map = getattr(frozen, "_machines", {})
+        machines_map = getattr(frozen, "_machine_owners", {})
         for _machine, owner in machines_map.items():
             if owner is not None and owner.kind == AgentType.HUMAN:
                 all_humans.add(owner.name)
