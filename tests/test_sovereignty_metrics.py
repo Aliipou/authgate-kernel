@@ -13,7 +13,7 @@ import pytest
 
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
-from authgate.kernel.sovereignty_metrics import SovereigntyAnalyzer, SovereigntySnapshot
+from authgate.analysis.sovereignty_metrics import SovereigntyAnalyzer, SovereigntySnapshot
 
 
 # ---------------------------------------------------------------------------

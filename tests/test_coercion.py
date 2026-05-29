@@ -7,7 +7,7 @@ import time
 
 import pytest
 
-from authgate.kernel.coercion import (
+from authgate.analysis.coercion import (
     CoercionAnalyzer,
     CoercionBoundary,
     CoercionError,
