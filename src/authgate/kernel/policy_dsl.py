@@ -57,6 +57,7 @@ Examples
 from __future__ import annotations
 
 import re
+import textwrap
 from dataclasses import dataclass, field
 from typing import ClassVar
 
@@ -254,9 +255,16 @@ class PolicyDSL:
     @staticmethod
     def _logical_lines(text: str) -> list[tuple[int, str]]:
         """Return (1-based line number, raw line) pairs, skipping blank-only
-        lines and full-line comments."""
+        lines and full-line comments.
+
+        textwrap.dedent() is applied so that triple-quoted Python strings work
+        naturally — the common leading whitespace from a Python indented block
+        is stripped before parsing, preserving the relative indentation that
+        distinguishes ALLOW/DENY headers from their body lines.
+        """
+        dedented = textwrap.dedent(text)
         result: list[tuple[int, str]] = []
-        for lineno, raw in enumerate(text.splitlines(), start=1):
+        for lineno, raw in enumerate(dedented.splitlines(), start=1):
             stripped_content = raw.strip()
             if not stripped_content:
                 continue
