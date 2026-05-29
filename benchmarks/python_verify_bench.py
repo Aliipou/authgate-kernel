@@ -30,10 +30,15 @@ _root = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, _root)
 sys.path.insert(0, os.path.join(_root, "src"))
 
+import logging
+logging.disable(logging.CRITICAL)  # silence verify() WARNING logs during benchmark
+
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier
 from authgate.kernel.audit import AuditLog
+from authgate.kernel.hooks import HookRegistry
+HookRegistry.clear()  # ensure no hooks registered from prior imports
 
 
 # ---------------------------------------------------------------------------
