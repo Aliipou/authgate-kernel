@@ -135,6 +135,29 @@ T-SC1 and T-SC5 require induction over String.normalize / String.startsWith inte
 and are admitted pending Lean 4 String library maturity; they are axiomatically sound
 by inspection of the Python implementation.
 
+## Threat Taxonomy (Phase 0, O3 — added 2026-05-29)
+
+Located in `attack_harness/threat_taxonomy/`.
+Adversarial ontology, attack class hierarchy, authority escalation tree, delegation abuse catalog, coercion primitives catalog.
+
+| Module | Scenarios | Status |
+|--------|-----------|--------|
+| `ontology.py` | 21 scenarios across 3 catalogs (ESC-1..6, DEL-1..5, COER-1..10) | Defined |
+| `authority_escalation.py` | ESC-1..6: ghost principal, rights amplification, confidence inflation, sovereignty flags, governs-humans, expired claim | All DENY (6/6) |
+| `delegation_abuse.py` | DEL-1..5: orphaned delegation, chain amplification, no-delegate flag, self-delegation, scope expansion | All correct (6/6) |
+| `coercion_primitives.py` | COER-1..10: 10 sovereignty flags mapped to coercion types | All DENY (10/10) |
+
+Test files: `tests/test_authority_escalation.py`, `tests/test_delegation_abuse.py`, `tests/test_coercion_primitives.py`
+
+**Delegation chain validation (new — 2026-05-29):**
+`OwnershipRegistry._delegation_chain_valid()` now enforces at the Python compatibility layer:
+- Self-delegation forbidden (T3: DAG invariant)
+- Delegator must have a valid `can_delegate=True` claim whose scope contains child scope
+- Child rights ⊆ parent rights (A6 attenuation)
+- Child confidence ≤ parent confidence (T2 anti-monotonicity)
+
+This closes the Python-layer gap for delegation chain integrity (previously only enforced at Rust TCB level).
+
 ## Open Gaps (explicit, not hidden)
 
 | Gap | Description | Why it's acceptable |

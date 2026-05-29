@@ -181,10 +181,70 @@ class OwnershipRegistry:
                 if c.is_valid()
             ]
 
+    def _delegation_chain_valid(self, claim: RightsClaim) -> bool:
+        """
+        Validate a delegated claim's chain at verification time.
+
+        Rules enforced (mirrors Rust TCB delegation invariants at Python layer):
+          1. Self-delegation is forbidden (delegated_by == claim.holder).
+          2. Delegator must hold an active valid claim with can_delegate=True
+             whose scope CONTAINS the child's scope (scope attenuation).
+          3. Child rights must be ⊆ delegator rights (attenuation invariant A6).
+          4. Child confidence must be ≤ delegator confidence (anti-monotonicity T2).
+
+        Scope lookup: searches all delegator claims regardless of resource name,
+        accepting any claim whose scope_contains(parent_scope, child_scope) is True.
+        This allows cross-resource delegation within a scope hierarchy.
+        """
+        from authgate.kernel.entities import scope_contains
+
+        delegator = getattr(claim, "delegated_by", None)
+        if delegator is None:
+            return True
+        if delegator == claim.holder:
+            return False  # self-delegation forbidden (T3: DAG invariant)
+
+        child_scope = claim.resource.scope
+
+        # Search all delegator's valid delegatable claims — accept any whose scope
+        # contains the child scope (supports cross-resource scope-based delegation).
+        with self._lock:
+            parent_candidates = [
+                c for c in self._claims
+                if (
+                    c.holder == delegator
+                    and c.can_delegate
+                    and c.is_valid()
+                    and scope_contains(c.resource.scope, child_scope)
+                )
+            ]
+
+        if not parent_candidates:
+            return False  # delegator has no valid delegatable claim covering child scope
+
+        best_parent = max(parent_candidates, key=lambda c: c.confidence)
+
+        # Attenuation: child rights ⊆ parent rights (A6)
+        if claim.can_read and not best_parent.can_read:
+            return False
+        if claim.can_write and not best_parent.can_write:
+            return False
+        if claim.can_delegate and not best_parent.can_delegate:
+            return False
+
+        # Anti-monotonicity: child confidence ≤ parent confidence (T2)
+        if claim.confidence > best_parent.confidence:
+            return False
+
+        return True
+
     def best_claim(
         self, holder: Entity, resource: Resource, operation: str
     ) -> RightsClaim | None:
-        candidates = [c for c in self.claims_for(holder, resource) if c.covers(operation)]
+        candidates = [
+            c for c in self.claims_for(holder, resource)
+            if c.covers(operation) and self._delegation_chain_valid(c)
+        ]
         if not candidates:
             return None
         return max(candidates, key=lambda c: c.confidence)
