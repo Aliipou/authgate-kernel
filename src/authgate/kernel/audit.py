@@ -23,6 +23,7 @@ Wire format (one JSON object per line, .jsonl):
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import json
 import threading
@@ -233,3 +234,76 @@ class AuditLog:
         log = cls.load_from_file(path)
         errors = log.chain_errors()
         return log, errors
+
+    # ------------------------------------------------------------------
+    # Signed export  (Phase 1/O4)
+    # ------------------------------------------------------------------
+
+    def export_signed(self, private_key: Any) -> dict[str, Any]:
+        """
+        Produce a signed audit export anchored to the current chain head.
+
+        The signed payload covers: head_hash, entry_count, and export_ts.
+        Signature algorithm: Ed25519 (from cryptography library).
+
+        Returns a dict with keys:
+          head_hash, entry_count, export_ts, signature (base64), verifying_key (base64)
+        """
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        if not isinstance(private_key, Ed25519PrivateKey):
+            raise TypeError("private_key must be Ed25519PrivateKey")
+
+        with self._lock:
+            head = self._last_hash
+            count = len(self._records)
+
+        ts = time.time()
+        payload = json.dumps(
+            {"head_hash": head, "entry_count": count, "export_ts": ts},
+            sort_keys=True, separators=(",", ":"),
+        ).encode()
+
+        sig_bytes = private_key.sign(payload)
+        vk_bytes = private_key.public_key().public_bytes_raw()
+
+        return {
+            "head_hash": head,
+            "entry_count": count,
+            "export_ts": ts,
+            "signature": base64.b64encode(sig_bytes).decode(),
+            "verifying_key": base64.b64encode(vk_bytes).decode(),
+        }
+
+    @staticmethod
+    def verify_signed_export(export: dict[str, Any], verifying_key: Any | None = None) -> bool:
+        """
+        Verify the Ed25519 signature on a signed audit export.
+
+        verifying_key: Ed25519PublicKey (optional — if None, uses the key embedded in the export).
+        Returns True if the signature is valid.
+        """
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+        from cryptography.exceptions import InvalidSignature
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+
+        if verifying_key is None:
+            from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
+            vk_bytes = base64.b64decode(export["verifying_key"])
+            from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+            verifying_key = Ed25519PublicKey.from_public_bytes(vk_bytes)
+
+        payload = json.dumps(
+            {
+                "head_hash": export["head_hash"],
+                "entry_count": export["entry_count"],
+                "export_ts": export["export_ts"],
+            },
+            sort_keys=True, separators=(",", ":"),
+        ).encode()
+
+        sig_bytes = base64.b64decode(export["signature"])
+        try:
+            verifying_key.verify(sig_bytes, payload)
+            return True
+        except InvalidSignature:
+            return False
