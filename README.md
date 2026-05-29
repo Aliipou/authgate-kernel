@@ -5,7 +5,7 @@
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](freedom-kernel/)
 [![Kani](https://img.shields.io/badge/Kani-17%20harnesses-green.svg)](formal/)
-[![Lean4](https://img.shields.io/badge/Lean4-11%20theorems-blue.svg)](formal/lean4/)
+[![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
 [![Tests](https://img.shields.io/badge/tests-418%20passing-brightgreen.svg)](tests/)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](src/authgate/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
@@ -51,7 +51,7 @@ Full enumeration: [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md)
 | TCB Rust tests | 141 (all passing) |
 | Python integration tests | 418 (all passing) |
 | Kani harnesses (bounded model checking) | 17 (all proved) |
-| Lean 4 theorems | 11 (2 crypto axioms admitted) |
+| Lean 4 theorems | 16 (4 fully proved scope theorems + 2 admitted; 2 crypto axioms) |
 | Wire boundary attack classes | 18 (WA-1 through WA-18); 37 pytest assertions in `test_wire_hardening.py` |
 | Concurrent verify() calls (stress test) | 1 000 via ThreadPoolExecutor, 200 concurrent audit appends |
 | Python verify() latency | p50 ≈ 23.6µs (10-claim registry), 23.7µs (1 000-claim) |
