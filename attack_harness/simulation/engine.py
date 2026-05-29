@@ -962,14 +962,25 @@ class SimulationEngine:
         CLS = "AT-7: Integration / Adapter Boundary"
 
         # AT-7.5: Shadow execution — KNOWN-GAP (1)
+        # STATUS: MITIGATED at Python API layer via CallGate (call_gate.py):
+        #   - GatedTool.__fn is name-mangled: callers cannot extract fn via public API
+        #   - Any code using CallGate.register() → GatedTool cannot bypass verify()
+        # REMAINING GAP: holding the ORIGINAL fn reference before registration
+        #   still bypasses the gate. Python cannot prevent this at compile time.
+        # FULL CLOSURE: Rust TCB (engine::verify is pub(crate), compile-time)
+        #               + OS enforcement (WASM/seccomp, tracked in TODO E1/E2)
         def shadow_exec():
-            def unsafe_execute(intent):
+            def original_fn(intent):
                 return "executed_without_verification"
-            result = unsafe_execute({"intent": "write_sensitive_file"})
+
+            # Simulates an adapter that never called CallGate.register() and
+            # holds a direct reference to the original function.
+            result = original_fn({"intent": "write_sensitive_file"})
             assert result == "executed_without_verification"
             return Outcome.KNOWN_GAP
         self._add("AT-7.5.shadow_execution", CLS,
-                  "Shadow execution bypasses kernel (requires mandatory call gate)", shadow_exec)
+                  "Direct-fn call bypasses gate (mitigated via CallGate API; "
+                  "full closure requires Rust TCB or OS sandbox)", shadow_exec)
 
         # Post-verification mutation: each of 8 fields (8)
         mutations = [

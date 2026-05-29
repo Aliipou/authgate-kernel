@@ -64,8 +64,16 @@
 - Unblock: install Windows SDK 10.0.22621 manually or use a Linux build environment
 - Branch: tcb-core
 
+### AT-7.5 status update (2026-05-29)
+- Python CallGate (kernel/call_gate.py) now provides API-level mitigation:
+  - GatedTool.__fn is name-mangled — not accessible via public attribute
+  - Any code using CallGate.register() → GatedTool cannot bypass verify()
+  - 18 passing tests in tests/test_call_gate.py
+- Remaining gap: holding original fn reference before registration still bypasses
+- Full closure: Rust engine::verify is pub(crate) (compile-time) + E1/E2 below
+
 ### E2: OS-level enforcement (seccomp / WASI)
-- Python SandboxedExecutor gates at the Python layer only — a malicious tool can bypass via ctypes, subprocess, etc.
+- Python SandboxedExecutor / CallGate gates at the Python layer only — a malicious tool can bypass via ctypes, subprocess, etc.
 - Real enforcement requires seccomp-bpf (Linux) or WASI host runtime
 - Target: wrap tool execution in a subprocess with seccomp filter, or run WASM tools via wasmtime
 - Branch: tcb-core
