@@ -1,12 +1,12 @@
 # authgate-kernel
 
-**Capability-constrained authorization kernel for agent tool execution. ~255 LOC security-enforcing Rust path. 418 tests. Zero heuristics inside the TCB.**
+**Capability-constrained authorization kernel for agent tool execution. ~255 LOC security-enforcing Rust path. 887 tests. Zero heuristics inside the TCB.**
 
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](freedom-kernel/)
-[![Kani](https://img.shields.io/badge/Kani-17%20harnesses-green.svg)](formal/)
+[![Kani](https://img.shields.io/badge/Kani-19%20harnesses-green.svg)](formal/)
 [![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
-[![Tests](https://img.shields.io/badge/tests-541%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-887%20passing-brightgreen.svg)](tests/)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](src/authgate/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -14,17 +14,30 @@
 
 ## The one-sentence pitch
 
-> seccomp for AI agents — typed capability verification with cryptographic audit, formally verified invariants, and a CLI — deployable today.
+> Typed capability verification for AI agent tool execution — every action needs an authority proof before IO happens. Not heuristics. Not prompts. Structural enforcement.
 
 ---
 
 ## What it does
 
-Every agent action passes through a capability gate before execution. The gate answers one question:
+Most agent frameworks today work like this: `LLM decided to call a tool → tool runs`.
+No authority proof. No audit. No structural boundary.
 
-> *Does this actor hold a valid, non-expired, cryptographically signed capability for this resource and these rights, in a chain traceable to the trust root?*
+authgate-kernel puts a gate between the decision and the IO:
+
+```
+Agent action → CallGate (authority proof required) → IO happens
+                   ↓ if denied
+              Audit log entry, action blocked
+```
+
+The gate answers one question:
+
+> *Does this actor hold a valid, non-expired, cryptographically signed capability for this resource and these rights, in a chain traceable to the human owner?*
 
 `Decision::Permit` or `Decision::Deny { reason }`. Same inputs → same output, always. No probability scores. No LLM calls. No network I/O inside the gate.
+
+This is the same principle as capability-based OS security (seL4, CHERI), applied to autonomous agent tool execution.
 
 ---
 
@@ -36,8 +49,9 @@ Every agent action passes through a capability gate before execution. The gate a
 | Intent verification | The kernel does not parse or interpret natural language. |
 | Ethics enforcement | Ethical reasoning requires semantic content — this is structural. |
 | Side-channel defense | Timing attacks, covert channels — out of scope by design. |
-| Distributed consensus | The kernel is in-process. Multi-node requires an external consensus layer. |
 | Python-equivalent security | The Python layer is a compatibility runtime — not formally checked. |
+
+The Python layer (`src/authgate/`) enforces the same logical invariants as the Rust TCB, but without hardware-level enforcement. A malicious Python tool can call `subprocess` directly. The Rust WASM sandbox closes this gap at the OS level — see [Engineering Gaps](#engineering-gaps) below.
 
 Full enumeration: [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md)
 
@@ -49,8 +63,8 @@ Full enumeration: [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md)
 |---|---|
 | Security-enforcing Rust LOC | ~255 (`engine.rs` + `dag.rs` + `call_gate.rs`) |
 | TCB Rust tests | 141 (all passing) |
-| Python integration tests | 541 (all passing) |
-| Kani harnesses (bounded model checking) | 17 (all proved) |
+| Python integration tests | 887 (all passing) |
+| Kani harnesses (bounded model checking) | 19 (all proved) |
 | Lean 4 theorems | 16 (4 fully proved scope theorems + 2 admitted; 2 crypto axioms) |
 | Wire boundary attack classes | 18 (WA-1 through WA-18); 37 pytest assertions in `test_wire_hardening.py` |
 | Concurrent verify() calls (stress test) | 1 000 via ThreadPoolExecutor, 200 concurrent audit appends |
@@ -133,10 +147,27 @@ attack_harness/
 
 src/authgate/        Python compatibility runtime (NOT TCB)
   kernel/            FreedomVerifier, OwnershipRegistry, AuditLog, Action
+    distributed_kernel.py   Merkle state, threshold revocations, partition policy
+    recursive_governance.py  Delegation depth bounds, anti-feudal, revocation propagation
+    constitutional_economy.py  Oligarchy detection, sovereignty erosion, lock-in
+    exit_guarantees.py      Exit rights, identity portability, revocation reachability
+    federation.py           Cross-kernel federation, constitutional consensus
+    multi_agent_coordinator.py  Coalition detection, dependency graph analysis
+    sandbox_executor.py     Capability-gated tool execution (Python layer)
+    consent.py              ConsentCapability — revocable, contextual, non-delegable
+    inalienable.py          InnalienableRights — structural rights that cannot be waived
+    sovereign_identity.py   Commitment-based selective disclosure (ZK-compatible)
+    persuasion.py           PersuasionBoundaryChecker — structural manipulation detection
+    anti_capture.py         AntiCaptureChecker — scope drift, credential access
+    coercion.py             CoercionAnalyzer — formal coercion boundary detection
+    override_detector.py    OverrideDetector — lock-in pattern detection
+    sovereignty_metrics.py  HHI-based dependency, reversibility index, agency score
+    tool_abi.py             Typed tool ABI — ToolSchema, ToolParam, ToolABIRegistry
+    audit.py                AuditLog — SHA-256 hash-chain + Ed25519 signed export
   key_rotation.py    RotationCertificate, ActiveKeySet, key rotation protocol
   errors.py          Typed exception hierarchy (AuthgateError → …)
   cli.py             authgate-cli — verify / audit / key subcommands
-  adapters/          Framework adapters (LangChain, OpenAI, Anthropic, AutoGen)
+  adapters/          Framework adapters (LangChain, OpenAI, Anthropic, AutoGen, DSPy)
   extensions/        Heuristic layers (IFC, manipulation scorer) — not TCB
 
 examples/
@@ -288,6 +319,24 @@ Merge path: `adversarial-lab → spec-core → tcb-core → main` and `integrati
 
 ---
 
+## Engineering Gaps
+
+The gap between `Permit/Deny` and actual constrained execution:
+
+| Gap | Status | What closes it |
+|---|---|---|
+| **WASM sandbox** (`cargo build --features sandbox`) | Blocked: Windows SDK kernel32.lib missing | Install Windows SDK 10.0.22621 or build on Linux |
+| **OS-level confinement** (seccomp-bpf) | Not implemented | Wrap tool subprocess with seccomp filter |
+| **End-to-end integration test** | Not implemented | LangChain → FreedomVerifier → SandboxedExecutor → audit |
+| **TLC model checker** | Java not installed | `java -jar tla2tools.jar -tool MC_AuthGateV3` |
+| **CLI** | Exists; not packaged | `pip install authgate-kernel` |
+
+The WASM sandbox is the most important. When it exists, the enforcement chain becomes:
+```
+Agent → CallGate → Capability-bound WASM instance → restricted host imports → actual IO
+```
+A tool that imports `write_byte` but was only granted `RIGHT_READ` fails at WASM instantiation — a missing symbol, not a runtime check.
+
 ## Explicit limitations
 
 | # | Limitation |
@@ -297,7 +346,7 @@ Merge path: `adversarial-lab → spec-core → tcb-core → main` and `integrati
 | L3 | Side channels not addressed (timing, covert, steganography) |
 | L4 | Python runtime is not formally checked |
 | L5 | Extensions (IFC, manipulation scorer) are heuristic, not TCB |
-| L6 | Distributed consistency requires an external consensus layer |
+| L6 | Distributed consistency: `distributed_kernel.py` covers the Python layer; Rust distributed consensus is future work |
 | L7 | No implementation-level refinement proof from TLA+ to Rust |
 | L8 | Clock integrity is caller-supplied — compromised clock not detected |
 
