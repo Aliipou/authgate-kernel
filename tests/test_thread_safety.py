@@ -260,12 +260,12 @@ class TestAuditLogConcurrency:
 
 
 class TestVerifierFreezeOnInit:
-    """freeze=True gives a consistent snapshot; freeze=False (default) uses live registry."""
+    """freeze=True (default) gives a consistent snapshot; freeze=False uses live registry."""
 
     def test_live_registry_sees_mutations(self):
-        """Default (freeze=False): mutations after verifier creation are visible."""
+        """freeze=False: mutations after verifier creation are visible."""
         registry, human, bot, dataset = _build_base()
-        verifier = FreedomVerifier(registry)  # live
+        verifier = FreedomVerifier(registry, freeze=False)  # explicit live
 
         r1 = verifier.verify(Action("before", actor=bot, resources_read=[dataset]))
         assert r1.permitted
