@@ -60,6 +60,10 @@ class Action:
     self_modification_weakens_verifier: bool = False
     machine_coalition_reduces_freedom: bool = False
 
+    def __post_init__(self) -> None:
+        if not self.action_id:
+            raise ValueError("action_id must be a non-empty string")
+
 
 @dataclass(frozen=True)
 class VerificationResult:
