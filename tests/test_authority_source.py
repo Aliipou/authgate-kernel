@@ -145,16 +145,17 @@ class TestAuthoritySourceProtocol:
         source = MarketOracleSource("http://market.example.com")
         assert isinstance(source, AuthoritySource)
         assert source.source_type == "market_oracle"
-        # Stub returns None for all requests
-        cap = source.request_capability(CapabilityRequest("agent1", "resource1", frozenset(["read"])))
-        assert cap is None
+        # Must raise NotImplementedError, NOT silently return None (FINDING M-1)
+        with pytest.raises(NotImplementedError, match="MarketOracleSource"):
+            source.request_capability(CapabilityRequest("agent1", "resource1", frozenset(["read"])))
 
     def test_reputation_gate_satisfies_protocol(self):
         source = ReputationGateSource()
         assert isinstance(source, AuthoritySource)
         assert source.source_type == "reputation_gate"
-        cap = source.request_capability(CapabilityRequest("agent1", "resource1", frozenset(["read"])))
-        assert cap is None
+        # Must raise NotImplementedError, NOT silently return None (FINDING M-1)
+        with pytest.raises(NotImplementedError, match="ReputationGateSource"):
+            source.request_capability(CapabilityRequest("agent1", "resource1", frozenset(["read"])))
 
     def test_capability_request_immutable(self):
         req = CapabilityRequest("bot", "data", frozenset(["read"]))

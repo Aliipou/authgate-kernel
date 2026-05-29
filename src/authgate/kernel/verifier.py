@@ -105,6 +105,15 @@ class FreedomVerifier:
         self.registry = registry.freeze() if freeze and not getattr(registry, "_frozen", False) else registry
         self._audit_log = audit_log
         self._tracer = tracer
+        # FINDING S-1: audit_log=None is the default. Every decision disappears silently.
+        # Production deployments must pass an AuditLog explicitly.
+        # Logging a warning here so silent deployments surface during testing.
+        if audit_log is None:
+            _log.warning(
+                "FreedomVerifier constructed without an audit_log. "
+                "All authorization decisions will be unlogged. "
+                "Pass audit_log=AuditLog() to enable tamper-evident decision logging."
+            )
 
     def verify(self, action: Action) -> VerificationResult:
         _t0 = time.monotonic()

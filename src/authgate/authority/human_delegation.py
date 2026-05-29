@@ -161,11 +161,11 @@ class MarketOracleSource:
         return "market_oracle"
 
     def request_capability(self, request: CapabilityRequest) -> Optional[IssuedCapability]:
-        # TODO: implement market bid verification
-        # 1. Check task_id in request.context
-        # 2. Verify agent won bid at market_endpoint
-        # 3. Issue time-bounded lease
-        return None  # stub
+        raise NotImplementedError(
+            "MarketOracleSource is not implemented. "
+            "Implement by connecting to your task market and verifying bid ownership. "
+            "See research/capability-model-extension.md for the design contract."
+        )
 
     def revoke(self, subject_id: str, resource_id: str) -> RevocationResult:
         return RevocationResult(success=False, revoked_id=subject_id,
@@ -201,11 +201,12 @@ class ReputationGateSource:
         return "reputation_gate"
 
     def request_capability(self, request: CapabilityRequest) -> Optional[IssuedCapability]:
-        # TODO: implement reputation check
-        # score = self._oracle.get_score(request.subject_id, request.resource_id)
-        # if score >= self._threshold:
-        #     return IssuedCapability(...)
-        return None  # stub
+        raise NotImplementedError(
+            "ReputationGateSource is not implemented. "
+            "Implement by querying your reputation oracle and issuing a scoped lease "
+            "when score >= threshold. The reputation score must NOT enter the TCB. "
+            "See research/capability-model-extension.md."
+        )
 
     def revoke(self, subject_id: str, resource_id: str) -> RevocationResult:
         return RevocationResult(success=False, revoked_id=subject_id,
