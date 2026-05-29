@@ -5,6 +5,54 @@ All notable changes to Freedom Kernel are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## v2.4.0 — 2026-05-29
+
+### Added
+
+**Phase 0, O3 — Complete Threat Taxonomy**
+- `attack_harness/threat_taxonomy/` — full adversarial ontology module:
+  - `ontology.py`: 21 attack scenarios across 3 catalogs; `AttackClass`, `AttackSeverity`,
+    `ThreatVector`, `AttackScenario` dataclasses; `AttackClass` hierarchy with 10 attack classes
+    (AT-WIRE, AT-IDENT, AT-ESC, AT-DEL, AT-SCOPE, AT-TEMP, AT-COER, AT-COAL, AT-CRYPT, AT-REV)
+  - `authority_escalation.py`: ESC-1..6 scenarios (ghost principal, rights amplification,
+    confidence inflation, sovereignty flags, machine-governs-human, expired claim reuse)
+  - `delegation_abuse.py`: DEL-1..5 scenarios (orphaned delegation, chain amplification,
+    no-delegate flag bypass, self-delegation, scope expansion via delegation)
+  - `coercion_primitives.py`: COER-1..10 — all 10 sovereignty flags mapped to formal coercion
+    types: INFORMATIONAL, ECONOMIC, SOVEREIGNTY_GRAB, META_ATTACK, COGNITIVE
+- `tests/test_authority_escalation.py`: 22 tests across ESC-1..6 + ontology structure
+- `tests/test_delegation_abuse.py`: 16 tests across DEL-1..5 + ontology structure
+- `tests/test_coercion_primitives.py`: 57 tests — all 10 flags tested individually,
+  by coercion type grouping, with valid capability, and in batch
+
+**Delegation chain validation — closes Python-layer gap**
+- `OwnershipRegistry._delegation_chain_valid()`: new method enforces delegation invariants
+  at verification time (not just at `delegate()` call time):
+  - Self-delegation forbidden (T3: DAG invariant)
+  - Delegator requires active `can_delegate=True` claim whose scope contains child scope
+  - Child rights ⊆ parent rights (A6 attenuation)
+  - Child confidence ≤ parent confidence (T2 anti-monotonicity)
+  Previously these invariants were only enforced at the Rust TCB layer or by `delegate()`.
+  `add_claim()` with `delegated_by` set could bypass them — now caught at `best_claim()` time.
+
+**Resource.__post_init__ validation (WA-10)**
+- `Resource.__post_init__`: rejects non-`ResourceType` `rtype` at construction time
+  (previously: silently accepted strings, crashed on `__str__()`)
+- `tests/test_wire_hardening.py::TestWA10WrongResourceType`: 5 new assertions
+
+### Changed
+
+- `README.md`: Tests badge 443 → 541; Python integration tests count updated
+
+### Metrics
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Python integration tests | 443 | 541 |
+| Attack scenarios (ontology) | 231 (simulation) | 231 + 21 (taxonomy) |
+| Wire attack classes closed | WA-1..9, WA-11, WA-15, WA-17, WA-18 | + WA-10 |
+| Delegation invariants at Python layer | 1 (in delegate()) | 5 (_delegation_chain_valid) |
+
 ## v2.3.0 — 2026-05-29
 
 ### Added
