@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Aliipou/authgate-kernel/spec/audit_entry.schema.json",
+  "title": "AuditEntry",
+  "description": "One line of an authgate JSONL audit log. SHA-256 hash-chained.",
+  "type": "object",
+  "required": ["ts", "action_id", "permitted", "confidence", "violations", "warnings", "prev_hash", "entry_hash"],
+  "properties": {
+    "ts": { "type": "number", "description": "Unix timestamp (float seconds)." },
+    "action_id": { "type": "string" },
+    "permitted": { "type": "boolean" },
+    "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+    "violations": { "type": "array", "items": { "type": "string" } },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "signature": { "type": ["string", "null"] },
+    "prev_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "entry_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+  }
+}

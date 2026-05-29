@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\seccomp_executor.py
+# hypothesis_version: 6.148.7
+
+[10.0, 107, 217, 228, 231, 257, 262, 2147418112, 3221225534, '-c', '; ', '<', 'Linux', 'SeccompExecutor', '_AUTHGATE_SECCOMP', '__module__', '__name__', '__qualname__', '_fn_registry', 'arguments', 'denied', 'fn_module', 'fn_name', 'output', 'replace', 'seccomp', 'src_path', 'x86_64']

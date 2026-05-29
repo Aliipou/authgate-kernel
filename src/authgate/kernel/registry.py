@@ -8,6 +8,7 @@ Conflict resolution is an extensions concern (ConflictQueue in extensions.resolv
 """
 from __future__ import annotations
 
+import copy
 import threading
 from collections import defaultdict
 from collections.abc import Callable
@@ -57,8 +58,11 @@ class OwnershipRegistry:
         Eliminates TOCTOU: freeze once, verify many times against the same state.
         """
         with self._lock:
+            # Deep-copy claims so advance_epoch on the original cannot affect the snapshot.
+            # copy.copy() creates independent RightsClaim objects; epoch mutations
+            # on the original registry do not propagate to the frozen snapshot.
             snapshot = OwnershipRegistry(
-                _claims=list(self._claims),
+                _claims=[copy.copy(c) for c in self._claims],
                 _machine_owners=dict(self._machine_owners),
                 _conflicts=list(self._conflicts),
             )

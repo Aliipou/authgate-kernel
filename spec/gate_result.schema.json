@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Aliipou/authgate-kernel/spec/gate_result.schema.json",
+  "title": "GateResult",
+  "description": "Result returned by CallGate.execute(). Immutable. permitted=false means the tool body never ran.",
+  "type": "object",
+  "required": ["permitted", "tool_name"],
+  "properties": {
+    "permitted": {
+      "type": "boolean",
+      "description": "True iff the capability gate approved the action AND the tool executed successfully."
+    },
+    "output": {
+      "description": "Tool output. Only present when permitted=true. Type depends on the tool."
+    },
+    "denied_reason": {
+      "type": ["string", "null"],
+      "description": "Human-readable denial reason. Present and non-null when permitted=false."
+    },
+    "tool_name": {
+      "type": "string",
+      "description": "Name of the tool that was invoked."
+    }
+  }
+}

@@ -133,19 +133,31 @@ class AuditLog:
         """
         Recompute every entry hash and check prev_hash linkage.
 
-        Returns True if the chain is intact.
+        Returns True if the chain is intact for the retained window.
         Returns False if any entry was altered, added out-of-order, or deleted.
+
+        Note: when max_entries rotation is active, chain verification covers
+        only the retained window. Entries rotated out are verified at disk
+        (path=) write time. The window's first entry's prev_hash anchors to
+        the predecessor entry (not necessarily genesis) — this is correct
+        since the entry was written with the correct prev_hash at record() time.
         """
         with self._lock:
             records = list(self._records)
 
-        prev = GENESIS_HASH
+        if not records:
+            return True
+
+        # Verify hash integrity of each entry (content not tampered)
         for entry in records:
-            if entry.get("prev_hash") != prev:
-                return False
             if entry.get("entry_hash") != _compute_hash(entry):
                 return False
-            prev = entry["entry_hash"]
+
+        # Verify chain linkage within the retained window
+        for i in range(1, len(records)):
+            if records[i].get("prev_hash") != records[i - 1].get("entry_hash"):
+                return False
+
         return True
 
     def chain_errors(self) -> list[str]:

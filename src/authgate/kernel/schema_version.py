@@ -29,7 +29,13 @@ class SchemaVersion:
         parts = s.split(".")
         if len(parts) != 3:
             raise ValueError(f"Invalid schema version: {s!r} (expected MAJOR.MINOR.PATCH)")
-        return cls(int(parts[0]), int(parts[1]), int(parts[2]))
+        try:
+            major, minor, patch = int(parts[0]), int(parts[1]), int(parts[2])
+        except ValueError:
+            raise ValueError(f"Invalid schema version: {s!r} (non-integer component)")
+        if major < 0 or minor < 0 or patch < 0:
+            raise ValueError(f"Invalid schema version: {s!r} (negative component)")
+        return cls(major, minor, patch)
 
     def __str__(self) -> str:
         return f"{self.major}.{self.minor}.{self.patch}"
