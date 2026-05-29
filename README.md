@@ -1,12 +1,12 @@
 # authgate-kernel
 
-**Capability-constrained authorization kernel for agent tool execution. ~255 LOC security-enforcing Rust path. 887 tests. Zero heuristics inside the TCB.**
+**Capability-constrained authorization kernel for agent tool execution. ~255 LOC security-enforcing Rust path. 905 tests. Zero heuristics inside the TCB.**
 
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](freedom-kernel/)
 [![Kani](https://img.shields.io/badge/Kani-19%20harnesses-green.svg)](formal/)
 [![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
-[![Tests](https://img.shields.io/badge/tests-887%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-905%20passing-brightgreen.svg)](tests/)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](src/authgate/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -63,7 +63,7 @@ Full enumeration: [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md)
 |---|---|
 | Security-enforcing Rust LOC | ~255 (`engine.rs` + `dag.rs` + `call_gate.rs`) |
 | TCB Rust tests | 141 (all passing) |
-| Python integration tests | 887 (all passing) |
+| Python integration tests | 905 (all passing) |
 | Kani harnesses (bounded model checking) | 19 (all proved) |
 | Lean 4 theorems | 16 (4 fully proved scope theorems + 2 admitted; 2 crypto axioms) |
 | Wire boundary attack classes | 18 (WA-1 through WA-18); 37 pytest assertions in `test_wire_hardening.py` |
@@ -327,7 +327,7 @@ The gap between `Permit/Deny` and actual constrained execution:
 |---|---|---|
 | **WASM sandbox** (`cargo build --features sandbox`) | Blocked: Windows SDK kernel32.lib missing | Install Windows SDK 10.0.22621 or build on Linux |
 | **OS-level confinement** (seccomp-bpf) | Not implemented | Wrap tool subprocess with seccomp filter |
-| **End-to-end integration test** | Not implemented | LangChain → FreedomVerifier → SandboxedExecutor → audit |
+| **End-to-end integration test** | **Done** (`tests/test_integration_e2e.py`) | 18 assertions: tool call → gate → audit chain |
 | **TLC model checker** | Java not installed | `java -jar tla2tools.jar -tool MC_AuthGateV3` |
 | **CLI** | Exists; not packaged | `pip install authgate-kernel` |
 
