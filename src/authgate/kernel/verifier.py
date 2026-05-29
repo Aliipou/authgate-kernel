@@ -96,16 +96,13 @@ class FreedomVerifier:
         registry: OwnershipRegistry,
         audit_log: object = None,
         tracer: TraceCollector | None = None,
-        freeze: bool = False,
+        freeze: bool = True,
     ) -> None:
-        # freeze=False (default): live registry — mutations after construction
-        # are visible to subsequent verify() calls. This is the existing behavior.
-        # TOCTOU note: if the registry can be mutated between verify() calls in
-        # the same logical session, use freeze=True or call registry.freeze()
-        # before constructing the verifier to get a consistent snapshot.
-        # freeze=True: registry is snapshot at construction time; all verify()
-        # calls in this verifier see the same state regardless of later mutations.
-        self.registry = registry.freeze() if freeze and not registry._frozen else registry
+        # freeze=True (default): registry is snapshot at construction time —
+        # eliminates TOCTOU: mutations after FreedomVerifier.__init__ do not
+        # affect this verifier's decisions. Pass freeze=False only when the
+        # registry is already frozen or when live mutation is intentional.
+        self.registry = registry.freeze() if freeze and not getattr(registry, "_frozen", False) else registry
         self._audit_log = audit_log
         self._tracer = tracer
 
