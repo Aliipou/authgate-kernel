@@ -29,11 +29,12 @@ app = FastAPI(
 )
 
 _registry = OwnershipRegistry()
-_verifier = ExtendedFreedomVerifier(_registry)
 
 
 def get_verifier() -> ExtendedFreedomVerifier:
-    return _verifier
+    # Rebuild from a fresh frozen snapshot on every request — eliminates TOCTOU
+    # and ensures claims added via /machine + /claim endpoints are visible.
+    return ExtendedFreedomVerifier(_registry, freeze=True)
 
 
 # ------------ request/response models ----------------------------------
