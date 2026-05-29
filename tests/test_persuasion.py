@@ -2,7 +2,7 @@
 import pytest
 
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from authgate.kernel.persuasion import (
+from authgate.analysis.persuasion import (
     PersuasionBoundaryChecker,
     PersuasionCriterion,
     check_persuasion_boundary,
