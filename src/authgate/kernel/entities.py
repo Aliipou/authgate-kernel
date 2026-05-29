@@ -39,6 +39,10 @@ class Resource:
     is_public: bool = False
     ifc_label: str = field(default="", compare=False, hash=False)
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.rtype, ResourceType):
+            raise TypeError(f"Resource.rtype must be ResourceType, got {type(self.rtype).__name__!r}")
+
     def __str__(self) -> str:
         return f"{self.rtype.value}:{self.name}"
 
