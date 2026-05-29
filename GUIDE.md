@@ -17,7 +17,9 @@
 8. [Thread safety](#8-thread-safety)
 9. [Integration patterns](#9-integration-patterns)
 10. [Failure modes](#10-failure-modes)
-11. [Operational checklist](#11-operational-checklist)
+11. [Multi-layer safety composition](#11-multi-layer-safety-composition)
+12. [Observability hooks](#12-observability-hooks)
+13. [Operational checklist](#13-operational-checklist)
 
 ---
 
@@ -562,7 +564,171 @@ If `verify_chain()` returns `False`:
 
 ---
 
-## 11. Operational checklist
+## 11. Multi-layer safety composition
+
+The kernel (`FreedomVerifier`) is a **necessary condition**, not a sufficient one.
+Four verifier layers compose cleanly — each adds an independent orthogonal condition.
+All must pass for an action to proceed.
+
+```
+Layer 1: FreedomVerifier        — authority gate (ownership + rights claims)
+Layer 2: ConsentVerifier        — human consent for sensitive actions
+Layer 3: NonInterferenceChecker — IFC / Bell-LaPadula confidentiality
+Layer 4: PolicyVerifier         — ABAC operational rules
+```
+
+### Wiring all four layers
+
+```python
+from authgate import (
+    FreedomVerifier, OwnershipRegistry, RightsClaim, Entity, AgentType,
+    Resource, ResourceType, Action,
+)
+from authgate.kernel.consent import ConsentCapability, ConsentVerifier
+from authgate.kernel.policy import Policy, PolicyRule, PolicyVerifier
+from authgate.kernel.policy_dsl import compile as compile_policy
+from authgate.extensions.ifc import NonInterferenceChecker, SecurityLattice, IFCViolation
+
+# ── Setup ─────────────────────────────────────────────────────────────────────
+registry = OwnershipRegistry()
+dr_alice = Entity("DrAlice", AgentType.HUMAN)
+medbot = Entity("MedBot", AgentType.MACHINE)
+patient_record = Resource("phi-001", ResourceType.DATASET,
+                          scope="/phi/patients", ifc_label="SECRET")
+
+registry.register_machine(medbot, dr_alice)
+registry.add_claim(RightsClaim(medbot, patient_record, can_read=True))
+
+kernel = FreedomVerifier(registry.freeze())
+
+# Layer 2: consent — patient data requires explicit physician consent
+consent_verifier = ConsentVerifier(capabilities=[
+    ConsentCapability(
+        claim=RightsClaim(medbot, patient_record, can_read=True),
+        consent_required=True,
+        consent_given_by=dr_alice,    # must be a human
+        consent_scope="/phi/patients",
+    )
+])
+
+# Layer 3: IFC — SECRET data must not flow to PUBLIC resources
+ifc_checker = NonInterferenceChecker(verifier=kernel, lattice=SecurityLattice.default())
+
+# Layer 4: ABAC — no machine writes to /phi scope (policy DSL)
+policy = compile_policy("""
+    DENY *
+      WRITE /phi
+""", name="phi-write-protection")
+policy_verifier = PolicyVerifier(kernel=kernel, policy=policy)
+
+# ── Per-action verification ────────────────────────────────────────────────────
+def is_permitted(action: Action) -> tuple[bool, list[str]]:
+    """Run all four layers; return (ok, reasons_if_blocked)."""
+    failures = []
+
+    # L1: kernel gate
+    result = kernel.verify(action)
+    if not result.permitted:
+        return False, [f"KERNEL: {'; '.join(result.violations)}"]
+
+    # L2: consent (only for kernel-permitted actions)
+    for v in consent_verifier.check(action):
+        failures.append(f"CONSENT: {v.reason}")
+
+    # L3: IFC (track labels across action sequence in production)
+    try:
+        ifc_checker.check_action(action, read_labels_so_far=set())
+    except IFCViolation as e:
+        failures.append(f"IFC: {e}")
+
+    # L4: policy
+    pol_result = policy_verifier.verify(action)
+    if not pol_result.permitted:
+        failures.extend(f"POLICY: {v}" for v in pol_result.violations)
+
+    return len(failures) == 0, failures
+```
+
+### Composition order matters
+
+- **Layer 1 first** — sovereignty flags (FORBIDDEN) are checked before any other layer.
+  An action with `bypasses_verifier=True` is rejected instantly; consent and IFC are never consulted.
+- **Layer 2 and 3 only when kernel permits** — no point checking consent for a kernel-denied action.
+- **Layer 3 stateful** — IFC tracks labels across the entire session, not just per-action.
+  In production, pass a single `read_labels_so_far` set across the agent's session.
+- **Layer 4 orthogonal** — `PolicyVerifier.verify()` calls `kernel.verify()` internally;
+  it short-circuits if the kernel denies.
+
+### IFC across a session
+
+```python
+session_labels: set[str] = set()  # shared across all actions in one agent session
+
+for action in agent_actions:
+    # ... layers 1, 2, 4 ...
+    try:
+        ifc_checker.check_action(action, read_labels_so_far=session_labels)
+    except IFCViolation:
+        halt_agent()
+        break
+    # session_labels now contains all resource labels read so far
+```
+
+### Policy DSL quick reference
+
+```
+ALLOW <subject>               # ALLOW or DENY
+  READ   <scope>              # one or more operations
+  WRITE  <scope>              # scope is a prefix (/phi matches /phi/*, not /phi-extra)
+  UNLESS delegated_by <name>  # optional: only if NOT delegated by <name>
+  MAX_DELEGATION_DEPTH 2      # optional: limit chain depth
+  EXPIRES 3600                # optional: time-limited rule (seconds)
+  TRUST_DOMAIN internal       # optional: restrict to named trust domain
+```
+
+`compile_policy(text, name)` parses the DSL and returns a `Policy` ready for `PolicyVerifier`.
+
+---
+
+## 12. Observability hooks
+
+`HookRegistry` and `MetricsCollector` provide zero-dependency observability.
+Every `verify()` call automatically emits a `VerificationEvent` — no code changes needed.
+
+```python
+from authgate import HookRegistry, MetricsCollector, VerificationEvent
+
+# Register a metrics collector
+collector = MetricsCollector()
+HookRegistry.register(collector.on_event)
+
+# ... run your agent ...
+
+snapshot = collector.snapshot()
+print(collector.summary())
+# "100 calls, 97 permit, 3 deny (3.0%); arbitration=1; avg=24.2µs"
+
+# Unregister when done
+HookRegistry.unregister(collector.on_event)
+```
+
+### Custom hooks
+
+```python
+def my_hook(event: VerificationEvent) -> None:
+    if not event.permitted:
+        alert_pagerduty(event.action_id, event.actor_name, event.violation_count)
+
+HookRegistry.register(my_hook)
+```
+
+Hooks run synchronously after the `verify()` decision is recorded.
+Exceptions in hooks are swallowed — a broken hook never affects the kernel decision.
+Hooks run in registration order. `HookRegistry.clear()` removes all hooks.
+
+---
+
+## 13. Operational checklist
 
 ### Before go-live
 
@@ -572,7 +738,7 @@ If `verify_chain()` returns `False`:
 - [ ] Registry is frozen before any `FreedomVerifier` is created
 - [ ] Key rotation procedure is documented and tested in staging
 - [ ] `audit.verify_chain()` passes on startup (if loading from existing log)
-- [ ] `pytest` passes on the deployed code (`273 tests`)
+- [ ] `pytest` passes on the deployed code (`438 tests`)
 - [ ] Sovereignty flags are never set to `True` by default in action builders
 
 ### After deployment
