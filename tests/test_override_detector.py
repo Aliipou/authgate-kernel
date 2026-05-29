@@ -4,7 +4,7 @@ import time
 import pytest
 
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from authgate.kernel.override_detector import (
+from authgate.analysis.override_detector import (
     LockInPattern,
     LockInRisk,
     MAX_SAFE_CHAIN_DEPTH,

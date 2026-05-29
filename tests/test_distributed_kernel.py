@@ -17,7 +17,7 @@ import pytest
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 
-from authgate.kernel.distributed_kernel import (
+from authgate.distributed.distributed_kernel import (
     VectorClock,
     MerkleRegistryState,
     RevocationEvent,
