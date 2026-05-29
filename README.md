@@ -6,7 +6,7 @@
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](freedom-kernel/)
 [![Kani](https://img.shields.io/badge/Kani-17%20harnesses-green.svg)](formal/)
 [![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
-[![Tests](https://img.shields.io/badge/tests-418%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-541%20passing-brightgreen.svg)](tests/)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](src/authgate/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
@@ -49,7 +49,7 @@ Full enumeration: [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md)
 |---|---|
 | Security-enforcing Rust LOC | ~255 (`engine.rs` + `dag.rs` + `call_gate.rs`) |
 | TCB Rust tests | 141 (all passing) |
-| Python integration tests | 418 (all passing) |
+| Python integration tests | 541 (all passing) |
 | Kani harnesses (bounded model checking) | 17 (all proved) |
 | Lean 4 theorems | 16 (4 fully proved scope theorems + 2 admitted; 2 crypto axioms) |
 | Wire boundary attack classes | 18 (WA-1 through WA-18); 37 pytest assertions in `test_wire_hardening.py` |
