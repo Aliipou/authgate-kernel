@@ -73,6 +73,10 @@ class Entity:
     kind: AgentType
     metadata: dict[str, Any] = field(default_factory=dict, compare=False, hash=False)
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.kind, AgentType):
+            raise TypeError(f"Entity.kind must be AgentType, got {type(self.kind).__name__!r}")
+
     def is_human(self) -> bool:
         return self.kind == AgentType.HUMAN
 
@@ -94,6 +98,13 @@ class RightsClaim:
     confidence: float = 1.0
     expires_at: float | None = None
     delegated_by: "Entity | None" = field(default=None, compare=False, hash=False)
+
+    def __post_init__(self) -> None:
+        import math
+        if not isinstance(self.confidence, (int, float)) or math.isnan(self.confidence) or math.isinf(self.confidence):
+            raise ValueError(f"confidence must be a finite float, got {self.confidence!r}")
+        if not 0.0 <= self.confidence <= 1.0:
+            raise ValueError(f"confidence must be in [0.0, 1.0], got {self.confidence}")
 
     def is_expired(self) -> bool:
         return self.expires_at is not None and time.time() > self.expires_at

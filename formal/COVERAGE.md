@@ -105,6 +105,17 @@ Run: `python attack_harness/attack_tree_coverage.py`
 | INV-RESOURCE-PROP | Resource propagation in `dag.rs` | Compromised delegator cannot redirect root-granted authority to a different resource. Previously, a delegator with a root-signed cap for R1 could issue a child cap for R2 and the chain would validate. Now rejected with "delegation chain resource mismatch". |
 | TCB boundary | Moved `sequence.rs` out of `tcb/` | `SequenceContext` is a policy helper, not a security enforcer. Moving it clarifies the TCB boundary (engine + dag + call_gate + types = ~255 LOC). |
 
+## Delegation Lattice Theorems (Phase 1.2 — closed)
+
+Proved in `SEMANTICS.md §5`:
+
+| Theorem | Statement | Method |
+|---|---|---|
+| T1 Transitivity | Rights and confidence both propagate transitively through chains | Pen-and-paper proof; follows from ⊆ and ≤ transitivity |
+| T2 Anti-monotonicity | Confidence never increases through any delegation chain | Inductive proof on chain length |
+| T3 No Cycles | Delegation graph is a DAG; depth > 16 rejected at wire layer | Registry construction invariant + depth bound |
+| T4 BDL | (Rights × [0,1]) forms a bounded distributive lattice under meet=(∩,min), join=(∪,max) | Distributivity of ∩/∪ over sets + min/max over ℝ |
+
 ## Open Gaps (explicit, not hidden)
 
 | Gap | Description | Why it's acceptable |
@@ -113,7 +124,7 @@ Run: `python attack_harness/attack_tree_coverage.py`
 | G3 | Clock trust | Caller-supplied `now` — documented limitation |
 | G5 | No replay protection | Kernel is stateless; replay protection belongs in the orchestration layer |
 | G6 | Crypto assumptions | ed25519 break = NIST-level threat — out of scope |
-| TLC run | TLA+ model not yet TLC-checked | Needs Java + tla2tools.jar |
+| TLC run | TLA+ model not yet TLC-checked | Needs Java + tla2tools.jar (setup documented in TLC_SETUP.md) |
 | Refinement | No TLA+ → Rust refinement proof | Research-level gap; documented in INCOMPLETENESS.md |
 
 ## What Is NOT Formally Verified
