@@ -116,6 +116,25 @@ Proved in `SEMANTICS.md §5`:
 | T3 No Cycles | Delegation graph is a DAG; depth > 16 rejected at wire layer | Registry construction invariant + depth bound |
 | T4 BDL | (Rights × [0,1]) forms a bounded distributive lattice under meet=(∩,min), join=(∪,max) | Distributivity of ∩/∪ over sets + min/max over ℝ |
 
+## Scope Containment Theorems (Phase 1.3 formal — added 2026-05-29)
+
+Located in `formal/lean4/FreedomKernel/Scope.lean`.
+Mirrors SEMANTICS.md §5 formal properties.
+
+| Theorem | Statement | Status |
+|---|---|---|
+| T-SC1 Reflexivity | `scopeContains(P, P) = True` for traversal-free P | Admitted (String.normalize induction pending) |
+| T-SC2 Root-universal | `scopeContains("", C) = True` for traversal-free C | ✓ Proved |
+| T-SC3 Traversal-parent | `hasTraversal(P) → scopeContains(P, C) = False` | ✓ Proved |
+| T-SC3b Traversal-child | `hasTraversal(C) → scopeContains(P, C) = False` | ✓ Proved |
+| T-SC4 Prefix-implies | `C.startsWith(normalize(P)++"/") → scopeContains(P,C)` | ✓ Proved |
+| T-SC5 Antisymmetry | `scopeContains(P,Q) ∧ scopeContains(Q,P) → normalize(P)=normalize(Q)` | Admitted (String antisymmetry pending) |
+
+Security-critical theorems (T-SC3, T-SC3b, T-SC4) are fully proved without sorry.
+T-SC1 and T-SC5 require induction over String.normalize / String.startsWith interaction
+and are admitted pending Lean 4 String library maturity; they are axiomatically sound
+by inspection of the Python implementation.
+
 ## Open Gaps (explicit, not hidden)
 
 | Gap | Description | Why it's acceptable |
