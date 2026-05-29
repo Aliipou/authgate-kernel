@@ -2,7 +2,7 @@
 import pytest
 
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from authgate.kernel.multi_agent_coordinator import (
+from authgate.analysis.multi_agent_coordinator import (
     AgentStep,
     CoalitionChecker,
     CoalitionViolation,

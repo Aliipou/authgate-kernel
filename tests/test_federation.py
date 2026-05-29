@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from authgate.kernel.federation import (
+from authgate.distributed.federation import (
     ConstitutionalConsensus,
     FederatedDecision,
     FederatedDecisionType,
