@@ -189,7 +189,7 @@ def test_atk004_expired_claim_blocked(bot, dataset):
 def test_atk005_revocation_blocks_immediately(bot, dataset):
     b, reg = bot
     reg.add_claim(RightsClaim(b, dataset, can_read=True))
-    v = FreedomVerifier(reg)
+    v = FreedomVerifier(reg, freeze=False)  # live: revocation must be immediately visible
     assert v.verify(Action("read-before-revoke", b, resources_read=[dataset])).permitted
     reg.revoke_all(b.name)
     assert not v.verify(Action("read-after-revoke", b, resources_read=[dataset])).permitted
@@ -206,7 +206,7 @@ def test_atk005_cascading_revocation_removes_downstream(alice, dataset):
     reg.delegate(RightsClaim(mid, dataset, can_read=True, can_delegate=True), delegated_by=alice)
     reg.delegate(RightsClaim(leaf, dataset, can_read=True), delegated_by=mid)
 
-    v = FreedomVerifier(reg)
+    v = FreedomVerifier(reg, freeze=False)  # live: revocation must be immediately visible
     assert v.verify(Action("leaf-read", leaf, resources_read=[dataset])).permitted
 
     reg.revoke_cascading(mid.name)
@@ -231,10 +231,10 @@ def test_atk006_covert_channel_not_kernel_concern(bot, dataset):
 # ─── ATK-007: Replay — nonce/timestamp not in Python kernel ──────────────────
 
 def test_atk007_same_action_still_checked_each_call(bot, dataset):
-    """Each verify() call re-checks current registry state (no result caching)."""
+    """Each verify() call re-checks current registry state (no result caching) when live."""
     b, reg = bot
     reg.add_claim(RightsClaim(b, dataset, can_read=True))
-    v = FreedomVerifier(reg)
+    v = FreedomVerifier(reg, freeze=False)  # live: revocation must be immediately visible
     action = Action("repeat-read", b, resources_read=[dataset])
     assert v.verify(action).permitted
     reg.revoke_all(b.name)

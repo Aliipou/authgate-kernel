@@ -38,9 +38,10 @@ class ExtendedFreedomVerifier:
         registry: OwnershipRegistry,
         conclusion_tester: Callable[[str], bool] | None = None,
         manipulation_threshold: float = 0.5,
+        freeze: bool = True,
     ) -> None:
         self.registry = registry
-        self._gate = FreedomVerifier(registry)
+        self._gate = FreedomVerifier(registry, freeze=freeze)
         self.synthesis = SynthesisEngine()
         self.conflict_queue = ConflictQueue()
         self._conclusion_tester = conclusion_tester
