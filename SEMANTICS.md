@@ -98,9 +98,9 @@ the kernel does not automatically propagate delegation — each link must be exp
 or moral responsibility when a chain of machines causes harm. The kernel enforces authority
 boundaries; it does not model legal or ethical responsibility chains.
 
-### 4. Resource Scope Containment
+### 5. Resource Scope Containment
 
-**Formal rule (Phase 1.3 — closed):**
+**Formal rule (Phase 1.3 — closed, §5 above):**
 
 ```
 normalize(P) := P.rstrip("/")
@@ -121,7 +121,7 @@ has_traversal(path) := ".." ∈ path.split("/")
 - Antisymmetric: if `scope_contains(P, Q)` and `scope_contains(Q, P)` then `normalize(P) = normalize(Q)`
 - Path traversal: any path containing `..` returns False — no normalization is performed, as normalizing untrusted input is itself an attack surface
 
-**Implementation:** `authgate.kernel.entities.scope_contains` — 40+ tests in `tests/test_scope.py`.
+**Implementation:** `authgate.kernel.entities.scope_contains` — 40+ tests in `tests/test_scope.py`. Cross-referenced in §6 (delegation lattice).
 
 **What this does NOT cover:**
 - Symbolic links or filesystem-level path aliasing
@@ -129,7 +129,7 @@ has_traversal(path) := ".." ∈ path.split("/")
 - Case-insensitive matching (Windows paths)
 - Resource content access control — only namespace containment is checked
 
-### 5. Delegation Transitivity and the Delegation Lattice
+### 6. Delegation Transitivity and the Delegation Lattice
 
 **Phase 1.2 — CLOSED (formal proof)**
 
@@ -223,7 +223,7 @@ the result, not trace each hop individually.
 
 ---
 
-### 6. The Verification Gate
+### 7. The Verification Gate
 
 ```
 Permitted(action A, registry R) :=
@@ -326,7 +326,7 @@ Honest path to "formally specified":
    as a security label and verifies non-interference. This is the missing piece for
    "no information leaks" guarantees.
 
-3. **~~Formalize delegation transitivity~~**: ✓ CLOSED — Phase 1.2. Proved (T1–T4, §5 above):
+3. **~~Formalize delegation transitivity~~**: ✓ CLOSED — Phase 1.2. Proved (T1–T4, §6 above):
    transitivity, anti-monotonicity, DAG property, bounded distributive lattice. Any n-hop
    chain collapses to the meet of its links; confidence never increases through delegation.
 
@@ -335,7 +335,7 @@ Honest path to "formally specified":
    This closes the gap between the mathematical spec and the running code.
 
 5. **~~Define resource scope semantics~~**: ✓ CLOSED — Phase 1.3. `scope_contains` is
-   formally specified (§4 above), implemented in `kernel/entities.py`, and covered by
+   formally specified (§5 above), implemented in `kernel/entities.py`, and covered by
    40+ tests including path traversal cases.
 
 Item 1 remains open (TLC run, needs Java). Items 3 and 5 are closed. Items 2 and 4 require
@@ -353,7 +353,7 @@ dedicated research (IFC type system, Creusot/Prusti refinement proof).
 | Sovereignty flags unconditionally block | ✓ True |
 | Complete ownership semantics | ✗ Out of scope; application-layer concern |
 | Behavioral plan verification | ✗ Not provided; see verify_plan limitations |
-| Resource scope containment rule | ✓ Formally specified (§4) and tested (40+ cases) |
+| Resource scope containment rule | ✓ Formally specified (§5) and tested (40+ cases) |
 | Typed error hierarchy | ✓ `authgate.errors` — structured exceptions with machine-readable fields |
 | Key rotation protocol | ✓ `RotationCertificate` with grace period, emergency path, wire roundtrip |
 | Audit log tamper-evidence | ✓ SHA-256 chain, concurrent-safe, forensic replay |

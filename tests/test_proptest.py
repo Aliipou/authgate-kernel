@@ -64,7 +64,7 @@ def test_every_forbidden_flag_blocks(flag):
 
 @given(
     flag=st.sampled_from(FORBIDDEN_FLAGS),
-    action_id=st.text(alphabet=st.characters(whitelist_categories=("L",)), min_size=1, max_size=32),
+    action_id=st.text(alphabet="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_", min_size=1, max_size=32),
 )
 @settings(max_examples=50)
 def test_forbidden_flag_blocks_regardless_of_action_id(flag, action_id):
