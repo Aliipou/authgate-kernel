@@ -243,6 +243,33 @@ class TestWA9InvalidKind:
 
 
 # ---------------------------------------------------------------------------
+# WA-10 — Wrong resource type string — REJECTED by Resource.__post_init__
+# ---------------------------------------------------------------------------
+
+class TestWA10WrongResourceType:
+    def test_string_rtype_rejected(self):
+        with pytest.raises(TypeError, match="ResourceType"):
+            Resource("data", "UNKNOWN_TYPE")
+
+    def test_integer_rtype_rejected(self):
+        with pytest.raises(TypeError, match="ResourceType"):
+            Resource("data", 42)
+
+    def test_none_rtype_rejected(self):
+        with pytest.raises(TypeError, match="ResourceType"):
+            Resource("data", None)
+
+    def test_valid_enum_accepted(self):
+        r = Resource("data", ResourceType.DATASET)
+        assert r.rtype is ResourceType.DATASET
+
+    def test_all_resource_types_accepted(self):
+        for rt in ResourceType:
+            r = Resource("res", rt)
+            assert r.rtype is rt
+
+
+# ---------------------------------------------------------------------------
 # WA-11 — NaN confidence — REJECTED by __post_init__
 # ---------------------------------------------------------------------------
 
