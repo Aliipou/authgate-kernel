@@ -1,0 +1,130 @@
+name: Sandbox enforcement
+
+# Separate workflow: builds and tests the WASM sandbox feature.
+# This is the enforcement gap — the step from Permit/Deny to actual IO confinement.
+#
+# Key test: write_tool_blocked_with_only_read_right
+#   A tool that imports `write_byte` but was granted only RIGHT_READ fails at
+#   WASM instantiation — missing symbol, not a runtime policy check.
+#   If this test regresses, enforcement is broken.
+#
+# Runs on Linux only. The wasmtime dependency (v25) builds cleanly on
+# ubuntu-24.04 without Windows SDK. Windows build is blocked (kernel32.lib
+# not available) and tracked separately.
+
+on:
+  push:
+    branches: [main, integration, tcb-core]
+    paths:
+      - "freedom-kernel/src/sandbox.rs"
+      - "freedom-kernel/src/tcb/**"
+      - "freedom-kernel/Cargo.toml"
+      - "freedom-kernel/Cargo.lock"
+      - ".github/workflows/sandbox.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "freedom-kernel/src/sandbox.rs"
+      - "freedom-kernel/src/tcb/**"
+      - "freedom-kernel/Cargo.toml"
+      - "freedom-kernel/Cargo.lock"
+
+permissions:
+  contents: read
+
+jobs:
+  sandbox-build:
+    name: WASM sandbox — build + enforcement tests
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: freedom-kernel
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
+        with:
+          workspaces: freedom-kernel
+          key: sandbox-feature
+
+      - name: Build with sandbox feature
+        run: cargo build --features sandbox
+        # wasmtime v25 builds cleanly on ubuntu-24.04 — no system SDK required.
+        # Failure here = dependency or compilation regression; fix before merging.
+
+      - name: Run sandbox enforcement tests
+        run: cargo test --features sandbox --lib -- sandbox
+        # Runs only tests whose path contains "sandbox" — fast (<30s), focused.
+
+      - name: Verify the key enforcement property
+        run: |
+          # write_tool_blocked_with_only_read_right must pass.
+          # This test proves enforcement is structural (WASM instantiation fails),
+          # not a runtime policy check. If this test fails, the sandbox is broken.
+          cargo test --features sandbox --lib -- sandbox::tests::write_tool_blocked_with_only_read_right --exact
+          echo "Enforcement property verified: wrong-rights import blocked at WASM instantiation"
+
+      - name: Verify capability denial (zero WASM execution)
+        run: |
+          # read_tool_denied_when_capability_expired must pass.
+          # This proves the gate fires BEFORE any WASM code runs.
+          cargo test --features sandbox --lib -- sandbox::tests::read_tool_denied_when_capability_expired --exact
+          echo "Gate property verified: expired capability blocks before WASM runs"
+
+      - name: TCB size guard (sandbox.rs)
+        run: |
+          loc=$(wc -l < src/sandbox.rs)
+          echo "sandbox.rs: ${loc} lines"
+          if [ "$loc" -gt 600 ]; then
+            echo "ERROR: sandbox.rs exceeds 600 LOC."
+            echo "The sandbox executor must stay small and auditable."
+            echo "If it is growing, something is being added that belongs outside it."
+            exit 1
+          fi
+
+  sandbox-adversarial:
+    name: WASM sandbox — adversarial cases
+    runs-on: ubuntu-24.04
+    needs: sandbox-build
+    defaults:
+      run:
+        working-directory: freedom-kernel
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cargo cache
+        uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
+        with:
+          workspaces: freedom-kernel
+          key: sandbox-adversarial
+
+      - name: All sandbox enforcement cases
+        run: |
+          cargo test --features sandbox --lib -- sandbox --nocapture 2>&1 | tee sandbox_results.txt
+          echo "--- Test summary ---"
+          grep -E "^test .* \.\.\." sandbox_results.txt | sort
+          if grep -q "FAILED" sandbox_results.txt; then
+            echo "SANDBOX REGRESSION: one or more enforcement tests failed"
+            exit 1
+          fi
+
+      - name: Confirm both enforcement classes are exercised
+        run: |
+          # Class 1: CapabilityDenied — gate fires, zero WASM runs
+          # Class 2: RuntimeError (unknown import) — gate passes, WASM instantiation fails
+          cargo test --features sandbox --lib -- \
+            sandbox::tests::write_tool_blocked_with_only_read_right \
+            sandbox::tests::network_tool_blocked_without_network_right \
+            sandbox::tests::read_tool_denied_when_capability_expired \
+            sandbox::tests::tool_denied_when_wrong_root_key \
+            --exact
+          echo "Both enforcement classes verified."
