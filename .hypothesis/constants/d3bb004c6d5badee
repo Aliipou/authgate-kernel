@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\wire_validator.py
+# hypothesis_version: 6.148.7
+
+['additionalProperties', 'array', 'audit_entry', 'boolean', 'canonical_action', 'gate_result', 'integer', 'maximum', 'minimum', 'null', 'number', 'object', 'pattern', 'properties', 'required', 'spec', 'string', 'type', 'utf-8']

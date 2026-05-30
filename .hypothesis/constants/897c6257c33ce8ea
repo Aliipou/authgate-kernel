@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\tool_abi.py
+# hypothesis_version: 6.148.7
+
+['$schema', '1.0.0', 'additionalProperties', 'array', 'boolean', 'description', 'enum', 'integer', 'maxLength', 'number', 'object', 'ok', 'properties', 'required', 'string', 'title', 'type', 'x-is-delegable', 'x-required-rights', 'x-resource-scope', 'x-scope-constrained']

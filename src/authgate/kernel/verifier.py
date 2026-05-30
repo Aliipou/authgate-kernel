@@ -117,6 +117,15 @@ class FreedomVerifier:
             )
 
     def verify(self, action: Action) -> VerificationResult:
+        """
+        Verify an action against the registry.
+
+        C-4 NOTE: This method is NOT pure — it writes to self._audit_log and
+        self._tracer if either is set. The Lean4 `verify_deterministic` theorem
+        applies to the Rust TCB (`engine.rs`), not to this Python implementation.
+        For deployments needing pure-function guarantees, use the Rust backend.
+        See formal/INCOMPLETENESS.md "Formal scope: Rust TCB only".
+        """
         _t0 = time.monotonic()
         violations: list[str] = []
         warnings: list[str] = []

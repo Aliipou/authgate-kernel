@@ -25,21 +25,28 @@ class ConflictRecord:
     description: str
 
 
-def _claim_key(holder: Entity, resource: Resource) -> tuple[str, str]:
-    return (holder.name, resource.name)
+def _claim_key(holder: Entity, resource: Resource) -> tuple[str, str, str]:
+    """C-1 fix: compound key includes AgentType so HUMAN(x) and MACHINE(x) don't collide."""
+    return (holder.name, holder.kind.name, resource.name)
 
 
 @dataclass
 class OwnershipRegistry:
     _lock: threading.RLock = field(default_factory=threading.RLock, init=False, repr=False)
     _claims: list[RightsClaim] = field(default_factory=list)
-    _index: dict[tuple[str, str], list[RightsClaim]] = field(
+    _index: dict[tuple[str, str, str], list[RightsClaim]] = field(
         default_factory=lambda: defaultdict(list), init=False, repr=False
     )
     _machine_owners: dict[Entity, Entity] = field(default_factory=dict)
     _conflicts: list[ConflictRecord] = field(default_factory=list)
     _conflict_hook: Callable[[ConflictRecord], None] | None = None
     _frozen: bool = field(default=False, init=False)
+    # C-1 fix: track identity_token per (name, kind). If a token is set at
+    # registration, any later Entity with the same name+kind but different/missing
+    # token is rejected as an impersonation attempt.
+    _identity_tokens: dict[tuple[str, str], str | None] = field(
+        default_factory=dict, init=False, repr=False
+    )
 
     def __post_init__(self) -> None:
         # Rebuild index from any pre-populated _claims (e.g. snapshot copy)
@@ -66,6 +73,7 @@ class OwnershipRegistry:
                 _machine_owners=dict(self._machine_owners),
                 _conflicts=list(self._conflicts),
             )
+            snapshot._identity_tokens = dict(self._identity_tokens)  # C-1: preserve token registry
             snapshot._frozen = True
             return snapshot
 
@@ -75,6 +83,34 @@ class OwnershipRegistry:
                 "Registry is frozen; mutations are not permitted on snapshots. "
                 "Call freeze() on the original registry, then verify against the snapshot."
             )
+
+    def _identity_key(self, entity: Entity) -> tuple[str, str]:
+        return (entity.name, entity.kind.name)
+
+    def _enroll_identity(self, entity: Entity) -> None:
+        """
+        Record or verify the identity_token for this (name, kind).
+        First sighting: record the token.
+        Subsequent sightings: must match the recorded token (C-1 impersonation defense).
+        """
+        key = self._identity_key(entity)
+        if key not in self._identity_tokens:
+            self._identity_tokens[key] = entity.identity_token
+            return
+        registered = self._identity_tokens[key]
+        if registered != entity.identity_token:
+            raise PermissionError(
+                f"[C-1] IDENTITY_MISMATCH: {entity} presents identity_token={entity.identity_token!r} "
+                f"but registered token is {registered!r}. "
+                f"Impersonation attempt rejected."
+            )
+
+    def _identity_matches(self, entity: Entity) -> bool:
+        """Read-only identity check: True if entity's token matches the registered one (or no token registered)."""
+        key = self._identity_key(entity)
+        if key not in self._identity_tokens:
+            return True  # never registered — treat as new identity, not impersonation
+        return self._identity_tokens[key] == entity.identity_token
 
     def set_conflict_hook(self, hook: Callable[[ConflictRecord], None]) -> None:
         self._conflict_hook = hook
@@ -95,6 +131,7 @@ class OwnershipRegistry:
         """Assert a rights claim directly (ownership assertion, no attenuation check)."""
         self._check_mutable()
         with self._lock:
+            self._enroll_identity(claim.holder)  # C-1: lock identity on first claim
             conflict = self._detect_conflict(claim)
             if conflict:
                 self._conflicts.append(conflict)
@@ -175,11 +212,22 @@ class OwnershipRegistry:
         if not owner.is_human():
             raise TypeError(f"{owner.name} is not HUMAN.")
         with self._lock:
+            # C-1 fix: enroll identity tokens at registration. Same name+kind
+            # with different tokens is rejected as impersonation.
+            self._enroll_identity(machine)
+            self._enroll_identity(owner)
             self._machine_owners[machine] = owner
 
     def claims_for(self, holder: Entity, resource: Resource) -> list[RightsClaim]:
-        """O(k) where k = claims for this (holder, resource) pair — O(1) index lookup."""
+        """O(k) where k = claims for this (holder, resource) pair — O(1) index lookup.
+
+        C-1 fix: if the holder's identity_token does not match the registered token,
+        this returns an empty list (impersonation attempt). The claims are not even
+        considered.
+        """
         with self._lock:
+            if not self._identity_matches(holder):
+                return []  # impersonation — no claims for this caller
             return [
                 c for c in self._index.get(_claim_key(holder, resource), [])
                 if c.is_valid()
@@ -299,6 +347,9 @@ class OwnershipRegistry:
             return updated
 
     def owner_of(self, machine: Entity) -> Entity | None:
+        # C-1: an impersonator with same name but wrong/missing token has no owner
+        if not self._identity_matches(machine):
+            return None
         return self._machine_owners.get(machine)
 
     def open_conflicts(self) -> list[ConflictRecord]:

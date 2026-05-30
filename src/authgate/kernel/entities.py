@@ -100,9 +100,23 @@ def scope_contains(parent_scope: str, child_path: str) -> bool:
 
 @dataclass(frozen=True)
 class Entity:
+    """
+    Identity in the authgate Python layer.
+
+    SECURITY NOTE (C-1): Python identity is name + kind + optional identity_token.
+    Without identity_token, two Entity objects with the same (name, kind) match.
+    For deployments requiring cryptographic identity binding, either:
+      (a) use the Rust TCB (subject_id = SHA-256(pubkey)), or
+      (b) set identity_token to a per-principal secret at registration time.
+
+    The registry enforces: if a name+kind was registered with a token,
+    only Entity objects bearing that token can be matched. Plain re-construction
+    Entity("name", KIND) with the wrong/missing token is rejected.
+    """
     name: str
     kind: AgentType
     metadata: dict[str, Any] = field(default_factory=dict, compare=False, hash=False)
+    identity_token: str | None = field(default=None, compare=True, hash=True)
 
     def __post_init__(self) -> None:
         if not isinstance(self.kind, AgentType):

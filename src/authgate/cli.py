@@ -202,6 +202,23 @@ def cmd_audit_stats(args: argparse.Namespace) -> int:
     return 0 if chain_ok else 1
 
 
+def cmd_validate(args: argparse.Namespace) -> int:
+    """Validate a JSON file against an authgate wire schema (IV-1)."""
+    from authgate.wire_validator import validate
+
+    instance = _load_json(args.json_file, "input")
+    result = validate(instance, args.schema)
+
+    if result.valid:
+        print(f"OK: valid {args.schema}")
+        return 0
+
+    print(f"INVALID {args.schema}:", file=sys.stderr)
+    for err in result.errors:
+        print(f"  {err}", file=sys.stderr)
+    return 1
+
+
 def cmd_key_verify(args: argparse.Namespace) -> int:
     from authgate.key_rotation import RotationCertificate, verify_rotation
 
@@ -258,6 +275,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_as.add_argument("logfile", metavar="LOG.jsonl")
     p_as.set_defaults(func=cmd_audit_stats)
 
+    # validate (IV-1 wire format validator)
+    p_val = sub.add_parser("validate", help="Validate JSON against an authgate wire schema")
+    p_val.add_argument("--schema", required=True,
+                       choices=["canonical_action", "gate_result", "audit_entry"],
+                       help="Which wire schema to validate against")
+    p_val.add_argument("json_file", metavar="FILE.json")
+    p_val.set_defaults(func=cmd_validate)
+
     # key
     p_key = sub.add_parser("key", help="Key rotation operations")
     key_sub = p_key.add_subparsers(dest="key_command", required=True)
@@ -269,11 +294,12 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> int:
+    """Run the CLI. argv=None reads sys.argv. Returns exit code."""
     parser = build_parser()
-    args = parser.parse_args()
-    sys.exit(args.func(args))
+    args = parser.parse_args(argv)
+    return args.func(args)
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

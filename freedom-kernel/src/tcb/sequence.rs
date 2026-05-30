@@ -105,3 +105,105 @@ mod tests {
         assert!(ctx.exceeds_limit(RIGHT_READ));
     }
 }
+
+// ─── Kani harnesses — L-1 fix: composition safety model-checked ──────────────
+// Build: cargo kani --harness prop_seq_accumulated_monotone
+#[allow(unexpected_cfgs)]
+#[cfg(kani)]
+mod kani_harnesses {
+    use super::*;
+    use crate::tcb::types::Rights;
+
+    /// INV-SEQ-1: accumulated_rights is monotonic (high-water mark property).
+    /// Once a right has been accumulated, it cannot be removed by recording another step.
+    #[kani::proof]
+    fn prop_seq_accumulated_monotone() {
+        let r1: Rights = kani::any();
+        let r2: Rights = kani::any();
+        let now1: u64 = kani::any();
+        let now2: u64 = kani::any();
+        let actor = [1u8; 32];
+        let resource = [2u8; 32];
+
+        let mut ctx = SequenceContext::new();
+        ctx.record(actor, resource, r1, now1);
+        let after_first = ctx.accumulated_rights();
+
+        ctx.record(actor, resource, r2, now2);
+        let after_second = ctx.accumulated_rights();
+
+        // Monotone: every bit set after first remains set after second.
+        assert!((after_first & after_second) == after_first);
+        // Specifically: union of both inputs.
+        assert!(after_second == (r1 | r2));
+    }
+
+    /// INV-SEQ-2: exceeds_limit is consistent with accumulated_rights.
+    /// (accumulated & !limit) != 0  ↔  exceeds_limit returns true.
+    #[kani::proof]
+    fn prop_seq_exceeds_limit_consistent() {
+        let r: Rights = kani::any();
+        let limit: Rights = kani::any();
+        let now: u64 = kani::any();
+        let actor = [3u8; 32];
+        let resource = [4u8; 32];
+
+        let mut ctx = SequenceContext::new();
+        ctx.record(actor, resource, r, now);
+
+        let exceeds = ctx.exceeds_limit(limit);
+        let expected = (r & !limit) != 0;
+        assert!(exceeds == expected);
+    }
+
+    /// INV-SEQ-3: step_count equals number of record() calls.
+    /// Recording N times produces step_count == N (up to bounded N).
+    #[kani::proof]
+    #[kani::unwind(5)]
+    fn prop_seq_step_count_matches_records() {
+        let actor = [5u8; 32];
+        let resource = [6u8; 32];
+        let r: Rights = kani::any();
+        let now: u64 = kani::any();
+
+        let mut ctx = SequenceContext::new();
+        let n: u8 = kani::any();
+        kani::assume(n <= 4);
+
+        for _ in 0..n {
+            ctx.record(actor, resource, r, now);
+        }
+        assert!(ctx.step_count() == n as usize);
+    }
+
+    /// INV-SEQ-4: an empty session never exceeds any limit (vacuous truth).
+    #[kani::proof]
+    fn prop_seq_empty_never_exceeds() {
+        let limit: Rights = kani::any();
+        let ctx = SequenceContext::new();
+        assert!(!ctx.exceeds_limit(limit));
+        assert!(ctx.accumulated_rights() == 0);
+        assert!(ctx.step_count() == 0);
+    }
+
+    /// INV-SEQ-5: idempotent record — recording the same rights twice
+    /// does not change accumulated_rights but increases step_count.
+    #[kani::proof]
+    fn prop_seq_idempotent_rights() {
+        let r: Rights = kani::any();
+        let now: u64 = kani::any();
+        let actor = [7u8; 32];
+        let resource = [8u8; 32];
+
+        let mut ctx = SequenceContext::new();
+        ctx.record(actor, resource, r, now);
+        let acc1 = ctx.accumulated_rights();
+        ctx.record(actor, resource, r, now);
+        let acc2 = ctx.accumulated_rights();
+
+        // Rights bitmask unchanged (idempotent under bitwise OR with self).
+        assert!(acc1 == acc2);
+        // But step count increased.
+        assert!(ctx.step_count() == 2);
+    }
+}

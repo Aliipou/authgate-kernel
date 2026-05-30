@@ -247,4 +247,104 @@ mod tests {
         action.binding_hash = action.compute_hash();
         assert_eq!(verify(&action, &root_vk, 1000), Decision::Permit);
     }
+
+    // ── L-2 fix: nonce variation tests ───────────────────────────────────────
+
+    fn build_action_with_nonce(
+        actor_id: Bytes32,
+        resource_hash: Bytes32,
+        required_rights: Rights,
+        caps: Vec<CapabilityProof>,
+        min_epoch: u64,
+        nonce: [u8; 16],
+    ) -> CanonicalAction {
+        let mut a = CanonicalAction {
+            actor_id,
+            resource_hash,
+            required_rights,
+            capability_proofs: caps,
+            revocation_proofs: vec![],
+            nonce,
+            timestamp: 1000,
+            min_epoch,
+            binding_hash: [0u8; 32],
+        };
+        a.binding_hash = a.compute_hash();
+        a
+    }
+
+    #[test]
+    fn permit_with_all_ones_nonce() {
+        let root_sk = SigningKey::generate(&mut OsRng);
+        let root_vk = root_sk.verifying_key();
+        let actor = [1u8; 32];
+        let resource = [2u8; 32];
+        let cap = build_root_proof(&root_sk, actor, resource, RIGHT_READ, u64::MAX, 1);
+        let action = build_action_with_nonce(actor, resource, RIGHT_READ, vec![cap], 1, [0xFF; 16]);
+        assert_eq!(verify(&action, &root_vk, 1000), Decision::Permit);
+    }
+
+    #[test]
+    fn permit_with_alternating_nonce() {
+        let root_sk = SigningKey::generate(&mut OsRng);
+        let root_vk = root_sk.verifying_key();
+        let actor = [1u8; 32];
+        let resource = [2u8; 32];
+        let cap = build_root_proof(&root_sk, actor, resource, RIGHT_READ, u64::MAX, 1);
+        let nonce: [u8; 16] = [0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55,
+                                0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA, 0x55, 0xAA];
+        let action = build_action_with_nonce(actor, resource, RIGHT_READ, vec![cap], 1, nonce);
+        assert_eq!(verify(&action, &root_vk, 1000), Decision::Permit);
+    }
+
+    #[test]
+    fn different_nonces_produce_different_binding_hashes() {
+        let actor = [1u8; 32];
+        let resource = [2u8; 32];
+        let root_sk = SigningKey::generate(&mut OsRng);
+        let cap = build_root_proof(&root_sk, actor, resource, RIGHT_READ, u64::MAX, 1);
+
+        let a1 = build_action_with_nonce(actor, resource, RIGHT_READ, vec![cap.clone()], 1, [0x01; 16]);
+        let a2 = build_action_with_nonce(actor, resource, RIGHT_READ, vec![cap.clone()], 1, [0x02; 16]);
+        let a3 = build_action_with_nonce(actor, resource, RIGHT_READ, vec![cap], 1, [0xFF; 16]);
+
+        // All three actions differ ONLY in nonce — binding hashes must all differ.
+        assert_ne!(a1.binding_hash, a2.binding_hash);
+        assert_ne!(a2.binding_hash, a3.binding_hash);
+        assert_ne!(a1.binding_hash, a3.binding_hash);
+    }
+
+    #[test]
+    fn nonce_tamper_after_seal_detected() {
+        let root_sk = SigningKey::generate(&mut OsRng);
+        let root_vk = root_sk.verifying_key();
+        let actor = [1u8; 32];
+        let resource = [2u8; 32];
+        let cap = build_root_proof(&root_sk, actor, resource, RIGHT_READ, u64::MAX, 1);
+        let mut action = build_action_with_nonce(actor, resource, RIGHT_READ, vec![cap], 1, [0x42; 16]);
+        // Mutate nonce after sealing — binding_hash no longer matches
+        action.nonce = [0x99; 16];
+        assert!(matches!(
+            verify(&action, &root_vk, 1000),
+            Decision::Deny { reason: "canonical binding hash mismatch" }
+        ));
+    }
+
+    #[test]
+    fn replay_with_different_nonce_creates_distinct_action() {
+        let root_sk = SigningKey::generate(&mut OsRng);
+        let root_vk = root_sk.verifying_key();
+        let actor = [1u8; 32];
+        let resource = [2u8; 32];
+        let cap = build_root_proof(&root_sk, actor, resource, RIGHT_READ, u64::MAX, 1);
+
+        // Two "replays" by an attacker must have different binding_hash even
+        // though everything else is identical — preventing exact replay.
+        let a1 = build_action_with_nonce(actor, resource, RIGHT_READ, vec![cap.clone()], 1, [0x11; 16]);
+        let a2 = build_action_with_nonce(actor, resource, RIGHT_READ, vec![cap], 1, [0x22; 16]);
+        assert_ne!(a1.binding_hash, a2.binding_hash);
+        // Both still permit (independent valid actions, not replays of same nonce).
+        assert_eq!(verify(&a1, &root_vk, 1000), Decision::Permit);
+        assert_eq!(verify(&a2, &root_vk, 1000), Decision::Permit);
+    }
 }

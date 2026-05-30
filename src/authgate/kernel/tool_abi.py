@@ -50,6 +50,9 @@ class ToolParam:
 
 # ── Schema ────────────────────────────────────────────────────────────────────
 
+TOOL_ABI_VERSION = "1.0.0"
+
+
 @dataclass
 class ToolSchema:
     """
@@ -60,6 +63,8 @@ class ToolSchema:
     parameters: ordered list of typed parameters.
     is_delegable: if False, the tool cannot be called via a delegated claim.
     resource_scope: if set, restricts which scope paths are valid for this tool.
+    schema_version: ABI version this schema conforms to. Bump MAJOR on breaking
+                    semantic changes (II-3 / proof-versioning.md).
     """
     name: str
     required_rights: frozenset[str] = field(default_factory=frozenset)
@@ -67,11 +72,43 @@ class ToolSchema:
     is_delegable: bool = True
     resource_scope: str = ""      # "" = root (no scope restriction from schema)
     description: str = ""
+    schema_version: str = TOOL_ABI_VERSION
 
     def __post_init__(self) -> None:
         if not self.name or not self.name.strip():
             raise ValueError("ToolSchema.name must be non-empty")
         self.required_rights = frozenset(self.required_rights)
+
+    def to_json_schema(self) -> dict:
+        """Export as a JSON Schema dict for external implementers (IV-1)."""
+        type_map = {str: "string", int: "integer", float: "number",
+                    bool: "boolean", bytes: "string", list: "array", dict: "object"}
+        properties: dict = {}
+        required: list = []
+        for p in self.parameters:
+            entry: dict = {"type": type_map.get(p.type, "string")}
+            if p.allowed_values is not None:
+                entry["enum"] = list(p.allowed_values)
+            if p.max_length is not None:
+                entry["maxLength"] = p.max_length
+            if p.scope_constrained:
+                entry["x-scope-constrained"] = True
+            properties[p.name] = entry
+            if p.required:
+                required.append(p.name)
+        return {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "title": self.name,
+            "description": self.description,
+            "type": "object",
+            "properties": properties,
+            "required": required,
+            "additionalProperties": False,
+            "x-authgate-tool-abi-version": self.schema_version,
+            "x-required-rights": sorted(self.required_rights),
+            "x-is-delegable": self.is_delegable,
+            "x-resource-scope": self.resource_scope,
+        }
 
 
 # ── Validation result ─────────────────────────────────────────────────────────

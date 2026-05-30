@@ -5,6 +5,27 @@ seL4 documented the same boundary. A system that claims to prove everything prov
 
 ---
 
+## Formal scope: Rust TCB only
+
+**All formal proofs (Kani + Lean4) apply to `freedom-kernel/src/tcb/engine.rs`.**
+They do NOT apply to the Python layer in `src/authgate/kernel/`.
+
+Specifically:
+- `verify_deterministic` (Lean4): proved for the Rust `verify()` function which is a pure
+  function with no side effects. The Python `FreedomVerifier.verify()` writes to its
+  internal `_audit_log` and `_tracer` during execution — it has side effects.
+  The theorem does not apply to it (C-4 in FINDINGS.md).
+- All Kani `prop_*` harnesses target Rust TCB behaviors on typed inputs.
+- The Python layer is a reference implementation used when the Rust crate is not installed.
+  It is tested but not formally checked.
+- Differential fuzzing (`attack_harness/differential_fuzzer.py`) compares Python vs Rust
+  decisions to catch divergence at runtime, but this is property-based testing — not proof.
+
+If your deployment requires the formal guarantees, ensure `_BACKEND == "rust"` (see
+`authgate.health_check()`).
+
+---
+
 ## Formally Undecidable
 
 ### 1. Infinite-Horizon Plan Safety
