@@ -1,12 +1,19 @@
 # First Adopter — 30-minute integration
 
-**For:** the team that has agents running, has tools they execute, and wants to
-not get owned.
+**For:** any team where SOMETHING decides and SOMETHING ELSE executes IO. Today
+that's mostly LLM agents calling tools. Tomorrow it may be planners, AGI
+subagents, or autonomous economic actors. The shape is the same.
 
 This document is for **one company / one project / one team**. We do not need
 a thousand users. We need the first one.
 
-If you're reading this and you have an agent that calls tools — keep reading.
+If you have:
+- a decision-maker (LLM agent, planner, scheduled task, anything)
+- that calls tools (functions, APIs, database operations, anything)
+- that hit real-world state (filesystem, DB, network, credentials, anything)
+
+— keep reading. The framework you use today is a convenience; the gate works
+regardless of which framework dies next.
 
 ---
 

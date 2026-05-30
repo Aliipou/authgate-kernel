@@ -1,9 +1,12 @@
 # authgate-kernel
 
-**Cryptographically verifiable capability enforcement layer for autonomous agents.**
+**The authorization layer between any decision and any IO.**
 
-Before any agent tool call executes, prove the actor holds a valid, signed,
-non-revoked capability for this resource. No proof, no execution.
+Wherever something decides and something else executes, this verifies the actor
+holds a valid, signed, non-revoked capability for the resource. No proof, no execution.
+
+Not a framework plugin. Not model-specific. Not tied to today's agent architectures.
+A wire format and a verify function. See [POSITIONING.md](POSITIONING.md).
 
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](freedom-kernel/)
@@ -12,27 +15,45 @@ non-revoked capability for this resource. No proof, no execution.
 [![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-## The problem this solves
+## The problem
 
-> Agents execute tools without authority proof.
+> Any decision-maker can execute IO without proving authority.
 
-That's it. The whole product.
+Today's decision-makers are LLM agents. Tomorrow's may be planners, AGI subagents,
+or autonomous economic actors. Authorization gaps in this chain do not depend on
+which decision-maker is at the top.
 
-## What it does
+## What this is
 
-Puts a gate between the agent's tool decision and the IO that follows:
+Puts a structural gate between the decision and the IO:
 
 ```
-Agent action → CallGate (authority proof required) → IO happens
-                   ↓ if denied
-              Audit log entry, action blocked
+[Any decision-maker]  →  CallGate (verify authority proof)  →  [Any IO target]
+                              ↓ if denied
+                         audit log entry, action does not execute
 ```
 
-The gate answers one question:
+The gate answers one question, structurally:
 
-> *Does this actor hold a valid, non-expired, cryptographically signed capability for this resource and these rights, in a chain traceable to the human owner?*
+> *Does this actor hold a valid, non-expired, cryptographically signed capability for this resource and these rights, in a chain traceable to its trust root?*
 
-`Decision::Permit` or `Decision::Deny { reason }`. Same inputs → same output, always. No probability scores. No LLM calls. No network I/O inside the gate.
+`Decision::Permit` or `Decision::Deny { reason }`. Same inputs → same output, always.
+No probability scores. No LLM calls. No network I/O inside the gate.
+
+## The contract
+
+The thing external systems implement is the JSON wire format:
+
+- [`spec/canonical_action.schema.json`](spec/canonical_action.schema.json) — what you submit
+- [`spec/gate_result.schema.json`](spec/gate_result.schema.json) — what you receive
+- [`spec/audit_entry.schema.json`](spec/audit_entry.schema.json) — what gets logged
+
+Any system that can produce and consume these JSON shapes integrates with authgate.
+No framework dependency exists at this layer.
+
+Adapters for popular frameworks (LangChain, OpenAI Agents SDK, Anthropic, AutoGen,
+CrewAI, LangGraph, DSPy, MCP) live in `src/authgate/adapters/` as **conveniences,
+not as the product**. When a framework dies, its adapter dies. The wire format lives.
 
 This is the same principle as capability-based OS security (seL4, CHERI), applied to autonomous agent tool execution.
 
