@@ -67,6 +67,71 @@ jobs:
             exit 1
           fi
 
+      - name: TCB v2 full-path LOC ceiling — semantic-contamination guard
+        run: |
+          # Per the architect's discipline rule: every LOC inside the TCB v2 path
+          # must justify its existence. The hard ceiling forces scope-creep visibility.
+          # If this fails, the PR must either: remove LOC, OR justify the increase
+          # and update the ceiling here with sign-off.
+          ENGINE=$(wc -l < src/tcb/engine.rs)
+          DAG=$(wc -l < src/tcb/dag.rs)
+          CG=$(wc -l < src/tcb/call_gate.rs)
+          SEQ=$(wc -l < src/tcb/sequence.rs)
+          TYPES=$(wc -l < src/tcb/types.rs)
+          TOTAL=$((ENGINE + DAG + CG + SEQ + TYPES))
+          CEILING=1500
+          echo "TCB v2 LOC breakdown:"
+          echo "  engine.rs    : $ENGINE"
+          echo "  dag.rs       : $DAG"
+          echo "  call_gate.rs : $CG"
+          echo "  sequence.rs  : $SEQ"
+          echo "  types.rs     : $TYPES"
+          echo "  TOTAL        : $TOTAL  (ceiling: $CEILING)"
+          if [ "$TOTAL" -gt "$CEILING" ]; then
+            echo ""
+            echo "ERROR: TCB v2 total exceeds $CEILING LOC."
+            echo ""
+            echo "Per TCB_DISCIPLINE.md:"
+            echo "  Rule 1: anything removable without breaking invariants belongs OUTSIDE TCB"
+            echo "  Rule 2: no semantic concept enters TCB"
+            echo "  Rule 3: every new TCB line needs a test, proof, or invariant"
+            echo ""
+            echo "Either shrink the TCB or update the ceiling in .github/workflows/ci.yml"
+            echo "with a written justification of what attack the new code prevents."
+            exit 1
+          fi
+          # Individual file caps — engine.rs is most sacred
+          if [ "$ENGINE" -gt 500 ]; then
+            echo "ERROR: engine.rs ${ENGINE} > 500 LOC (hard cap)"
+            exit 1
+          fi
+          if [ "$CG" -gt 500 ]; then
+            echo "ERROR: call_gate.rs ${CG} > 500 LOC"
+            exit 1
+          fi
+
+      - name: TCB v2 purity — no I/O, network, randomness, or semantic terms
+        run: |
+          # Per discipline rule 2: forbidden semantic concepts must never appear
+          # inside the TCB. These would be semantic contamination.
+          FORBIDDEN_TERMS='manipulation_score|coercion|sovereignty_metric|constitutional|recursive_governance|persuasion_score|ethics|alignment_score|trustworthiness'
+          BAD=$(grep -rE "$FORBIDDEN_TERMS" src/tcb/ || true)
+          if [ -n "$BAD" ]; then
+            echo "ERROR: forbidden semantic terms found inside TCB v2:"
+            echo "$BAD"
+            echo ""
+            echo "These concepts are heuristics. They belong in extensions/, not in the TCB."
+            echo "See TCB_DISCIPLINE.md rule 2: 'no semantic concept enters TCB'."
+            exit 1
+          fi
+          # No I/O in TCB
+          IO=$(grep -rE 'std::fs::|TcpStream|UdpSocket|std::net::|reqwest|hyper' src/tcb/ || true)
+          if [ -n "$IO" ]; then
+            echo "ERROR: I/O found inside TCB v2:"
+            echo "$IO"
+            exit 1
+          fi
+
       - name: TCB algebra guard — capability.rs must stay finite and self-contained
         run: |
           cap_loc=$(wc -l < src/capability.rs)

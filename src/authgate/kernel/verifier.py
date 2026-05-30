@@ -68,19 +68,28 @@ class Action:
 
 @dataclass(frozen=True)
 class VerificationResult:
+    """
+    Result of a capability verification.
+
+    The kernel contract is ONLY structural outputs. Anything requiring
+    interpretation (manipulation_score, coercion, sovereignty metrics,
+    ethics, alignment) belongs in `authgate.extensions`, not here.
+
+    See TCB_DISCIPLINE.md for the rationale: semantic contamination of
+    the verification contract is the single biggest threat to long-term
+    project credibility.
+    """
     action_id: str
     permitted: bool
     violations: tuple[str, ...]
     warnings: tuple[str, ...]
     confidence: float
     requires_human_arbitration: bool
-    manipulation_score: float  # always 0.0 from kernel; set by ExtendedFreedomVerifier
 
     def summary(self) -> str:
         status = "PERMITTED" if self.permitted else "BLOCKED"
         lines = [
-            f"[{status}] {self.action_id} "
-            f"(confidence={self.confidence:.2f}, manipulation={self.manipulation_score:.2f})"
+            f"[{status}] {self.action_id} (confidence={self.confidence:.2f})"
         ]
         for v in self.violations:
             lines.append(f"  VIOLATION : {v}")
@@ -246,7 +255,6 @@ class FreedomVerifier:
             warnings=tuple(warnings),
             confidence=min_confidence,
             requires_human_arbitration=requires_arbitration,
-            manipulation_score=0.0,
         )
         if self._audit_log is not None:
             self._audit_log.record(result)  # type: ignore[attr-defined]
@@ -313,7 +321,6 @@ class FreedomVerifier:
                         warnings=(),
                         confidence=0.0,
                         requires_human_arbitration=True,
-                        manipulation_score=0.0,
                     )
                     for a in actions[i + 1 :]
                 ]

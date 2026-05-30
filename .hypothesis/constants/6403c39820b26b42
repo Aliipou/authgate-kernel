@@ -1,0 +1,4 @@
+# file: D:\جافکری\freedom-kernel-work\src\authgate\kernel\policy.py
+# hypothesis_version: 6.148.7
+
+[0.0, 'delegate', 'deny', 'permit', 'read', 'resources_delegate', 'resources_read', 'resources_write', 'write']

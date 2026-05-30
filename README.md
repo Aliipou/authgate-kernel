@@ -1,29 +1,26 @@
 # authgate-kernel
 
-**Capability-constrained authorization kernel for agent tool execution. `engine.rs`: 250 LOC. Full security-critical Rust path (`engine.rs` + `dag.rs` + `call_gate.rs`): ~934 LOC. 983 tests. Zero heuristics inside the TCB.**
+**Cryptographically verifiable capability enforcement layer for autonomous agents.**
+
+Before any agent tool call executes, prove the actor holds a valid, signed,
+non-revoked capability for this resource. No proof, no execution.
 
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](freedom-kernel/)
-[![Kani](https://img.shields.io/badge/Kani-19%20harnesses-green.svg)](formal/)
+[![Tests](https://img.shields.io/badge/tests-1155%20passing-brightgreen.svg)](tests/)
+[![Kani](https://img.shields.io/badge/Kani-24%20harnesses-green.svg)](formal/)
 [![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
-[![Tests](https://img.shields.io/badge/tests-905%20passing-brightgreen.svg)](tests/)
-[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](src/authgate/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
----
+## The problem this solves
 
-## The one-sentence pitch
+> Agents execute tools without authority proof.
 
-> Typed capability verification for AI agent tool execution — every action needs an authority proof before IO happens. Not heuristics. Not prompts. Structural enforcement.
-
----
+That's it. The whole product.
 
 ## What it does
 
-Most agent frameworks today work like this: `LLM decided to call a tool → tool runs`.
-No authority proof. No audit. No structural boundary.
-
-authgate-kernel puts a gate between the decision and the IO:
+Puts a gate between the agent's tool decision and the IO that follows:
 
 ```
 Agent action → CallGate (authority proof required) → IO happens

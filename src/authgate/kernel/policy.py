@@ -186,5 +186,4 @@ class PolicyVerifier:
             warnings=result.warnings,
             confidence=0.0,
             requires_human_arbitration=True,
-            manipulation_score=getattr(result, "manipulation_score", 0.0),
         )

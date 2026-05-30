@@ -72,7 +72,6 @@ class ExecutionContext:
                 warnings=(),
                 confidence=0.0,
                 requires_human_arbitration=False,
-                manipulation_score=0.0,
             )
         if self.is_expired():
             return VerificationResult(
@@ -82,7 +81,6 @@ class ExecutionContext:
                 warnings=(),
                 confidence=0.0,
                 requires_human_arbitration=False,
-                manipulation_score=0.0,
             )
         return verifier.verify(action)
 

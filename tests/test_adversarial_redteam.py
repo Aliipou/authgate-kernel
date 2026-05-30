@@ -658,7 +658,6 @@ class TestBypassAttempts:
             warnings=(),
             confidence=1.0,
             requires_human_arbitration=False,
-            manipulation_score=0.0,
         )
 
         assert fake_result.permitted  # The object exists

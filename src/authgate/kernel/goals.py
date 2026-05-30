@@ -130,7 +130,6 @@ def verify_goal_tree(
                 warnings=tuple(result.warnings),
                 confidence=0.0,
                 requires_human_arbitration=True,
-                manipulation_score=0.0,
             )
 
     # If this goal is blocked, cancel all subgoals immediately
@@ -145,8 +144,7 @@ def verify_goal_tree(
                     warnings=(),
                     confidence=0.0,
                     requires_human_arbitration=False,
-                    manipulation_score=0.0,
-                ),
+                    ),
                 subgoal_results=(),
             )
             for sub in node.subgoals
