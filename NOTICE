@@ -1,0 +1,40 @@
+AUTHORSHIP AND OWNERSHIP NOTICE
+================================
+
+Project:   authgate-kernel
+Author:    Ali Pourrahim (https://github.com/Aliipou)
+Contact:   Alipourrahim.ap@gmail.com
+Copyright: © 2026 Ali Pourrahim. All rights reserved.
+
+Statement of independent authorship
+------------------------------------
+authgate-kernel — a capability-constrained authorization kernel for
+agent tool execution — was conceived, designed, and implemented by
+the Author as an independent personal work.
+
+It was NOT created as part of, and does NOT incorporate or depend on:
+  - any course, thesis, or degree requirement of any institution;
+  - any employment, grant, scholarship, or funded research project;
+  - any institution's facilities, equipment, funding, or confidential
+    information.
+
+The Author is the sole owner of all intellectual property in this
+work. No third party, including any university, research, development,
+or innovation (RDI) office, holds any ownership interest, license, or
+right to claim credit for this work, its design, or its underlying
+ideas, except by a separate written agreement signed by the Author.
+
+Evidence of authorship and priority
+-----------------------------------
+Authorship and creation dates are evidenced by the public version-
+control history of this repository (commit authorship and timestamps)
+and its public publication record at:
+  https://github.com/Aliipou/authgate-kernel
+
+Use and attribution
+--------------------
+Use of this work is governed by the LICENSE file in this repository
+(AuthGate-Kernel Source-Available, Contact-First License). Any use
+beyond private evaluation requires the Author's prior written
+permission. Attribution to the Author must never be removed or
+misrepresented.

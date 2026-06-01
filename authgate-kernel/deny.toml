@@ -29,6 +29,9 @@ ignore = [
 
 [licenses]
 version = 2
+# The workspace's own crate is source-available/proprietary (license-file, publish = false).
+# Skip license checks on private (unpublished) crates; only dependencies are gated below.
+private = { ignore = true }
 allow = [
   "MIT",
   "Apache-2.0",
@@ -40,8 +43,6 @@ allow = [
   "Unicode-DFS-2016",
   "OpenSSL",
   "Zlib",
-  # This project's own license (source-available, noncommercial).
-  "PolyForm-Noncommercial-1.0.0",
 ]
 
 [bans]

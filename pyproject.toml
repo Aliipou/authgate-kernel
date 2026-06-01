@@ -7,17 +7,17 @@ name = "authgate"
 version = "1.0.0"
 description = "Capability-security kernel for agent runtimes — typed authority verification with formal invariants"
 readme = "README.md"
-license = { text = "MIT" }
+license = { file = "LICENSE" }
 requires-python = ">=3.11"
 authors = [
-  { name = "Contributors" },
+  { name = "Ali Pourrahim", email = "Alipourrahim.ap@gmail.com" },
 ]
 keywords = ["capability-security", "agent-runtimes", "formal-verification", "authority-verification", "rust", "formal-methods"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
-  "License :: OSI Approved :: MIT License",
+  "License :: Other/Proprietary License",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
