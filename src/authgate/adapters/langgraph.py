@@ -95,7 +95,8 @@ class FreedomGraphNode:
     resource_mapper: Callable[[Any], tuple[list[Resource], list[Resource]]] | None = None
 
     def __call__(self, state: Any) -> Any:
-        reads, writes = [], []
+        reads: list[Resource] = []
+        writes: list[Resource] = []
         if self.resource_mapper is not None:
             reads, writes = self.resource_mapper(state)
 

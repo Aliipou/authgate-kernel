@@ -66,7 +66,7 @@ class GatedTool:
 
     def __init__(self, name: str, fn: Callable[..., Any], gate: CallGate) -> None:
         self._name: str = name
-        self.__fn: Callable[..., Any] = fn   # name-mangled: _GatedTool__fn
+        self.__fn: Callable[..., Any] = fn  # type: ignore[misc]  # name-mangled: _GatedTool__fn
         self._gate: CallGate = gate
 
     @property

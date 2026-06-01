@@ -19,6 +19,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from authgate.kernel.entities import RightsClaim
 
 
 class CoercionPattern(Enum):
@@ -164,7 +168,7 @@ class CoercionAnalyzer:
 
             risk_level = _risk_level(patterns, dep_frac, self._boundary)
             essential_scopes = tuple(
-                c.resource.scope for c in root_claims
+                cast("RightsClaim", c).resource.scope for c in root_claims
             ) or ("",)
 
             risks.append(CoercionRisk(

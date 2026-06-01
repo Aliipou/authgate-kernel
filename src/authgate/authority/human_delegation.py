@@ -63,8 +63,10 @@ class HumanDelegationSource:
         Issue capability if the agent has a valid delegation in the registry.
         Performs a verify() call to check the current delegation state.
         """
+        from typing import cast
+
         from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType
-        from authgate.kernel.verifier import Action
+        from authgate.kernel.verifier import Action, FreedomVerifier
 
         # Reconstruct Action from request
         actor_name = request.subject_id
@@ -90,7 +92,7 @@ class HumanDelegationSource:
             resources_write=resources_write,
         )
 
-        result = self._verifier.verify(action)
+        result = cast(FreedomVerifier, self._verifier).verify(action)
         if not result.permitted:
             return None
 

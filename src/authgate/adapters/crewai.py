@@ -127,7 +127,7 @@ class CrewAIKernelGate:
                         f"{result.summary()}"
                     )
                 return fn(*args, **kwargs)
-            wrapper._kernel_gated = True
+            wrapper._kernel_gated = True  # type: ignore[attr-defined]
             return wrapper
         return decorator
 

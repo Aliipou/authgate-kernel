@@ -164,8 +164,8 @@ class ConstitutionalEconomyChecker:
             else:
                 high_value_humans.add(claim.resource.name)
 
-        for machine, resources in high_value_machines.items():
-            unchecked = [r for r in resources if r not in high_value_humans]
+        for machine, hv_resources in high_value_machines.items():
+            unchecked = [r for r in hv_resources if r not in high_value_humans]
             if unchecked:
                 signals.append(EconomicSignal(
                     violation=EconomicViolation.IRREVERSIBLE_LOCK_IN,
