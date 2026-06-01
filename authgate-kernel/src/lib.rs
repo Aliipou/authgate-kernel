@@ -14,7 +14,7 @@ pub mod sequence;
 pub mod sandbox;
 pub mod capability;
 mod crypto;
-pub(crate) mod engine;
+pub mod engine;
 pub mod entities;
 pub mod ffi;
 pub mod goal_tree;
