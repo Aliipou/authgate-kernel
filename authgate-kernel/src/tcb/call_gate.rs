@@ -1,20 +1,20 @@
 #![forbid(unsafe_code)]
-/// CallGate — the only public entry point into the TCB.
-///
-/// AT-7.5 structural closure: `engine::verify` is `pub(crate)`, so no code
-/// outside this crate can reach it directly. All external callers must go
-/// through `CallGate::execute`, which unconditionally invokes verify().
-///
-/// This means "adapter bypasses verify()" is a compile-time type error, not
-/// a runtime policy that can be misconfigured or forgotten.
-///
-/// # Security contract
-/// - `root_key` is the trust anchor. Supply it once at construction time from
-///   a secure source (HSM, provisioned secret, etc.). Never update it at runtime.
-/// - `now` (Unix seconds) is caller-supplied. Clock integrity is the caller's
-///   responsibility. A compromised clock is out-of-scope for this module.
-/// - The `action` struct must be sealed (binding_hash computed) by the adapter
-///   before calling execute(). Tampering after sealing is detected by Layer 1.
+//! CallGate — the only public entry point into the TCB.
+//!
+//! AT-7.5 structural closure: `engine::verify` is `pub(crate)`, so no code
+//! outside this crate can reach it directly. All external callers must go
+//! through `CallGate::execute`, which unconditionally invokes verify().
+//!
+//! This means "adapter bypasses verify()" is a compile-time type error, not
+//! a runtime policy that can be misconfigured or forgotten.
+//!
+//! # Security contract
+//! - `root_key` is the trust anchor. Supply it once at construction time from
+//!   a secure source (HSM, provisioned secret, etc.). Never update it at runtime.
+//! - `now` (Unix seconds) is caller-supplied. Clock integrity is the caller's
+//!   responsibility. A compromised clock is out-of-scope for this module.
+//! - The `action` struct must be sealed (binding_hash computed) by the adapter
+//!   before calling execute(). Tampering after sealing is detected by Layer 1.
 
 use ed25519_dalek::VerifyingKey;
 use crate::tcb::engine::verify;

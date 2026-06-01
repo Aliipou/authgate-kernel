@@ -128,10 +128,10 @@ pub fn detect_cycles(graph: &AuthorityGraph) -> Option<Vec<String>> {
     }
 
     for node in graph.nodes.keys() {
-        if !visited.contains(node) {
-            if dfs(node, &adj, &mut visited, &mut rec_stack, &mut path) {
-                return Some(path);
-            }
+        if !visited.contains(node)
+            && dfs(node, &adj, &mut visited, &mut rec_stack, &mut path)
+        {
+            return Some(path);
         }
     }
     None
@@ -176,12 +176,11 @@ pub fn ownerless_machines(registry: &OwnershipRegistryWire) -> Vec<String> {
 
     let mut result = Vec::new();
     for claim in &registry.claims {
-        if matches!(claim.holder.kind, crate::wire::EntityKind::Machine) {
-            if !owned.contains(claim.holder.name.as_str()) {
-                if !result.contains(&claim.holder.name) {
-                    result.push(claim.holder.name.clone());
-                }
-            }
+        if matches!(claim.holder.kind, crate::wire::EntityKind::Machine)
+            && !owned.contains(claim.holder.name.as_str())
+            && !result.contains(&claim.holder.name)
+        {
+            result.push(claim.holder.name.clone());
         }
     }
     result

@@ -1,18 +1,18 @@
 #![forbid(unsafe_code)]
-/// v2 stateless verify function — the TCB core.
-///
-/// Design decisions (settled):
-///   - Option B: root key passed as parameter. No global singleton. Caller controls trust anchor.
-///   - Epoch-based primary revocation: advancing `min_epoch` in the action invalidates
-///     all proofs from prior epochs without distributing explicit revocation lists.
-///     This closes the "stale-but-valid resurrection" gap that cryptographic revocation
-///     proof checking alone cannot close in distributed/cached deployments.
-///   - Revocation proofs: secondary, emergency mechanism for targeted single-proof revocation.
-///     Only root-signed revocations are accepted (Bug 1 fix).
-///   - Canonical gate checked first: any IR tampering between adapter and kernel
-///     is caught before any proof is parsed (Bug 6 fix).
-///   - Actor-filtered Layer 2: only caps with subject_id == actor_id are validated as grants.
-///     Intermediate delegation nodes (subject_id == delegator) serve chain traversal only.
+//! v2 stateless verify function — the TCB core.
+//!
+//! Design decisions (settled):
+//!   - Option B: root key passed as parameter. No global singleton. Caller controls trust anchor.
+//!   - Epoch-based primary revocation: advancing `min_epoch` in the action invalidates
+//!     all proofs from prior epochs without distributing explicit revocation lists.
+//!     This closes the "stale-but-valid resurrection" gap that cryptographic revocation
+//!     proof checking alone cannot close in distributed/cached deployments.
+//!   - Revocation proofs: secondary, emergency mechanism for targeted single-proof revocation.
+//!     Only root-signed revocations are accepted (Bug 1 fix).
+//!   - Canonical gate checked first: any IR tampering between adapter and kernel
+//!     is caught before any proof is parsed (Bug 6 fix).
+//!   - Actor-filtered Layer 2: only caps with subject_id == actor_id are validated as grants.
+//!     Intermediate delegation nodes (subject_id == delegator) serve chain traversal only.
 
 use ed25519_dalek::{Signature, VerifyingKey, Verifier};
 use crate::tcb::types::{CanonicalAction, Decision, RevocationProof};

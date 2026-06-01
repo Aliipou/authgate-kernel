@@ -1,20 +1,20 @@
 #![forbid(unsafe_code)]
-/// Delegation chain validation — the DAG traversal at the heart of v2 security.
-///
-/// `validate_chain` walks from a leaf capability proof back to the root, verifying:
-///   1. Every node's ed25519 signature is cryptographically valid.
-///   2. Every node's epoch >= min_epoch (AT-3.1 fix: intermediate delegation nodes
-///      issued in a compromised epoch cannot serve as valid chain links).
-///   3. Every intermediate node's issuer_pubkey binds to the parent's subject_id
-///      via SHA-256 (AT-5.1 fix: closes delegation impersonation gap).
-///   4. Child rights ⊆ parent rights (attenuation invariant).
-///
-/// The root is identified by `IssuerRef::Root` — its signature is verified
-/// against the root key passed into verify(). No other node is implicitly trusted.
-///
-/// Identity model: subject_id = SHA-256(pubkey). This is the invariant that
-/// AT-5.1 relies on. All capability issuers must have their pubkey enrolled
-/// as SHA-256(pubkey) = subject_id in the granting proof.
+//! Delegation chain validation — the DAG traversal at the heart of v2 security.
+//!
+//! `validate_chain` walks from a leaf capability proof back to the root, verifying:
+//!   1. Every node's ed25519 signature is cryptographically valid.
+//!   2. Every node's epoch >= min_epoch (AT-3.1 fix: intermediate delegation nodes
+//!      issued in a compromised epoch cannot serve as valid chain links).
+//!   3. Every intermediate node's issuer_pubkey binds to the parent's subject_id
+//!      via SHA-256 (AT-5.1 fix: closes delegation impersonation gap).
+//!   4. Child rights ⊆ parent rights (attenuation invariant).
+//!
+//! The root is identified by `IssuerRef::Root` — its signature is verified
+//! against the root key passed into verify(). No other node is implicitly trusted.
+//!
+//! Identity model: subject_id = SHA-256(pubkey). This is the invariant that
+//! AT-5.1 relies on. All capability issuers must have their pubkey enrolled
+//! as SHA-256(pubkey) = subject_id in the granting proof.
 
 use ed25519_dalek::{Signature, VerifyingKey, Verifier};
 use sha2::{Digest, Sha256};
@@ -91,7 +91,7 @@ pub fn validate_chain(
                 // child with their own key and set parent_hash to the real parent —
                 // the chain would traverse correctly despite no key from the parent's
                 // subject ever being used.
-                let claimed_issuer_id: [u8; 32] = Sha256::digest(&current.issuer_pubkey).into();
+                let claimed_issuer_id: [u8; 32] = Sha256::digest(current.issuer_pubkey).into();
                 if claimed_issuer_id != parent.subject_id {
                     return Err("issuer pubkey does not correspond to parent subject identity");
                 }
