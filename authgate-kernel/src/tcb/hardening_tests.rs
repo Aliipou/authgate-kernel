@@ -4,7 +4,6 @@
 /// Tests are grouped by the attack class they cover.
 #[cfg(test)]
 mod hardening_tests {
-    use crate::tcb::dag::validate_chain;
     use crate::tcb::engine::verify;
     use crate::tcb::types::*;
     use ed25519_dalek::{SigningKey, Signer};
@@ -315,7 +314,7 @@ mod hardening_tests {
     // Attack: infinite-depth chains consuming memory/CPU during traversal.
 
     fn build_chain(root_sk: &SigningKey, num_delegators: usize) -> (Vec<CapabilityProof>, SigningKey) {
-        let mut keys: Vec<SigningKey> = (0..num_delegators).map(|_| rk()).collect();
+        let keys: Vec<SigningKey> = (0..num_delegators).map(|_| rk()).collect();
         let actor_sk = rk();
 
         let root_subject = if num_delegators > 0 { sid(&keys[0]) } else { ACTOR };
@@ -335,7 +334,7 @@ mod hardening_tests {
         // 16 nodes total (root + 14 delegators + actor_cap) — well within MAX_CHAIN_DEPTH=16
         let root_sk = rk();
         let root_vk = root_sk.verifying_key();
-        let (mut proofs, actor_sk) = build_chain(&root_sk, 14);
+        let (proofs, actor_sk) = build_chain(&root_sk, 14);
         let actor_cap_idx = proofs.len() - 1;
         // The last proof's subject is actor_sk's identity; actor sends action using that identity
         let actor_id = proofs[actor_cap_idx].subject_id;
@@ -483,10 +482,13 @@ mod hardening_tests {
             let root_sk = rk();
             let cap = root_cap(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, cap_epoch);
             let action = seal(ACTOR, RESOURCE, RIGHT_READ, vec![cap], min_epoch);
-            prop_assert!(matches!(
-                verify(&action, &root_sk.verifying_key(), NOW),
-                Decision::Deny { reason: "capability epoch predates minimum required epoch" }
-            ));
+            prop_assert!(
+                matches!(
+                    verify(&action, &root_sk.verifying_key(), NOW),
+                    Decision::Deny { reason: "capability epoch predates minimum required epoch" }
+                ),
+                "expected stale-epoch Deny"
+            );
         }
 
         /// Any cap.expiry < now → Deny (expiry gate is total)
@@ -499,10 +501,13 @@ mod hardening_tests {
             let root_sk = rk();
             let cap = root_cap(&root_sk, ACTOR, RESOURCE, RIGHT_READ, expiry, EPOCH);
             let action = seal(ACTOR, RESOURCE, RIGHT_READ, vec![cap], MIN_EPOCH);
-            prop_assert!(matches!(
-                verify(&action, &root_sk.verifying_key(), now),
-                Decision::Deny { reason: "capability has expired" }
-            ));
+            prop_assert!(
+                matches!(
+                    verify(&action, &root_sk.verifying_key(), now),
+                    Decision::Deny { reason: "capability has expired" }
+                ),
+                "expected expired-capability Deny"
+            );
         }
 
         /// Any bit in required_rights not present in cap.rights → Deny
@@ -514,10 +519,13 @@ mod hardening_tests {
             let root_sk = rk();
             let cap = root_cap(&root_sk, ACTOR, RESOURCE, cap_rights, EXPIRY, EPOCH);
             let action = seal(ACTOR, RESOURCE, required, vec![cap], MIN_EPOCH);
-            prop_assert!(matches!(
-                verify(&action, &root_sk.verifying_key(), NOW),
-                Decision::Deny { reason: "capability does not grant required rights" }
-            ));
+            prop_assert!(
+                matches!(
+                    verify(&action, &root_sk.verifying_key(), NOW),
+                    Decision::Deny { reason: "capability does not grant required rights" }
+                ),
+                "expected insufficient-rights Deny"
+            );
         }
 
         /// If cap.rights is a superset of required_rights, rights check passes
@@ -538,10 +546,13 @@ mod hardening_tests {
             let cap = root_cap(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
             let mut action = seal(ACTOR, RESOURCE, RIGHT_READ, vec![cap], MIN_EPOCH);
             action.actor_id[byte_idx] ^= flip;
-            prop_assert!(matches!(
-                verify(&action, &root_sk.verifying_key(), NOW),
-                Decision::Deny { reason: "canonical binding hash mismatch" }
-            ));
+            prop_assert!(
+                matches!(
+                    verify(&action, &root_sk.verifying_key(), NOW),
+                    Decision::Deny { reason: "canonical binding hash mismatch" }
+                ),
+                "expected binding-hash-mismatch Deny"
+            );
         }
 
         /// Attenuation: child rights superset of parent rights → chain denied
@@ -568,10 +579,13 @@ mod hardening_tests {
             child.signature = del_sk.sign(&child.signing_message()).to_bytes();
             child.proof_hash = Sha256::digest(child.to_canonical_bytes()).into();
             let action = seal(ACTOR, RESOURCE, RIGHT_READ, vec![parent, child], MIN_EPOCH);
-            prop_assert!(matches!(
-                verify(&action, &root_sk.verifying_key(), NOW),
-                Decision::Deny { reason: "attenuation violation: child rights exceed parent" }
-            ));
+            prop_assert!(
+                matches!(
+                    verify(&action, &root_sk.verifying_key(), NOW),
+                    Decision::Deny { reason: "attenuation violation: child rights exceed parent" }
+                ),
+                "expected attenuation-violation Deny"
+            );
         }
     }
 }

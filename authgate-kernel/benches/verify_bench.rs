@@ -1,6 +1,6 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use freedom_kernel::engine;
-use freedom_kernel::wire::*;
+use authgate_kernel::engine;
+use authgate_kernel::wire::*;
 
 fn make_registry(n_claims: usize) -> OwnershipRegistryWire {
     let machine = EntityWire { name: "bot".to_string(), kind: EntityKind::Machine };

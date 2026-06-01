@@ -390,7 +390,7 @@ mod wire_validation_tests {
 
     #[test]
     fn empty_resource_name_rejected() {
-        let mut c = claim("bot", "", 1.0);
+        let c = claim("bot", "", 1.0);
         assert!(matches!(
             validate_claim_wire(&c),
             Err(WireValidationError::EmptyRequired { field: "resource.name" })
