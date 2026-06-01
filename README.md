@@ -9,11 +9,11 @@ Not a framework plugin. Not model-specific. Not tied to today's agent architectu
 A wire format and a verify function. See [POSITIONING.md](POSITIONING.md).
 
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
-[![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](freedom-kernel/)
+[![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
 [![Tests](https://img.shields.io/badge/tests-1155%20passing-brightgreen.svg)](tests/)
 [![Kani](https://img.shields.io/badge/Kani-24%20harnesses-green.svg)](formal/)
 [![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: PolyForm NC 1.0.0](https://img.shields.io/badge/License-PolyForm--Noncommercial--1.0.0-orange.svg)](LICENSE)
 
 ## The problem
 

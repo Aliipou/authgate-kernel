@@ -3,7 +3,7 @@ name = "authgate-kernel"
 version = "0.1.0"
 edition = "2021"
 description = "Formal, auditable, cryptographically-verifiable capability-governance kernel"
-license = "MIT"
+license = "PolyForm-Noncommercial-1.0.0"
 
 [lib]
 name = "authgate_kernel"
