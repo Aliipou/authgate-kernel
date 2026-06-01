@@ -158,8 +158,8 @@ class CoercionAnalyzer:
                     if c.holder == delegated_by
                 ]
                 if parent_claims:
-                    max_parent_confidence = max(c.confidence for c in parent_claims)
-                    if claim.confidence > max_parent_confidence + 0.01:
+                    max_parent_confidence = max(cast("RightsClaim", c).confidence for c in parent_claims)
+                    if cast("RightsClaim", claim).confidence > max_parent_confidence + 0.01:
                         patterns.append(CoercionPattern.CONFIDENCE_ASYMMETRY)
                         break
 

@@ -28,7 +28,7 @@ import hashlib
 import json
 import time
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 # ─── Vector Clock ────────────────────────────────────────────────────────────
@@ -208,7 +208,7 @@ class CapabilityEpoch:
 
 # ─── Partition Policy ─────────────────────────────────────────────────────────
 
-class PartitionDecision(str, Enum):
+class PartitionDecision(StrEnum):
     PERMIT = "PERMIT"
     DENY = "DENY"
     DEFER_TO_HUMAN = "DEFER_TO_HUMAN"

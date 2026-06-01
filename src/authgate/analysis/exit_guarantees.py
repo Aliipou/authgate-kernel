@@ -14,7 +14,7 @@ regardless of stated permissions.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from authgate.kernel.entities import AgentType, ResourceType
@@ -30,7 +30,7 @@ IDENTITY_RESOURCE_TYPES: frozenset[ResourceType] = frozenset({
 MAX_EXIT_SAFE_DEPTH = 3
 
 
-class ExitViolation(str, Enum):
+class ExitViolation(StrEnum):
     EXIT_BLOCKED = "EXIT_BLOCKED"
     MIGRATION_BLOCKED = "MIGRATION_BLOCKED"
     IDENTITY_LOCKED = "IDENTITY_LOCKED"

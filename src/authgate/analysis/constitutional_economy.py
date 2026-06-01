@@ -14,7 +14,7 @@ Key invariants:
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 
 from authgate.kernel.entities import AgentType, ResourceType
 
@@ -29,7 +29,7 @@ HIGH_VALUE_RESOURCE_TYPES: frozenset[ResourceType] = frozenset({
 })
 
 
-class EconomicViolation(str, Enum):
+class EconomicViolation(StrEnum):
     MACHINE_OLIGARCHY = "MACHINE_OLIGARCHY"
     RESOURCE_CONCENTRATION = "RESOURCE_CONCENTRATION"
     SOVEREIGNTY_EROSION = "SOVEREIGNTY_EROSION"
