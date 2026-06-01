@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// Delegation chain validation — the DAG traversal at the heart of v2 security.
 ///
 /// `validate_chain` walks from a leaf capability proof back to the root, verifying:
@@ -14,7 +15,6 @@
 /// Identity model: subject_id = SHA-256(pubkey). This is the invariant that
 /// AT-5.1 relies on. All capability issuers must have their pubkey enrolled
 /// as SHA-256(pubkey) = subject_id in the granting proof.
-#![forbid(unsafe_code)]
 
 use ed25519_dalek::{Signature, VerifyingKey, Verifier};
 use sha2::{Digest, Sha256};
@@ -54,8 +54,7 @@ pub fn validate_chain(
         }
 
         let msg = current.signing_message();
-        let sig = Signature::from_bytes(&current.signature)
-            .map_err(|_| "malformed signature encoding")?;
+        let sig = Signature::from_bytes(&current.signature);
 
         match &current.issuer {
             IssuerRef::Root => {

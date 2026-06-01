@@ -176,7 +176,7 @@ pub struct VerifyInput {
 // ---------------------------------------------------------------------------
 
 /// Errors produced by strict wire validation.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum WireValidationError {
     /// A required field is missing.
     MissingField { field: &'static str },

@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// CallGate — the only public entry point into the TCB.
 ///
 /// AT-7.5 structural closure: `engine::verify` is `pub(crate)`, so no code
@@ -14,7 +15,6 @@
 ///   responsibility. A compromised clock is out-of-scope for this module.
 /// - The `action` struct must be sealed (binding_hash computed) by the adapter
 ///   before calling execute(). Tampering after sealing is detected by Layer 1.
-#![forbid(unsafe_code)]
 
 use ed25519_dalek::VerifyingKey;
 use crate::tcb::engine::verify;

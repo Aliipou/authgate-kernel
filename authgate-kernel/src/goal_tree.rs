@@ -159,6 +159,7 @@ mod tests {
         OwnershipRegistryWire {
             claims: vec![],
             machine_owners: vec![MachineOwnerWire { machine: machine("bot"), owner: human("alice") }],
+            trust_domains: vec![],
         }
     }
     fn safe_action(id: &str) -> ActionWire {
@@ -181,6 +182,8 @@ mod tests {
             deceives: false,
             self_modification_weakens_verifier: false,
             machine_coalition_reduces_freedom: false,
+            trust_domain: None,
+            delegation_depth: 0,
         }
     }
     fn forbidden_action(id: &str) -> ActionWire {

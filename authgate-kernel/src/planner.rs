@@ -174,6 +174,7 @@ mod tests {
         OwnershipRegistryWire {
             claims: vec![],
             machine_owners: vec![MachineOwnerWire { machine: machine("bot"), owner: human("alice") }],
+            trust_domains: vec![],
         }
     }
     fn base_action(id: &str) -> ActionWire {
@@ -196,6 +197,8 @@ mod tests {
             deceives: false,
             self_modification_weakens_verifier: false,
             machine_coalition_reduces_freedom: false,
+            trust_domain: None,
+            delegation_depth: 0,
         }
     }
     fn labeled_resource(name: &str, label: &str) -> ResourceWire {
@@ -205,6 +208,7 @@ mod tests {
             scope: String::new(),
             is_public: false,
             ifc_label: label.to_string(),
+            trust_domain: None,
         }
     }
     fn claim_rw(entity: EntityWire, resource: ResourceWire) -> ClaimWire {
@@ -216,6 +220,8 @@ mod tests {
             can_delegate: false,
             confidence: 1.0,
             expires_at: None,
+            trust_domain: None,
+            delegation_depth: 0,
         }
     }
 

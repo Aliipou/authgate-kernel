@@ -157,6 +157,7 @@ fn resource_wire(r: &Resource) -> wire::ResourceWire {
         scope: r.scope.clone(),
         is_public: r.is_public,
         ifc_label: r.ifc_label.clone(),
+        trust_domain: None,
     }
 }
 
@@ -180,6 +181,8 @@ fn action_wire(a: &Action) -> wire::ActionWire {
         deceives: a.deceives,
         self_modification_weakens_verifier: a.self_modification_weakens_verifier,
         machine_coalition_reduces_freedom: a.machine_coalition_reduces_freedom,
+        trust_domain: None,
+        delegation_depth: 0,
     }
 }
 
@@ -196,17 +199,21 @@ fn registry_wire(inner: &crate::registry::RegistryInner) -> wire::OwnershipRegis
                 scope: c.resource.scope.clone(),
                 is_public: c.resource.is_public,
                 ifc_label: String::new(),
+                trust_domain: None,
             },
             can_read: c.can_read,
             can_write: c.can_write,
             can_delegate: c.can_delegate,
             confidence: c.confidence,
             expires_at: c.expires_at,
+            trust_domain: None,
+            delegation_depth: 0,
         }).collect(),
         machine_owners: inner.machine_owners.iter().map(|(mk, ok)| wire::MachineOwnerWire {
             machine: wire::EntityWire { name: mk.name.clone(), kind: wire::EntityKind::Machine },
             owner:   wire::EntityWire { name: ok.name.clone(), kind: wire::EntityKind::Human },
         }).collect(),
+        trust_domains: vec![],
     }
 }
 

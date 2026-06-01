@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// v2 stateless verify function — the TCB core.
 ///
 /// Design decisions (settled):
@@ -12,7 +13,6 @@
 ///     is caught before any proof is parsed (Bug 6 fix).
 ///   - Actor-filtered Layer 2: only caps with subject_id == actor_id are validated as grants.
 ///     Intermediate delegation nodes (subject_id == delegator) serve chain traversal only.
-#![forbid(unsafe_code)]
 
 use ed25519_dalek::{Signature, VerifyingKey, Verifier};
 use crate::tcb::types::{CanonicalAction, Decision, RevocationProof};
@@ -106,9 +106,7 @@ pub(crate) fn verify(
 }
 
 fn verify_revocation_sig(rev: &RevocationProof, root_key: &VerifyingKey) -> bool {
-    let Ok(sig) = Signature::from_bytes(&rev.signature) else {
-        return false;
-    };
+    let sig = Signature::from_bytes(&rev.signature);
     root_key.verify(&rev.signing_message(), &sig).is_ok()
 }
 

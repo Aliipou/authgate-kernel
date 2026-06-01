@@ -92,6 +92,7 @@ pub fn spawn_to_action(req: &AgentSpawnRequest) -> ActionWire {
         scope: format!("/agents/{}/", req.child_id),
         is_public: false,
         ifc_label: String::new(),
+        trust_domain: None,
     };
 
     ActionWire {
@@ -113,6 +114,8 @@ pub fn spawn_to_action(req: &AgentSpawnRequest) -> ActionWire {
         deceives: false,
         self_modification_weakens_verifier: false,
         machine_coalition_reduces_freedom: false,
+        trust_domain: None,
+        delegation_depth: 0,
     }
 }
 
@@ -169,6 +172,7 @@ mod tests {
             scope: format!("/agents/{}/", child_id),
             is_public: false,
             ifc_label: String::new(),
+            trust_domain: None,
         };
         OwnershipRegistryWire {
             claims: vec![ClaimWire {
@@ -179,11 +183,14 @@ mod tests {
                 can_delegate: false,
                 confidence: 1.0,
                 expires_at: None,
+                trust_domain: None,
+                delegation_depth: 0,
             }],
             machine_owners: vec![MachineOwnerWire {
                 machine: machine(agent_name),
                 owner: human("alice"),
             }],
+            trust_domains: vec![],
         }
     }
 
@@ -209,6 +216,7 @@ mod tests {
                 machine: machine("parent-bot"),
                 owner: human("alice"),
             }],
+            trust_domains: vec![],
         };
         let req = AgentSpawnRequest {
             parent: machine("parent-bot"),
@@ -245,7 +253,7 @@ mod tests {
 
     #[test]
     fn test_human_cannot_spawn_via_this_interface() {
-        let registry = OwnershipRegistryWire { claims: vec![], machine_owners: vec![] };
+        let registry = OwnershipRegistryWire { claims: vec![], machine_owners: vec![], trust_domains: vec![] };
         let req = AgentSpawnRequest {
             parent: human("alice"),
             child_id: "bot".to_string(),

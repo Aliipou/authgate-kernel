@@ -1,5 +1,8 @@
 #![allow(unexpected_cfgs)]
 #![allow(clippy::useless_conversion)]
+// Test code is permitted to panic/unwrap/index; the zero-panic policy applies to
+// the library (non-test) build, which CI enforces via `cargo clippy --all-targets`.
+#![cfg_attr(test, allow(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::indexing_slicing))]
 pub mod authority_graph;
 /// v2 TCB — stateless proof-chain engine (replaces registry-based v1 engine).
 /// See src/tcb/ for the trusted computing base boundary.

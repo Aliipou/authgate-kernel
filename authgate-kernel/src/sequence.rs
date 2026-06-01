@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// Composition safety — tracks accumulated rights across an action sequence.
 ///
 /// A stateless kernel that verifies each action independently can be exploited
@@ -14,7 +15,6 @@
 /// layer. It contains no cryptographic logic and enforces no security invariants —
 /// that is the kernel's job. What this module does: track facts about what has
 /// happened, so the caller can compare them against policy.
-#![forbid(unsafe_code)]
 
 #[cfg(feature = "embedded")]
 use alloc::vec::Vec;
