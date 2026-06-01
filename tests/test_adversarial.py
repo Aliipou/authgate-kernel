@@ -6,13 +6,13 @@ and asserts the kernel blocks it or surfaces the correct residual risk.
 """
 from __future__ import annotations
 
-import pytest
 import time
+
+import pytest
 
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier
-
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 

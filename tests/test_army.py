@@ -17,24 +17,23 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sys
 import threading
 import time
 from pathlib import Path
-import sys
 
 import pytest
-from hypothesis import given, settings, HealthCheck
+from hypothesis import HealthCheck, given, settings
 from hypothesis import strategies as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
+from authgate import __schema_version__, __version__, health_check
 from authgate.kernel.audit import AuditLog
 from authgate.kernel.call_gate import CallGate
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier
-from authgate import __version__, __schema_version__, health_check
-
 
 # ─── Setup ────────────────────────────────────────────────────────────────────
 
@@ -181,8 +180,10 @@ class TestSecurity09_ConcurrentAttack:
                 if r.permitted:
                     results.append("PERMIT")
         threads = [threading.Thread(target=attempt) for _ in range(10)]
-        for t in threads: t.start()
-        for t in threads: t.join()
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
         assert not results, f"Concurrent attack leaked permits: {results}"
 
 
@@ -284,7 +285,7 @@ class TestFormal19_AuditChainGrowth:
         audit = AuditLog()
         v2 = FreedomVerifier(v.registry, audit_log=audit)
         for i in range(100):
-            r = Resource(f"res-{i}", ResourceType.FILE, scope=f"/{i}/")
+            Resource(f"res-{i}", ResourceType.FILE, scope=f"/{i}/")
             v2.verify(Action(f"a{i}", actor=bot, resources_read=[data]))
         assert audit.verify_chain()
         assert len(audit) == 100
@@ -320,8 +321,10 @@ class TestSystems22_ThreadSafetyRegistry:
             except Exception as e:
                 errors.append(str(e))
         threads = [threading.Thread(target=read_loop) for _ in range(8)]
-        for t in threads: t.start()
-        for t in threads: t.join()
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
         assert not errors
 
 
@@ -374,8 +377,9 @@ class TestSystems26_CallGateUnknownTool:
 
 class TestSystems27_SeccompExecutorLevel:
     def test_auto_picks_appropriate_level(self):
-        from authgate.kernel.seccomp_executor import SeccompExecutor, IsolationLevel
         import platform
+
+        from authgate.kernel.seccomp_executor import IsolationLevel, SeccompExecutor
         executor = SeccompExecutor.auto()
         if platform.system() == "Linux":
             assert executor.level >= IsolationLevel.SUBPROCESS
@@ -468,8 +472,10 @@ class TestDistributed34_ConcurrentAuditChain:
             for _ in range(50):
                 v.verify(Action("r", actor=bot, resources_read=[data]))
         threads = [threading.Thread(target=write_loop) for _ in range(4)]
-        for t in threads: t.start()
-        for t in threads: t.join()
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
         assert audit.verify_chain(), "Concurrent audit writes broke chain integrity"
         assert len(audit) == 200
 
@@ -551,7 +557,7 @@ class TestDistributed40_LiveRegistryRevoke:
 
 class TestCrypto41_SchemaVersionCompatibility:
     def test_same_major_compatible(self):
-        from authgate.kernel.schema_version import SchemaVersion, check_version_compatibility
+        from authgate.kernel.schema_version import check_version_compatibility
         ok, _ = check_version_compatibility("1.5.3")
         assert ok
 
@@ -626,7 +632,7 @@ class TestCrypto48_SchemaMajorMismatch:
 
 class TestCrypto49_AuditEntryDetachedVerification:
     def test_single_entry_hash_recomputable(self):
-        import json, hashlib
+        import json
         _, bot, data, _, reg, _ = _env()
         audit = AuditLog()
         v = FreedomVerifier(reg, audit_log=audit)
@@ -666,7 +672,7 @@ class TestAPI51_TopLevelImports:
 
 class TestAPI52_VersionExported:
     def test_version_importable(self):
-        from authgate import __version__, __schema_version__
+        from authgate import __schema_version__, __version__
         assert __version__ == "1.0.0"
         assert __schema_version__ == "1.0.0"
 
@@ -799,8 +805,10 @@ class TestPerf64_ConcurrentThroughput:
             results.append(time.perf_counter() - t0)
         threads = [threading.Thread(target=worker) for _ in range(8)]
         t_start = time.perf_counter()
-        for t in threads: t.start()
-        for t in threads: t.join()
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
         total = time.perf_counter() - t_start
         ops_per_sec = (8 * 200) / total
         assert ops_per_sec > 1000, f"Only {ops_per_sec:.0f} ops/sec — too slow"
@@ -863,10 +871,12 @@ class TestPerf69_FrozenRegistryFast:
         a = Action("r", actor=bot, resources_read=[data])
         n = 500
         t0 = time.perf_counter()
-        for _ in range(n): frozen_v.verify(a)
+        for _ in range(n):
+            frozen_v.verify(a)
         frozen_time = time.perf_counter() - t0
         t0 = time.perf_counter()
-        for _ in range(n): live_v.verify(a)
+        for _ in range(n):
+            live_v.verify(a)
         live_time = time.perf_counter() - t0
         # Frozen should not be dramatically slower
         assert frozen_time < live_time * 5

@@ -31,12 +31,12 @@ import os
 import platform
 import subprocess
 import sys
-import tempfile
 import textwrap
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import IntEnum
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 
 class IsolationLevel(IntEnum):
@@ -113,7 +113,6 @@ def _install_seccomp_filter(allowlist: list[int]) -> bool:
         # Constants
         SCMP_ACT_KILL   = 0x00000000
         SCMP_ACT_ALLOW  = 0x7FFF0000
-        SCMP_ARCH_X86_64 = 0xC000003E
 
         ctx = libseccomp.seccomp_init(SCMP_ACT_KILL)
         if not ctx:
@@ -276,7 +275,7 @@ class SeccompExecutor:
         self._timeout = timeout
 
     @classmethod
-    def auto(cls) -> "SeccompExecutor":
+    def auto(cls) -> SeccompExecutor:
         """Select the best available isolation level for the current platform."""
         if platform.system() == "Linux":
             # Try seccomp first
@@ -288,7 +287,7 @@ class SeccompExecutor:
         return cls(IsolationLevel.SUBPROCESS)
 
     @classmethod
-    def none(cls) -> "SeccompExecutor":
+    def none(cls) -> SeccompExecutor:
         """No OS isolation — Python layer only. For testing."""
         return cls(IsolationLevel.NONE)
 

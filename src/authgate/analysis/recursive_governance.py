@@ -12,8 +12,6 @@ from __future__ import annotations
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any
-
 
 MAX_RECURSION_DEPTH = 5
 MAX_SUBORDINATES_PER_AGENT = 10

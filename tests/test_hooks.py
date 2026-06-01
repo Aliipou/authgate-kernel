@@ -2,17 +2,15 @@
 from __future__ import annotations
 
 import threading
-import pytest
 
+from authgate.kernel.entities import AgentType, Entity
 from authgate.kernel.hooks import (
     HookRegistry,
     MetricsCollector,
     VerificationEvent,
 )
-from authgate.kernel.verifier import Action, FreedomVerifier
-from authgate.kernel.entities import AgentType, Entity
 from authgate.kernel.registry import OwnershipRegistry
-
+from authgate.kernel.verifier import Action, FreedomVerifier
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -76,7 +74,8 @@ class TestHookRegistry:
         assert HookRegistry.hook_count() == 1
 
     def test_unregister_decrements_count(self):
-        fn = lambda e: None
+        def fn(e):
+            return None
         HookRegistry.register(fn)
         HookRegistry.unregister(fn)
         assert HookRegistry.hook_count() == 0

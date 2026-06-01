@@ -16,7 +16,6 @@ import pytest
 
 from authgate.kernel.entities import scope_contains
 
-
 # ---------------------------------------------------------------------------
 # Positive: scope_contains → True
 # ---------------------------------------------------------------------------

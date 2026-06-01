@@ -1122,9 +1122,9 @@ mod tcb_tests {
     fn types_cap_canonical_bytes_length_is_fixed() {
         let root_sk = random_key();
         let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
-        // Root: 32+32+32+8+8+8+64+32 = 196 bytes
+        // Root: 32+32+32+8+8+8+64+32 = 216 bytes
         // (proof_hash + subject + resource + rights + expiry + epoch + sig + pubkey)
-        assert_eq!(cap.to_canonical_bytes().len(), 196);
+        assert_eq!(cap.to_canonical_bytes().len(), 216);
     }
 
     #[test]

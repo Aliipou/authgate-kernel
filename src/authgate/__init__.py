@@ -18,6 +18,15 @@ from authgate.adapters.anthropic import AnthropicKernelAdapter
 from authgate.adapters.autogen import AutoGenKernelAdapter
 from authgate.adapters.langchain import FreedomTool, kernel_gate
 from authgate.adapters.openai_agents import OpenAIKernelMiddleware
+from authgate.errors import (
+    AuthgateError,
+    CapabilityError,
+    IntegrityError,
+    KeyRotationError,
+    RegistryError,
+    RightsError,
+    WireError,
+)
 from authgate.extensions import (
     ExtendedFreedomVerifier,
     IFCViolation,
@@ -41,22 +50,13 @@ from authgate.kernel import (
     VerificationResult,
 )
 from authgate.kernel.audit import AuditLog
+from authgate.kernel.call_gate import CallGate, GatedTool, GateResult
 from authgate.kernel.context import ExecutionContext
 from authgate.kernel.goals import GoalNode, GoalVerificationResult, verify_goal_tree
-from authgate.kernel.policy import Policy, PolicyRule, PolicyVerifier
-from authgate.errors import (
-    AuthgateError,
-    CapabilityError,
-    IntegrityError,
-    KeyRotationError,
-    RegistryError,
-    RightsError,
-    WireError,
-)
-from authgate.key_rotation import ActiveKeySet, RotationCertificate, issue_rotation, verify_rotation
 from authgate.kernel.hooks import HookRegistry, MetricsCollector, VerificationEvent
-from authgate.kernel.call_gate import CallGate, GatedTool, GateResult
+from authgate.kernel.policy import Policy, PolicyRule, PolicyVerifier
 from authgate.kernel.schema_version import CURRENT_SCHEMA_VERSION, check_version_compatibility
+from authgate.key_rotation import ActiveKeySet, RotationCertificate, issue_rotation, verify_rotation
 
 
 def health_check() -> dict:

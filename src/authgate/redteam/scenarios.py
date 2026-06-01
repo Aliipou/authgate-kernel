@@ -10,11 +10,9 @@ CI regression, and documentation of residual risks.
 """
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass
-from typing import Any
 
-from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
+from authgate.kernel.entities import AgentType, Entity, Resource, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier, VerificationResult
 

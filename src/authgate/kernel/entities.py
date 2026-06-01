@@ -148,7 +148,7 @@ class RightsClaim:
     can_delegate: bool = False
     confidence: float = 1.0
     expires_at: float | None = None
-    delegated_by: "Entity | None" = field(default=None, compare=False, hash=False)
+    delegated_by: Entity | None = field(default=None, compare=False, hash=False)
     epoch: int = 1
 
     def __post_init__(self) -> None:

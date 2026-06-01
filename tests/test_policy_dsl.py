@@ -13,10 +13,10 @@ from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType
 from authgate.kernel.policy_dsl import (
     PolicyDSL,
     PolicyDSLSyntaxError,
-    PolicyStatement,
+)
+from authgate.kernel.policy_dsl import (
     compile as compile_policy,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

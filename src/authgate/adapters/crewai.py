@@ -48,8 +48,8 @@ import functools
 from collections.abc import Callable
 from typing import Any
 
-from authgate.kernel import Action, Entity, FreedomVerifier, Resource
 from authgate.errors import AuthgateError
+from authgate.kernel import Action, Entity, FreedomVerifier, Resource
 
 
 class KernelDeniedError(AuthgateError):

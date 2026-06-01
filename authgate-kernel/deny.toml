@@ -21,6 +21,7 @@ allow = [
   "Unicode-3.0",
   "Unicode-DFS-2016",
   "OpenSSL",
+  "Zlib",
   # This project's own license (source-available, noncommercial).
   "PolyForm-Noncommercial-1.0.0",
 ]

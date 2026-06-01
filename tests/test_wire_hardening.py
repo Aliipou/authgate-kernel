@@ -14,12 +14,12 @@ from __future__ import annotations
 
 import json
 import math
+
 import pytest
 
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier
-
 
 # ---------------------------------------------------------------------------
 # Fixture

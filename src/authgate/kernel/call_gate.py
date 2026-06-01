@@ -31,8 +31,9 @@ Usage:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable, Optional
+from typing import Any
 
 
 @dataclass(frozen=True)
@@ -40,7 +41,7 @@ class GateResult:
     """Immutable result of a gated tool execution."""
     permitted: bool
     output: Any = None
-    denied_reason: Optional[str] = None
+    denied_reason: str | None = None
     tool_name: str = ""
 
     def is_denied(self) -> bool:
@@ -63,10 +64,10 @@ class GatedTool:
 
     __slots__ = ("_name", "_GatedTool__fn", "_gate")
 
-    def __init__(self, name: str, fn: Callable[..., Any], gate: "CallGate") -> None:
+    def __init__(self, name: str, fn: Callable[..., Any], gate: CallGate) -> None:
         self._name: str = name
         self.__fn: Callable[..., Any] = fn   # name-mangled: _GatedTool__fn
-        self._gate: "CallGate" = gate
+        self._gate: CallGate = gate
 
     @property
     def name(self) -> str:
@@ -106,8 +107,8 @@ class CallGate:
     def __init__(
         self,
         verifier: Any,
-        abi_registry: Optional[Any] = None,
-        audit_log: Optional[Any] = None,
+        abi_registry: Any | None = None,
+        audit_log: Any | None = None,
     ) -> None:
         self._verifier = verifier
         self._abi = abi_registry
@@ -130,7 +131,7 @@ class CallGate:
         self,
         action: Any,
         tool_name: str,
-        arguments: Optional[dict[str, Any]] = None,
+        arguments: dict[str, Any] | None = None,
     ) -> GateResult:
         """
         Execute tool_name under capability constraints.

@@ -5,12 +5,9 @@ CoercionAnalyzer detects structural coercion patterns in registry dependency gra
 """
 import time
 
-import pytest
-
 from authgate.analysis.coercion import (
     CoercionAnalyzer,
     CoercionBoundary,
-    CoercionError,
     CoercionPattern,
     CoercionRisk,
 )

@@ -13,6 +13,7 @@ and adversarial robustness on top.
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 from authgate.extensions.detection import detect
 from authgate.extensions.ifc import IFCViolation, NonInterferenceChecker, SecurityLattice
@@ -20,9 +21,6 @@ from authgate.extensions.resolver import ConflictQueue
 from authgate.extensions.synthesis import ProposedRule, SynthesisEngine
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier, VerificationResult
-
-
-from dataclasses import dataclass
 
 
 @dataclass(frozen=True)

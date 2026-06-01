@@ -23,7 +23,6 @@ from __future__ import annotations
 import argparse
 import json
 import sys
-from pathlib import Path
 from typing import Any
 
 
@@ -87,7 +86,7 @@ def _build_action_from_dict(
     agents: dict,
     resources: dict,
 ):
-    from authgate.kernel.entities import Entity, AgentType
+    from authgate.kernel.entities import AgentType, Entity
     from authgate.kernel.verifier import Action
 
     actor_id = data["actor"]
@@ -220,7 +219,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
 
 
 def cmd_key_verify(args: argparse.Namespace) -> int:
-    from authgate.key_rotation import RotationCertificate, verify_rotation
+    from authgate.key_rotation import RotationCertificate
 
     cert_data = _load_json(args.cert, "certificate")
     try:

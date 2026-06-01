@@ -13,11 +13,10 @@ Key invariants:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 from authgate.kernel.entities import AgentType, ResourceType
-
 
 OLIGARCHY_THRESHOLD = 0.33
 CONCENTRATION_HHI_THRESHOLD = 0.35

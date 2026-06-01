@@ -26,14 +26,13 @@ The distinction from sovereignty flags:
 """
 from __future__ import annotations
 
+import re
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Sequence
 
-import re
-
-from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.errors import AuthgateError
+from authgate.kernel.entities import ResourceType, RightsClaim
 
 _SENSITIVE_RESOURCE_TYPES: frozenset[ResourceType] = frozenset({
     ResourceType.BEHAVIORAL_PROFILE,

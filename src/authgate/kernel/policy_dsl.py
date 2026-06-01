@@ -59,10 +59,8 @@ from __future__ import annotations
 import re
 import textwrap
 from dataclasses import dataclass, field
-from typing import ClassVar
 
 from authgate.kernel.policy import Policy, PolicyRule
-
 
 # ---------------------------------------------------------------------------
 # Public error type

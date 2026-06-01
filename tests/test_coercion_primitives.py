@@ -25,15 +25,14 @@ ALL_SOVEREIGNTY_FLAGS = [
     "self_modification_weakens_verifier",
     "machine_coalition_reduces_freedom",
 ]
-from attack_harness.threat_taxonomy.coercion_primitives import (
-    COERCION_PRIMITIVES,
+from attack_harness.threat_taxonomy.coercion_primitives import (  # noqa: E402
     COERCION_BY_FLAG,
+    COERCION_PRIMITIVES,
     CoercionType,
     assert_coercion_flag_always_denied,
     run_all,
 )
-from attack_harness.threat_taxonomy.ontology import COERCION_PRIMITIVES_CATALOG
-
+from attack_harness.threat_taxonomy.ontology import COERCION_PRIMITIVES_CATALOG  # noqa: E402
 
 # ── Catalog structure ─────────────────────────────────────────────────────────
 

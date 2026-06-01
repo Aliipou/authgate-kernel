@@ -24,12 +24,10 @@ Key objects:
 from __future__ import annotations
 
 import hashlib
-import os
 import secrets
 import time
 from dataclasses import dataclass, field
 from typing import Any
-
 
 # ── Commitment primitives ─────────────────────────────────────────────────────
 
@@ -58,7 +56,7 @@ class CapabilityCommitment:
     expires_at: float | None = None
 
     @classmethod
-    def create(cls, claim: Any, expires_at: float | None = None) -> "CapabilityCommitment":
+    def create(cls, claim: Any, expires_at: float | None = None) -> CapabilityCommitment:
         """
         Create a commitment to a RightsClaim.
 
@@ -127,7 +125,7 @@ class IdentityBlinder:
     commitments: list[CapabilityCommitment] = field(default_factory=list)
 
     @classmethod
-    def create(cls, claims: list[Any], ttl: float = 3600.0) -> "IdentityBlinder":
+    def create(cls, claims: list[Any], ttl: float = 3600.0) -> IdentityBlinder:
         """
         Create a blinded identity from a list of RightsClaims.
 

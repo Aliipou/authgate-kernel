@@ -16,7 +16,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-
 SPEC_DIR = Path(__file__).parent.parent.parent / "spec"
 
 SCHEMA_FILES = {
@@ -61,7 +60,7 @@ def validate(instance: dict, schema_name: str) -> ValidationResult:
     schema = load_schema(schema_name)
 
     try:
-        import jsonschema   # type: ignore
+        import jsonschema  # type: ignore
         validator = jsonschema.Draft202012Validator(schema)
         errors = sorted(validator.iter_errors(instance), key=lambda e: e.path)
         if not errors:

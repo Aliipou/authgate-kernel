@@ -62,7 +62,7 @@ class DSPyKernelGate:
         self._resource = resource
         self._prefix = action_prefix
 
-    def guard(self, module: Any) -> "_GuardedDSPyModule":
+    def guard(self, module: Any) -> _GuardedDSPyModule:
         """Wrap a DSPy module with this gate. Returns a guarded module."""
         return _GuardedDSPyModule(module, self)
 

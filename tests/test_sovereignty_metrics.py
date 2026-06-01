@@ -11,10 +11,9 @@ import time
 
 import pytest
 
+from authgate.analysis.sovereignty_metrics import SovereigntyAnalyzer, SovereigntySnapshot
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
-from authgate.analysis.sovereignty_metrics import SovereigntyAnalyzer, SovereigntySnapshot
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -274,8 +273,8 @@ class TestRiskLevel:
 
     def test_healthy_registry_is_low(self):
         """Perfectly balanced registry: all metrics good → LOW."""
-        alice = _human("alice")
-        bob = _human("bob")
+        _human("alice")
+        _human("bob")
         future = time.time() + 3600
         reg = OwnershipRegistry()
         for i in range(4):

@@ -25,7 +25,7 @@ class SchemaVersion:
     patch: int
 
     @classmethod
-    def parse(cls, s: str) -> "SchemaVersion":
+    def parse(cls, s: str) -> SchemaVersion:
         parts = s.split(".")
         if len(parts) != 3:
             raise ValueError(f"Invalid schema version: {s!r} (expected MAJOR.MINOR.PATCH)")
@@ -40,14 +40,14 @@ class SchemaVersion:
     def __str__(self) -> str:
         return f"{self.major}.{self.minor}.{self.patch}"
 
-    def __lt__(self, other: "SchemaVersion") -> bool:
+    def __lt__(self, other: SchemaVersion) -> bool:
         return (self.major, self.minor, self.patch) < (other.major, other.minor, other.patch)
 
-    def is_compatible_with(self, other: "SchemaVersion") -> bool:
+    def is_compatible_with(self, other: SchemaVersion) -> bool:
         """Two versions are compatible if they share the same MAJOR version."""
         return self.major == other.major
 
-    def requires_reissuance(self, other: "SchemaVersion") -> bool:
+    def requires_reissuance(self, other: SchemaVersion) -> bool:
         """True if proofs issued under `other` are incompatible with this version."""
         return not self.is_compatible_with(other)
 

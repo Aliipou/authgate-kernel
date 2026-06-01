@@ -40,8 +40,7 @@ from enum import Enum
 from typing import Any
 
 from authgate.kernel.entities import AgentType, Entity, Resource, scope_contains
-from authgate.kernel.verifier import Action, VerificationResult
-
+from authgate.kernel.verifier import Action
 
 # ---------------------------------------------------------------------------
 # Layer 2 — Phase 2 canonical consent model

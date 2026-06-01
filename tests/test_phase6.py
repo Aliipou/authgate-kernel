@@ -7,29 +7,24 @@ O3: Sovereign Exit Guarantees   (exit_guarantees.py)
 """
 from __future__ import annotations
 
-import time
 import pytest
 
-from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from authgate.kernel.registry import OwnershipRegistry
-
-from authgate.analysis.recursive_governance import (
-    RecursiveGovernanceChecker,
-    GovernanceViolation,
-    MAX_RECURSION_DEPTH,
-    MAX_SUBORDINATES_PER_AGENT,
-)
 from authgate.analysis.constitutional_economy import (
     ConstitutionalEconomyChecker,
     EconomicViolation,
-    OLIGARCHY_THRESHOLD,
 )
 from authgate.analysis.exit_guarantees import (
-    SovereignExitChecker,
     ExitViolation,
-    MAX_EXIT_SAFE_DEPTH,
+    SovereignExitChecker,
 )
-
+from authgate.analysis.recursive_governance import (
+    MAX_RECURSION_DEPTH,
+    MAX_SUBORDINATES_PER_AGENT,
+    GovernanceViolation,
+    RecursiveGovernanceChecker,
+)
+from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
+from authgate.kernel.registry import OwnershipRegistry
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 

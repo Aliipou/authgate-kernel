@@ -120,7 +120,6 @@ class OverrideDetector:
         Detect scopes where ALL claims belong to machines with no direct human claims.
         In such scopes, humans can only act through the machines they own.
         """
-        from authgate.kernel.entities import AgentType
         scope_has_human: dict[str, bool] = {}
         scope_machines: dict[str, set[str]] = {}
 

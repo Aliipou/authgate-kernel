@@ -6,13 +6,11 @@ ToolSchema, ToolParam, ToolABIRegistry validate typed tool calls against schemas
 import pytest
 
 from authgate.kernel.tool_abi import (
-    ToolABIError,
     ToolABIRegistry,
     ToolCallValidation,
     ToolParam,
     ToolSchema,
 )
-
 
 # ── ToolSchema construction ───────────────────────────────────────────────────
 
