@@ -9,6 +9,11 @@ on:
 permissions:
   contents: read
 
+# The Python suite validates the pure-Python reference implementation in a single
+# type system. The Rust TCB is validated by the rust-check + TCB-tests jobs.
+env:
+  AUTHGATE_BACKEND: python
+
 jobs:
   rust-check:
     name: Rust — clippy + tests
