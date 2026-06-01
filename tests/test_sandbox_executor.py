@@ -1,5 +1,4 @@
 """Tests for Phase 1/O1: Python Capability-Constrained Sandbox Executor."""
-import pytest
 
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry

@@ -1,12 +1,10 @@
 """Tests for Phase 4/O1: Persuasion Boundary Formal Model."""
-import pytest
 
-from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.analysis.persuasion import (
-    PersuasionBoundaryChecker,
     PersuasionCriterion,
     check_persuasion_boundary,
 )
+from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType
 from authgate.kernel.verifier import Action
 
 

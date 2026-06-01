@@ -6,11 +6,7 @@ Each test asserts the kernel response matches the expected outcome.
 
 Catalog linkage: attack_harness/threat_taxonomy/delegation_abuse.py
 """
-import pytest
 
-from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from authgate.kernel.registry import OwnershipRegistry
-from authgate.kernel.verifier import Action, FreedomVerifier
 from attack_harness.threat_taxonomy.delegation_abuse import (
     run_del1_orphaned_delegation,
     run_del1b_orphaned_delegation_no_parent_claim,
@@ -21,6 +17,9 @@ from attack_harness.threat_taxonomy.delegation_abuse import (
 )
 from attack_harness.threat_taxonomy.ontology import DELEGATION_ABUSE_CATALOG, AttackClass
 
+from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
+from authgate.kernel.registry import OwnershipRegistry
+from authgate.kernel.verifier import Action, FreedomVerifier
 
 # ── Ontology structure ────────────────────────────────────────────────────────
 

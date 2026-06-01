@@ -35,12 +35,10 @@ The signature covers all fields except itself:
 """
 from __future__ import annotations
 
-import hashlib
 import json
 import struct
 import time
 from dataclasses import dataclass
-
 
 ROTATION_VERSION = "authgate-rotation-v1"
 
@@ -95,7 +93,7 @@ class RotationCertificate:
         return json.dumps(self.to_wire(), separators=(",", ":"))
 
     @classmethod
-    def from_wire(cls, data: dict) -> "RotationCertificate":
+    def from_wire(cls, data: dict) -> RotationCertificate:
         if data.get("version") != ROTATION_VERSION:
             raise ValueError(
                 f"Unknown rotation certificate version: {data.get('version')!r}. "
@@ -111,7 +109,7 @@ class RotationCertificate:
         )
 
     @classmethod
-    def from_json(cls, raw: str) -> "RotationCertificate":
+    def from_json(cls, raw: str) -> RotationCertificate:
         return cls.from_wire(json.loads(raw))
 
 

@@ -29,7 +29,6 @@ from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, 
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

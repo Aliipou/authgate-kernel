@@ -16,12 +16,11 @@ from __future__ import annotations
 
 import pytest
 
+from authgate.adapters.openai_agents import OpenAIKernelMiddleware
+from authgate.kernel.audit import AuditLog
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier
-from authgate.kernel.audit import AuditLog
-from authgate.adapters.openai_agents import OpenAIKernelMiddleware
-
 
 # ─── Shared setup ─────────────────────────────────────────────────────────────
 

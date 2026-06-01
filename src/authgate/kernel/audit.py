@@ -219,7 +219,7 @@ class AuditLog:
     # ------------------------------------------------------------------
 
     @classmethod
-    def load_from_file(cls, path: str) -> "AuditLog":
+    def load_from_file(cls, path: str) -> AuditLog:
         """
         Reconstruct an AuditLog from a persisted .jsonl file.
 
@@ -254,7 +254,7 @@ class AuditLog:
         return log
 
     @classmethod
-    def load_and_verify(cls, path: str) -> tuple["AuditLog", list[str]]:
+    def load_and_verify(cls, path: str) -> tuple[AuditLog, list[str]]:
         """
         Load from file and immediately verify chain integrity.
 
@@ -311,12 +311,10 @@ class AuditLog:
         verifying_key: Ed25519PublicKey (optional — if None, uses the key embedded in the export).
         Returns True if the signature is valid.
         """
-        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
         from cryptography.exceptions import InvalidSignature
         from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
         if verifying_key is None:
-            from cryptography.hazmat.primitives.serialization import Encoding, PublicFormat
             vk_bytes = base64.b64decode(export["verifying_key"])
             from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
             verifying_key = Ed25519PublicKey.from_public_bytes(vk_bytes)

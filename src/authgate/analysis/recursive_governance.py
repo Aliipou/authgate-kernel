@@ -11,16 +11,14 @@ from __future__ import annotations
 
 from collections import defaultdict, deque
 from dataclasses import dataclass, field
-from enum import Enum
-from typing import Any
-
+from enum import StrEnum
 
 MAX_RECURSION_DEPTH = 5
 MAX_SUBORDINATES_PER_AGENT = 10
 FEUDAL_HHI_THRESHOLD = 0.4
 
 
-class GovernanceViolation(str, Enum):
+class GovernanceViolation(StrEnum):
     DEPTH_EXCEEDED = "DEPTH_EXCEEDED"
     FEUDAL_CONCENTRATION = "FEUDAL_CONCENTRATION"
     ANTI_FEUDAL_FAN_OUT = "ANTI_FEUDAL_FAN_OUT"

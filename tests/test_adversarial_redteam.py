@@ -24,23 +24,18 @@ Each test documents:
 
 from __future__ import annotations
 
-import threading
-import time
 import json
-import os
 import sys
+import threading
 from pathlib import Path
-
-import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from authgate.kernel.audit import AuditLog
-from authgate.kernel.call_gate import CallGate, GatedTool
+from authgate.kernel.call_gate import CallGate
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier
-
 
 # ─── Setup helpers ─────────────────────────────────────────────────────────────
 
@@ -116,7 +111,7 @@ class TestAT75ShadowExecution:
         assert not hasattr(tool, "wrapped")
 
         # Verify the tool is still callable through the gate
-        action = Action("a", actor=bot, resources_read=[data])
+        Action("a", actor=bot, resources_read=[data])
         _, _, _, data, _, reg2 = _env()
         v = FreedomVerifier(reg2)
         gate2 = CallGate(v)
@@ -480,7 +475,6 @@ class TestDelegationChainAttacks:
 
         # Verify does not hang
         v = FreedomVerifier(reg)
-        import signal
         # Simple timeout using threading
         result_holder = []
         def do_verify():

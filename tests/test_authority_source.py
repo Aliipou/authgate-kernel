@@ -10,7 +10,7 @@ import time
 
 import pytest
 
-from authgate.authority import HumanDelegationSource, AuthoritySource, CapabilityRequest
+from authgate.authority import AuthoritySource, CapabilityRequest, HumanDelegationSource
 from authgate.authority.base import IssuedCapability
 from authgate.authority.human_delegation import MarketOracleSource, ReputationGateSource
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim

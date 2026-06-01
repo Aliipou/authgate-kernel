@@ -13,12 +13,11 @@ regardless of stated permissions.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 from typing import Any
 
 from authgate.kernel.entities import AgentType, ResourceType
-
 
 # Resource types that constitute identity lock-in if machine-only held
 IDENTITY_RESOURCE_TYPES: frozenset[ResourceType] = frozenset({
@@ -31,7 +30,7 @@ IDENTITY_RESOURCE_TYPES: frozenset[ResourceType] = frozenset({
 MAX_EXIT_SAFE_DEPTH = 3
 
 
-class ExitViolation(str, Enum):
+class ExitViolation(StrEnum):
     EXIT_BLOCKED = "EXIT_BLOCKED"
     MIGRATION_BLOCKED = "MIGRATION_BLOCKED"
     IDENTITY_LOCKED = "IDENTITY_LOCKED"
@@ -143,7 +142,7 @@ class SovereignExitChecker:
             # E2: identity portability — machine holds identity resource, human has no co-claim
             owned = human_owned_machines.get(human, set())
             for machine in owned:
-                machine_res = machine_direct_resources.get(machine, set())
+                machine_direct_resources.get(machine, set())
                 for claim in claims:
                     if (
                         claim.holder.name == machine

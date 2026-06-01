@@ -19,13 +19,13 @@ import time
 
 import pytest
 
-from authgate.kernel.consent import ConsentAnnotation as ConsentCapability, ConsentVerifier
+from authgate.extensions.ifc import IFCViolation, NonInterferenceChecker, SecurityLattice
+from authgate.kernel.consent import ConsentAnnotation as ConsentCapability
+from authgate.kernel.consent import ConsentVerifier
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.policy import Policy, PolicyRule, PolicyVerifier
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier
-from authgate.extensions.ifc import IFCViolation, NonInterferenceChecker, SecurityLattice
-
 
 # ---------------------------------------------------------------------------
 # Scenario: A medical AI assistant accessing patient data
@@ -381,9 +381,9 @@ class TestFullComposition:
     def test_all_layers_independent_blocking(self, medical_scenario):
         """Each layer can block independently of the others."""
         s = medical_scenario
-        dr_alice = s["dr_alice"]
+        s["dr_alice"]
         medbot = s["medbot"]
-        patient_record = s["patient_record"]
+        s["patient_record"]
         anonymized_report = s["anonymized_report"]
 
         # Scenarios for independent blocking

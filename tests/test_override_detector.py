@@ -1,15 +1,12 @@
 """Tests for Phase 2/O3: Human Override Lock-in Detector."""
 import time
 
-import pytest
-
-from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.analysis.override_detector import (
     LockInPattern,
     LockInRisk,
-    MAX_SAFE_CHAIN_DEPTH,
     OverrideDetector,
 )
+from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 
 

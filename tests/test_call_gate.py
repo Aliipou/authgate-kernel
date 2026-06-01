@@ -17,12 +17,11 @@ from __future__ import annotations
 
 import pytest
 
-from authgate.kernel.call_gate import CallGate, GatedTool, GateResult
+from authgate.kernel.audit import AuditLog
+from authgate.kernel.call_gate import CallGate, GateResult
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier
-from authgate.kernel.audit import AuditLog
-
 
 # ─── Fixtures ─────────────────────────────────────────────────────────────────
 

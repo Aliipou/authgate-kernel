@@ -2,9 +2,10 @@
 Key rotation protocol tests -- Phase 1 C3.
 """
 from __future__ import annotations
-import time
+
 import hashlib
 import hmac
+import time
 
 import pytest
 

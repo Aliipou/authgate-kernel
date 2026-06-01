@@ -18,7 +18,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Sequence
+from typing import Any
 
 
 class CoalitionViolation(Enum):
@@ -112,7 +112,6 @@ class DependencyAnalyzer:
         """
         Return step_ids where the actor has no registered claims in the registry.
         """
-        from authgate.kernel.entities import AgentType
         orphaned = []
         claims = list(getattr(registry, "_claims", []))
         registered_machines = {
@@ -216,7 +215,6 @@ class CoalitionChecker:
         Detect cases where the coalition collectively claims rights
         that no individual agent holds — unauthorized authority aggregation.
         """
-        from authgate.kernel.entities import scope_contains
         claims = list(getattr(registry, "_claims", []))
 
         # Collect per-actor authorized scopes

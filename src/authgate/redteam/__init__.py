@@ -1,5 +1,5 @@
 """
-Red-team framework for freedom-kernel.
+Red-team framework for authgate-kernel.
 
 Provides structured adversarial attack classes for testing kernel resilience.
 Each class implements an attack() method that attempts to bypass the verifier

@@ -19,8 +19,7 @@ import pytest
 # Ensure src/ is importable
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
-from authgate.cli import build_parser, cmd_audit_stats, cmd_audit_verify, cmd_verify
-
+from authgate.cli import build_parser
 
 # ---------------------------------------------------------------------------
 # Fixtures and helpers

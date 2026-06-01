@@ -1,7 +1,6 @@
 """Tests for Phase 4/O2: Anti-Capture Detection."""
-import pytest
 
-from authgate.analysis.anti_capture import AntiCaptureChecker, CapturePattern, check_capture
+from authgate.analysis.anti_capture import CapturePattern, check_capture
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action

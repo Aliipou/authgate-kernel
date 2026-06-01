@@ -129,7 +129,7 @@ class MCPGate:
             reads, writes, executes = [], [], []
             if resource_mapper is not None:
                 reads, writes, executes = resource_mapper(tool_name, kwargs)
-            result = self.call_tool(
+            self.call_tool(
                 tool_name, kwargs,
                 resources_read=reads,
                 resources_write=writes,

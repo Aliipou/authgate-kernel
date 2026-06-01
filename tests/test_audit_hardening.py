@@ -5,14 +5,14 @@ Tests load_from_file, replay, chain_errors, and the thread-safety
 fix (prev_hash computed inside lock).
 """
 from __future__ import annotations
-import json
+
 import os
 import tempfile
 import threading
 
 import pytest
 
-from authgate.kernel.audit import AuditLog, GENESIS_HASH
+from authgate.kernel.audit import GENESIS_HASH, AuditLog
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier
@@ -231,6 +231,6 @@ class TestPrevHashAtomicity:
         assert len(log) == 200
         chain_errors = log.chain_errors()
         assert chain_errors == [], (
-            f"Chain broken under concurrent appends — "
-            f"prev_hash atomicity fix not working:\n" + "\n".join(chain_errors[:5])
+            "Chain broken under concurrent appends — "
+            "prev_hash atomicity fix not working:\n" + "\n".join(chain_errors[:5])
         )

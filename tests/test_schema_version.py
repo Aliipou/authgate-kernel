@@ -5,8 +5,12 @@ Schema version tests — II-3 from INFRASTRUCTURE_PLAN.md.
 from __future__ import annotations
 
 import pytest
+
 from authgate.kernel.schema_version import (
-    SchemaVersion, CURRENT_SCHEMA_VERSION, check_version_compatibility, version_tag
+    CURRENT_SCHEMA_VERSION,
+    SchemaVersion,
+    check_version_compatibility,
+    version_tag,
 )
 
 

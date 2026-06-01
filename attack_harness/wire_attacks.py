@@ -29,7 +29,7 @@ Each test builds a JSON payload, parses it through the Python wire layer
 expected outcome: either rejection (ValueError / TypeError / KeyError)
 or correct handling.
 
-The Rust wire layer (freedom-kernel/src/wire.rs) covers the same classes
+The Rust wire layer (authgate-kernel/src/wire.rs) covers the same classes
 at the serde deserialization boundary. These Python tests cover the
 authgate Python fallback path.
 

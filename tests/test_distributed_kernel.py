@@ -12,21 +12,18 @@ Tests structural invariants:
 from __future__ import annotations
 
 import time
-import pytest
-
-from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from authgate.kernel.registry import OwnershipRegistry
 
 from authgate.distributed.distributed_kernel import (
-    VectorClock,
-    MerkleRegistryState,
-    RevocationEvent,
     CapabilityEpoch,
+    FederatedNode,
+    MerkleRegistryState,
     PartitionDecision,
     PartitionPolicy,
-    FederatedNode,
+    RevocationEvent,
+    VectorClock,
 )
-
+from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
+from authgate.kernel.registry import OwnershipRegistry
 
 # ─── Fixtures ────────────────────────────────────────────────────────────────
 

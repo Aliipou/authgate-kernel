@@ -1,0 +1,56 @@
+[package]
+name = "authgate-kernel"
+version = "0.1.0"
+edition = "2021"
+description = "Formal, auditable, cryptographically-verifiable capability-governance kernel"
+license = "PolyForm-Noncommercial-1.0.0"
+
+[lib]
+name = "authgate_kernel"
+crate-type = ["cdylib", "rlib"]
+
+# ── Features ──────────────────────────────────────────────────────────────────
+#
+# wasm      — wasm-bindgen bindings for browser/Node/WASI targets.
+#             Build: wasm-pack build --target web -- --features wasm
+#             Requires: wasm-pack, wasm32 target installed.
+#
+# embedded  — Enables #[no_std] + alloc for bare-metal/RTOS targets.
+#             Build: cargo build --target thumbv7em-none-eabihf --features embedded
+#             Note: expiry checks are disabled (no_std has no system clock;
+#             use expires_at = None or supply your own time source via the C ABI).
+
+[features]
+wasm     = ["dep:wasm-bindgen"]
+embedded = []
+sandbox  = ["dep:wasmtime"]
+
+[dependencies]
+pyo3               = { version = "0.22", features = ["extension-module"] }
+serde              = { version = "1",    features = ["derive"] }
+serde_json         = "1"
+ed25519-dalek      = { version = "2", features = ["rand_core"] }
+sha2               = "0.10"
+rand_core          = { version = "0.6",  features = ["getrandom"] }
+hex                = "0.4"
+subtle             = "2"
+zeroize            = { version = "1", features = ["derive"] }
+wasm-bindgen       = { version = "0.2", optional = true }
+wasmtime           = { version = "25",  optional = true }
+
+[dev-dependencies]
+criterion = { version = "0.5", features = ["html_reports"] }
+proptest  = "1"
+wat       = "1"
+
+[[bench]]
+name = "verify_bench"
+harness = false
+
+[profile.release]
+opt-level        = 3
+lto              = true
+codegen-units    = 1
+strip            = "symbols"
+panic            = "abort"
+overflow-checks  = true

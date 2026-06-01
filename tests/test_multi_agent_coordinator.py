@@ -1,7 +1,5 @@
 """Tests for Phase 3/O2: Multi-Agent Coordination."""
-import pytest
 
-from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.analysis.multi_agent_coordinator import (
     AgentStep,
     CoalitionChecker,
@@ -9,6 +7,7 @@ from authgate.analysis.multi_agent_coordinator import (
     DependencyAnalyzer,
     MultiAgentPlan,
 )
+from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 
 

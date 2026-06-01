@@ -24,11 +24,10 @@ From ultimate-plan.md P5 — Distributed Constitutional:
 from __future__ import annotations
 
 import hashlib
-import secrets
 import time
-from dataclasses import dataclass, field
+from collections.abc import Sequence
+from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Sequence
 
 
 class FederatedDecisionType(Enum):
@@ -75,7 +74,7 @@ class FederatedDecision:
         permitted: bool,
         violations: Sequence[str],
         scope: str = "",
-    ) -> "FederatedDecision":
+    ) -> FederatedDecision:
         """Create a federated decision from a local verification result."""
         decision = (
             FederatedDecisionType.PERMIT

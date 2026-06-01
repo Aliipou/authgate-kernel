@@ -30,6 +30,10 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+# Ed25519-signed audit log (authgate.kernel.audit) — optional feature, lazy-imported.
+signing = [
+  "cryptography>=42.0",
+]
 dev = [
   "pytest>=8.0",
   "pytest-cov>=5.0",
@@ -37,6 +41,7 @@ dev = [
   "ruff>=0.4.0",
   "mypy>=1.10.0",
   "hypothesis>=6.0",
+  "cryptography>=42.0",
 ]
 
 [project.urls]

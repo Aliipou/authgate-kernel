@@ -8,18 +8,18 @@ Tests assert either:
   - Documented gap behavior is stable (ACCEPTED — known, non-critical, noted)
 
 These tests run on the Python authgate runtime. The Rust path is covered by
-freedom-kernel/src/wire.rs validate_*() functions (11 inline tests there).
+authgate-kernel/src/wire.rs validate_*() functions (11 inline tests there).
 """
 from __future__ import annotations
 
 import json
 import math
+
 import pytest
 
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier
-
 
 # ---------------------------------------------------------------------------
 # Fixture

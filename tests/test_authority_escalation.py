@@ -9,10 +9,6 @@ Catalog linkage: attack_harness/threat_taxonomy/authority_escalation.py
 import time
 
 import pytest
-
-from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from authgate.kernel.registry import OwnershipRegistry
-from authgate.kernel.verifier import Action, FreedomVerifier
 from attack_harness.threat_taxonomy.authority_escalation import (
     run_esc1_ghost_principal,
     run_esc2_rights_amplification,
@@ -28,6 +24,9 @@ from attack_harness.threat_taxonomy.ontology import (
     critical_scenarios,
 )
 
+from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
+from authgate.kernel.registry import OwnershipRegistry
+from authgate.kernel.verifier import Action, FreedomVerifier
 
 # ── Ontology structure tests ──────────────────────────────────────────────────
 

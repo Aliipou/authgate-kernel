@@ -48,8 +48,8 @@ import functools
 from collections.abc import Callable
 from typing import Any
 
-from authgate.kernel import Action, Entity, FreedomVerifier, Resource
 from authgate.errors import AuthgateError
+from authgate.kernel import Action, Entity, FreedomVerifier, Resource
 
 
 class KernelDeniedError(AuthgateError):
@@ -127,7 +127,7 @@ class CrewAIKernelGate:
                         f"{result.summary()}"
                     )
                 return fn(*args, **kwargs)
-            wrapper._kernel_gated = True
+            wrapper._kernel_gated = True  # type: ignore[attr-defined]
             return wrapper
         return decorator
 

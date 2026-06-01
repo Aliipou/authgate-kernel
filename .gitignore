@@ -14,6 +14,11 @@ dist/
 build/
 .pytest_cache/
 .ruff_cache/
+.hypothesis/
+# Rust build artifacts (any crate)
+target/
+authgate-kernel/target/
+**/target/
 *.so
 *.dll
 htmlcov/

@@ -5,13 +5,12 @@ Wire format validator tests — IV-1.
 from __future__ import annotations
 
 import json
-import tempfile
-from pathlib import Path
 
 import pytest
 
 from authgate.wire_validator import (
-    SCHEMA_FILES, load_schema, validate, ValidationResult,
+    load_schema,
+    validate,
 )
 
 

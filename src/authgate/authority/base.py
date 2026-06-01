@@ -15,7 +15,7 @@ Implementations (current and future):
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional, Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 
 @dataclass(frozen=True)
@@ -84,7 +84,7 @@ class AuthoritySource(Protocol):
         """Type tag: 'human_delegation' | 'market_oracle' | 'reputation' | ..."""
         ...
 
-    def request_capability(self, request: CapabilityRequest) -> Optional[IssuedCapability]:
+    def request_capability(self, request: CapabilityRequest) -> IssuedCapability | None:
         """
         Issue a capability for the given request, or return None if denied.
 

@@ -8,17 +8,17 @@ Run: pytest tests/test_thread_safety.py -v
 """
 
 from __future__ import annotations
+
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pytest
 
+from authgate.kernel.audit import AuditLog
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier
-from authgate.kernel.audit import AuditLog
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -28,9 +28,8 @@ import hashlib
 import json
 import time
 from dataclasses import dataclass, field
-from enum import Enum
+from enum import StrEnum
 from typing import Any
-
 
 # ─── Vector Clock ────────────────────────────────────────────────────────────
 
@@ -39,18 +38,18 @@ class VectorClock:
     """Lamport-style per-node counters for causal ordering of capability events."""
     _clocks: dict[str, int] = field(default_factory=dict)
 
-    def tick(self, node_id: str) -> "VectorClock":
+    def tick(self, node_id: str) -> VectorClock:
         c = dict(self._clocks)
         c[node_id] = c.get(node_id, 0) + 1
         return VectorClock(c)
 
-    def merge(self, other: "VectorClock") -> "VectorClock":
+    def merge(self, other: VectorClock) -> VectorClock:
         merged = dict(self._clocks)
         for nid, count in other._clocks.items():
             merged[nid] = max(merged.get(nid, 0), count)
         return VectorClock(merged)
 
-    def happens_before(self, other: "VectorClock") -> bool:
+    def happens_before(self, other: VectorClock) -> bool:
         """True if self causally precedes other (happens-before relation)."""
         all_keys = set(self._clocks) | set(other._clocks)
         return (
@@ -113,7 +112,7 @@ class MerkleRegistryState:
     timestamp: float
 
     @classmethod
-    def from_registry(cls, registry: Any) -> "MerkleRegistryState":
+    def from_registry(cls, registry: Any) -> MerkleRegistryState:
         claims = sorted(
             getattr(registry, "_claims", []),
             key=lambda c: (
@@ -134,7 +133,7 @@ class MerkleRegistryState:
         h = _sha256(_claim_canonical(claim))
         return h in self.leaf_hashes
 
-    def diverges_from(self, other: "MerkleRegistryState") -> bool:
+    def diverges_from(self, other: MerkleRegistryState) -> bool:
         return self.root != other.root
 
 
@@ -209,7 +208,7 @@ class CapabilityEpoch:
 
 # ─── Partition Policy ─────────────────────────────────────────────────────────
 
-class PartitionDecision(str, Enum):
+class PartitionDecision(StrEnum):
     PERMIT = "PERMIT"
     DENY = "DENY"
     DEFER_TO_HUMAN = "DEFER_TO_HUMAN"
@@ -284,7 +283,7 @@ class FederatedNode:
     _clock: VectorClock = field(default_factory=VectorClock)
     _revocations: list[RevocationEvent] = field(default_factory=list)
     _merkle: MerkleRegistryState | None = field(default=None)
-    _peers: list["FederatedNode"] = field(default_factory=list)
+    _peers: list[FederatedNode] = field(default_factory=list)
     _partition_policy: PartitionPolicy | None = field(default=None)
 
     def __post_init__(self) -> None:
@@ -294,7 +293,7 @@ class FederatedNode:
         self._registry = registry
         self._merkle = MerkleRegistryState.from_registry(registry)
 
-    def add_peer(self, peer: "FederatedNode") -> None:
+    def add_peer(self, peer: FederatedNode) -> None:
         if peer.node_id != self.node_id:
             self._peers.append(peer)
 
@@ -303,7 +302,7 @@ class FederatedNode:
             return _sha256(b"no-registry")
         return self._merkle.root
 
-    def is_diverged_from(self, other: "FederatedNode") -> bool:
+    def is_diverged_from(self, other: FederatedNode) -> bool:
         return self.state_hash() != other.state_hash()
 
     def _capability_id(self, holder_name: str, resource_name: str) -> str:
@@ -414,7 +413,7 @@ class FederatedNode:
         self._merkle = MerkleRegistryState.from_registry(self._registry)
         return self._merkle.root
 
-    def verify_peer_state(self, peer: "FederatedNode") -> bool:
+    def verify_peer_state(self, peer: FederatedNode) -> bool:
         """
         Verify that a peer's state hash matches their registry contents.
         A byzantine peer that lies about its hash is detectable here.

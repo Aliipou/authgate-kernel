@@ -13,7 +13,7 @@ from hypothesis import given, settings
 from hypothesis import strategies as st
 
 try:
-    from freedom_kernel import (  # noqa: I001
+    from authgate_kernel import (  # noqa: I001
         Action, AgentType, Entity, FreedomVerifier,
         OwnershipRegistry, Resource, ResourceType, RightsClaim,
     )

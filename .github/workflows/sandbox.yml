@@ -16,18 +16,18 @@ on:
   push:
     branches: [main, integration, tcb-core]
     paths:
-      - "freedom-kernel/src/sandbox.rs"
-      - "freedom-kernel/src/tcb/**"
-      - "freedom-kernel/Cargo.toml"
-      - "freedom-kernel/Cargo.lock"
+      - "authgate-kernel/src/sandbox.rs"
+      - "authgate-kernel/src/tcb/**"
+      - "authgate-kernel/Cargo.toml"
+      - "authgate-kernel/Cargo.lock"
       - ".github/workflows/sandbox.yml"
   pull_request:
     branches: [main]
     paths:
-      - "freedom-kernel/src/sandbox.rs"
-      - "freedom-kernel/src/tcb/**"
-      - "freedom-kernel/Cargo.toml"
-      - "freedom-kernel/Cargo.lock"
+      - "authgate-kernel/src/sandbox.rs"
+      - "authgate-kernel/src/tcb/**"
+      - "authgate-kernel/Cargo.toml"
+      - "authgate-kernel/Cargo.lock"
 
 permissions:
   contents: read
@@ -38,7 +38,7 @@ jobs:
     runs-on: ubuntu-24.04
     defaults:
       run:
-        working-directory: freedom-kernel
+        working-directory: authgate-kernel
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -49,7 +49,7 @@ jobs:
       - name: Cargo cache
         uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
         with:
-          workspaces: freedom-kernel
+          workspaces: authgate-kernel
           key: sandbox-feature
 
       - name: Build with sandbox feature
@@ -93,7 +93,7 @@ jobs:
     needs: sandbox-build
     defaults:
       run:
-        working-directory: freedom-kernel
+        working-directory: authgate-kernel
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
@@ -104,7 +104,7 @@ jobs:
       - name: Cargo cache
         uses: Swatinem/rust-cache@9bdad043e88c75890e36ad3bbc8d27f0090dd609
         with:
-          workspaces: freedom-kernel
+          workspaces: authgate-kernel
           key: sandbox-adversarial
 
       - name: All sandbox enforcement cases

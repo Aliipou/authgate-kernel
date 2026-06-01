@@ -1,15 +1,13 @@
 """Tests for Phase 3/O3: Sovereign Identity Layer (commitment-based selective disclosure)."""
 import time
 
-import pytest
-
-from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.analysis.sovereign_identity import (
     CapabilityCommitment,
     CommitmentVerifier,
     IdentityBlinder,
     SelectiveDisclosure,
 )
+from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 
 
 def _claim() -> RightsClaim:

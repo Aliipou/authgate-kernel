@@ -17,9 +17,12 @@ This module provides:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum, auto
-from typing import Sequence
+from typing import TYPE_CHECKING, cast
+
+if TYPE_CHECKING:
+    from authgate.kernel.entities import RightsClaim
 
 
 class CoercionPattern(Enum):
@@ -155,8 +158,8 @@ class CoercionAnalyzer:
                     if c.holder == delegated_by
                 ]
                 if parent_claims:
-                    max_parent_confidence = max(c.confidence for c in parent_claims)
-                    if claim.confidence > max_parent_confidence + 0.01:
+                    max_parent_confidence = max(cast("RightsClaim", c).confidence for c in parent_claims)
+                    if cast("RightsClaim", claim).confidence > max_parent_confidence + 0.01:
                         patterns.append(CoercionPattern.CONFIDENCE_ASYMMETRY)
                         break
 
@@ -165,7 +168,7 @@ class CoercionAnalyzer:
 
             risk_level = _risk_level(patterns, dep_frac, self._boundary)
             essential_scopes = tuple(
-                c.resource.scope for c in root_claims
+                cast("RightsClaim", c).resource.scope for c in root_claims
             ) or ("",)
 
             risks.append(CoercionRisk(

@@ -4,7 +4,7 @@ import pytest
 from authgate.adapters.dspy_adapter import DSPyKernelGate, KernelDeniedError
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
-from authgate.kernel.verifier import Action, FreedomVerifier
+from authgate.kernel.verifier import FreedomVerifier
 
 
 def _human(name: str = "alice") -> Entity:
@@ -69,7 +69,7 @@ class TestDSPyKernelGate:
         # Create a gate but call verify with a blocked action — test by overriding
         gate = DSPyKernelGate(verifier, actor=bot, resource=_resource())
         module = _FakeModule()
-        guarded = gate.guard(module)
+        gate.guard(module)
         # Directly test verify_invocation with a blocked actor (no claim in fresh reg)
         reg2 = OwnershipRegistry()
         reg2.register_machine(bot, alice)

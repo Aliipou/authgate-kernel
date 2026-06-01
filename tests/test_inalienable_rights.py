@@ -19,7 +19,6 @@ from authgate.kernel.inalienable import (
     check_claim,
 )
 
-
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _human(name: str = "alice") -> Entity:
@@ -77,7 +76,7 @@ class TestPermanentDelegation:
         assert not any(v.violation_type == InnalienableViolation.PERMANENT_DELEGATION for v in violations)
 
     def test_direct_human_grant_without_expiry_is_ok(self):
-        human = _human()
+        _human()
         machine = _machine()
         resource = _resource()
         # Direct grant: delegated_by=None (not delegated) — no expiry required
@@ -109,7 +108,7 @@ class TestPermanentDelegation:
 
 class TestTotalAgencySurrender:
     def test_root_scope_all_rights_full_confidence_flagged(self):
-        human = _human()
+        _human()
         machine = _machine()
         resource = Resource("everything", ResourceType.FILE, scope="")  # root scope
         claim = RightsClaim(machine, resource, can_read=True, can_write=True, can_delegate=True, confidence=1.0)

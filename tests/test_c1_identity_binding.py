@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import pytest
 
+from authgate.kernel.audit import AuditLog
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier
-from authgate.kernel.audit import AuditLog
 
 
 def _env_with_tokens():
@@ -119,7 +119,7 @@ class TestC1TokenRegistry:
         """A HUMAN named 'x' and a MACHINE named 'x' do not collide."""
         human_x = Entity("x", AgentType.HUMAN,   identity_token="h-tok")
         machine_x = Entity("x", AgentType.MACHINE, identity_token="m-tok")
-        data = Resource("data", ResourceType.FILE, scope="/data/")
+        Resource("data", ResourceType.FILE, scope="/data/")
         reg = OwnershipRegistry()
         # Both can be enrolled — different kinds
         reg.register_machine(machine_x, human_x)

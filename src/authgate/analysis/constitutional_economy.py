@@ -13,11 +13,10 @@ Key invariants:
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from enum import Enum
+from dataclasses import dataclass
+from enum import StrEnum
 
 from authgate.kernel.entities import AgentType, ResourceType
-
 
 OLIGARCHY_THRESHOLD = 0.33
 CONCENTRATION_HHI_THRESHOLD = 0.35
@@ -30,7 +29,7 @@ HIGH_VALUE_RESOURCE_TYPES: frozenset[ResourceType] = frozenset({
 })
 
 
-class EconomicViolation(str, Enum):
+class EconomicViolation(StrEnum):
     MACHINE_OLIGARCHY = "MACHINE_OLIGARCHY"
     RESOURCE_CONCENTRATION = "RESOURCE_CONCENTRATION"
     SOVEREIGNTY_EROSION = "SOVEREIGNTY_EROSION"
@@ -165,8 +164,8 @@ class ConstitutionalEconomyChecker:
             else:
                 high_value_humans.add(claim.resource.name)
 
-        for machine, resources in high_value_machines.items():
-            unchecked = [r for r in resources if r not in high_value_humans]
+        for machine, hv_resources in high_value_machines.items():
+            unchecked = [r for r in hv_resources if r not in high_value_humans]
             if unchecked:
                 signals.append(EconomicSignal(
                     violation=EconomicViolation.IRREVERSIBLE_LOCK_IN,

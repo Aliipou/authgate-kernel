@@ -5,7 +5,10 @@ Typed Tool ABI versioning + JSON Schema export tests — III-2.
 from __future__ import annotations
 
 from authgate.kernel.tool_abi import (
-    TOOL_ABI_VERSION, ToolSchema, ToolParam, ToolABIRegistry,
+    TOOL_ABI_VERSION,
+    ToolABIRegistry,
+    ToolParam,
+    ToolSchema,
 )
 
 

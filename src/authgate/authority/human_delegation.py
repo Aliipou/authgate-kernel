@@ -10,15 +10,12 @@ without changing the enforcement layer.
 from __future__ import annotations
 
 import time
-from typing import Optional
 
 from authgate.authority.base import (
-    AuthoritySource,
     CapabilityRequest,
     IssuedCapability,
     RevocationResult,
 )
-
 
 _RIGHT_MAP = {
     "read":     "can_read",
@@ -61,13 +58,15 @@ class HumanDelegationSource:
     def source_type(self) -> str:
         return "human_delegation"
 
-    def request_capability(self, request: CapabilityRequest) -> Optional[IssuedCapability]:
+    def request_capability(self, request: CapabilityRequest) -> IssuedCapability | None:
         """
         Issue capability if the agent has a valid delegation in the registry.
         Performs a verify() call to check the current delegation state.
         """
+        from typing import cast
+
         from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType
-        from authgate.kernel.verifier import Action
+        from authgate.kernel.verifier import Action, FreedomVerifier
 
         # Reconstruct Action from request
         actor_name = request.subject_id
@@ -93,7 +92,7 @@ class HumanDelegationSource:
             resources_write=resources_write,
         )
 
-        result = self._verifier.verify(action)
+        result = cast(FreedomVerifier, self._verifier).verify(action)
         if not result.permitted:
             return None
 
@@ -160,7 +159,7 @@ class MarketOracleSource:
     def source_type(self) -> str:
         return "market_oracle"
 
-    def request_capability(self, request: CapabilityRequest) -> Optional[IssuedCapability]:
+    def request_capability(self, request: CapabilityRequest) -> IssuedCapability | None:
         raise NotImplementedError(
             "MarketOracleSource is not implemented. "
             "Implement by connecting to your task market and verifying bid ownership. "
@@ -200,7 +199,7 @@ class ReputationGateSource:
     def source_type(self) -> str:
         return "reputation_gate"
 
-    def request_capability(self, request: CapabilityRequest) -> Optional[IssuedCapability]:
+    def request_capability(self, request: CapabilityRequest) -> IssuedCapability | None:
         raise NotImplementedError(
             "ReputationGateSource is not implemented. "
             "Implement by querying your reputation oracle and issuing a scoped lease "

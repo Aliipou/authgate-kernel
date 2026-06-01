@@ -27,15 +27,15 @@ jobs:
           path: |
             ~/.cargo/registry
             ~/.cargo/git
-            freedom-kernel/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('freedom-kernel/Cargo.lock') }}
+            authgate-kernel/target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('authgate-kernel/Cargo.lock') }}
 
       - name: Run TCB unit tests
-        working-directory: freedom-kernel
+        working-directory: authgate-kernel
         run: cargo test --lib tcb -- --nocapture 2>&1
 
       - name: Run all lib tests
-        working-directory: freedom-kernel
+        working-directory: authgate-kernel
         run: cargo test --lib -- --nocapture 2>&1
         continue-on-error: true
 
