@@ -7,9 +7,19 @@ No CrewAI dependency required — adapter uses duck typing.
 import pytest
 
 from authgate.adapters.crewai import CrewAIKernelGate, KernelDeniedError
-from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from authgate.kernel.registry import OwnershipRegistry
-from authgate.kernel.verifier import FreedomVerifier
+
+# Backend-aware imports: authgate.kernel switches between the pure-Python and the
+# Rust-PyO3 types. Importing from .entities/.registry/.verifier pins the pure types
+# and mixing them with a Rust-backed verifier raises "Entity cannot be converted to Entity".
+from authgate.kernel import (
+    AgentType,
+    Entity,
+    FreedomVerifier,
+    OwnershipRegistry,
+    Resource,
+    ResourceType,
+    RightsClaim,
+)
 
 # ── Shared fixtures ───────────────────────────────────────────────────────────
 

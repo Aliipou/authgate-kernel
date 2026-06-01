@@ -17,10 +17,20 @@ from __future__ import annotations
 import pytest
 
 from authgate.adapters.openai_agents import OpenAIKernelMiddleware
+
+# Backend-aware imports (see note in test_crewai_adapter.py): use authgate.kernel so the
+# Entity/Action/verifier types match the active backend (pure-Python or Rust-PyO3).
+from authgate.kernel import (
+    Action,
+    AgentType,
+    Entity,
+    FreedomVerifier,
+    OwnershipRegistry,
+    Resource,
+    ResourceType,
+    RightsClaim,
+)
 from authgate.kernel.audit import AuditLog
-from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
-from authgate.kernel.registry import OwnershipRegistry
-from authgate.kernel.verifier import Action, FreedomVerifier
 
 # ─── Shared setup ─────────────────────────────────────────────────────────────
 
