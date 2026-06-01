@@ -13,7 +13,7 @@ A wire format and a verify function. See [POSITIONING.md](POSITIONING.md).
 [![Tests](https://img.shields.io/badge/tests-1155%20passing-brightgreen.svg)](tests/)
 [![Kani](https://img.shields.io/badge/Kani-24%20harnesses-green.svg)](formal/)
 [![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
-[![License: Source-Available (Contact-First)](https://img.shields.io/badge/License-Source--Available%20(Contact--First)-red.svg)](LICENSE)
+[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm--Noncommercial--1.0.0-orange.svg)](LICENSE)
 
 ## The problem
 
@@ -382,11 +382,18 @@ If yes, it doesn't belong in the TCB. TCB changes require a written invariant ju
 
 ## License
 
-Source-available under the **AuthGate-Kernel Source-Available, Contact-First License** — see [`LICENSE`](LICENSE) and [`NOTICE`](NOTICE).
+**Source-available** under the [PolyForm Noncommercial License 1.0.0](LICENSE) — see also [`NOTICE`](NOTICE).
 
-You may read and privately evaluate the source. **Any** other use — running,
-deploying, copying, modifying, distributing, or building on it, by anyone
-including educational/research/RDI and commercial entities — requires the
-author's **prior written permission**. The work may not be claimed, in whole
-or in part, as anyone else's. To request permission, contact the author first
-(see `LICENSE` §7).
+| Use | Status |
+|---|---|
+| Evaluation | ✅ Allowed |
+| Research | ✅ Allowed |
+| Educational | ✅ Allowed |
+| Internal non-commercial testing | ✅ Allowed |
+| Redistribution (non-commercial) | ✅ Allowed, with attribution |
+| Production deployment | ⛔ Requires commercial license |
+| Commercial use / SaaS / resale | ⛔ Requires commercial license |
+| Patent rights | Reserved |
+
+A **commercial license is available separately.** For production or commercial use,
+contact **Ali Pourrahim — Alipourrahim.ap@gmail.com**.
