@@ -7,7 +7,7 @@ name = "authgate"
 version = "1.0.0"
 description = "Capability-security kernel for agent runtimes — typed authority verification with formal invariants"
 readme = "README.md"
-license = { file = "LICENSE" }
+license = { text = "PolyForm-Noncommercial-1.0.0" }
 requires-python = ">=3.11"
 authors = [
   { name = "Ali Pourrahim", email = "Alipourrahim.ap@gmail.com" },
