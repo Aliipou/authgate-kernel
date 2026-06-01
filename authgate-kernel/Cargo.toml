@@ -3,7 +3,9 @@ name = "authgate-kernel"
 version = "0.1.0"
 edition = "2021"
 description = "Formal, auditable, cryptographically-verifiable capability-governance kernel"
-license = "PolyForm-Noncommercial-1.0.0"
+license-file = "../LICENSE"
+publish = false
+authors = ["Ali Pourrahim <Alipourrahim.ap@gmail.com>"]
 
 [lib]
 name = "authgate_kernel"
