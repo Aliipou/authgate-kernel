@@ -3,6 +3,7 @@
 /// Each test answers: "what real attack does this make harder?"
 /// Tests are grouped by the attack class they cover.
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod hardening_tests {
     use crate::tcb::engine::verify;
     use crate::tcb::types::*;
@@ -419,7 +420,7 @@ mod hardening_tests {
         // Cap has all bits except bit 7 (POLICY_MODIFY); action requires bit 7
         let root_sk = rk();
         let root_vk = root_sk.verifying_key();
-        let cap_rights = u64::MAX & !RIGHT_POLICY_MODIFY;
+        let cap_rights = !RIGHT_POLICY_MODIFY;
         let cap = root_cap(&root_sk, ACTOR, RESOURCE, cap_rights, EXPIRY, EPOCH);
         let action = seal(ACTOR, RESOURCE, RIGHT_POLICY_MODIFY, vec![cap], MIN_EPOCH);
         assert!(matches!(verify(&action, &root_vk, NOW), Decision::Deny { reason: "capability does not grant required rights" }));

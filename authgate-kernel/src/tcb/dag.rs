@@ -180,7 +180,7 @@ mod tests {
         let root_sk = SigningKey::generate(&mut OsRng);
         let root_vk = root_sk.verifying_key();
         let proof = make_root_proof(&root_sk, [1u8; 32], RESOURCE, RIGHT_READ, u64::MAX, 1);
-        assert!(validate_chain(&proof, &[proof.clone()], &root_vk, MIN_EPOCH).is_ok());
+        assert!(validate_chain(&proof, std::slice::from_ref(&proof), &root_vk, MIN_EPOCH).is_ok());
     }
 
     #[test]
@@ -189,7 +189,7 @@ mod tests {
         let other_sk = SigningKey::generate(&mut OsRng);
         let other_vk = other_sk.verifying_key();
         let proof = make_root_proof(&root_sk, [1u8; 32], RESOURCE, RIGHT_READ, u64::MAX, 1);
-        assert!(validate_chain(&proof, &[proof.clone()], &other_vk, MIN_EPOCH).is_err());
+        assert!(validate_chain(&proof, std::slice::from_ref(&proof), &other_vk, MIN_EPOCH).is_err());
     }
 
     #[test]
