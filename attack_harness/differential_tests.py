@@ -309,7 +309,7 @@ def _try_rust_differential():
         import authgate_kernel  # type: ignore
     except ImportError:
         print("\n  [SKIP] Rust kernel not installed — skipping cross-runtime differential")
-        print("         Install with: cd freedom-kernel && maturin develop --features sandbox")
+        print("         Install with: cd authgate-kernel && maturin develop --features sandbox")
         return
 
     print("\n  Rust kernel found — running cross-runtime differential checks...")

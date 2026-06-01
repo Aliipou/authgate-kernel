@@ -8,7 +8,7 @@ Architecture:
   authority/  — AuthoritySource adapters (human delegation, market oracle stubs)
 
 Backend:
-  _BACKEND = "rust"   — Rust TCB via PyO3 (install freedom-kernel crate)
+  _BACKEND = "rust"   — Rust TCB via PyO3 (install authgate-kernel crate)
   _BACKEND = "python" — Python mirror (not formally verified; see FINDINGS.md C-1..C-4)
 """
 

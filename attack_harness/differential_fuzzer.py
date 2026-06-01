@@ -348,7 +348,7 @@ except ImportError:
 _DIFF_SKIP = pytest.mark.skipif(
     not _RUST_AVAILABLE,
     reason="Rust build not available (authgate_kernel not installed). "
-           "Run `cargo build --release` then `pip install .` in freedom-kernel/ to enable."
+           "Run `cargo build --release` then `pip install .` in authgate-kernel/ to enable."
 )
 
 

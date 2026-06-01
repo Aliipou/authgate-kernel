@@ -17,7 +17,7 @@ build/
 .hypothesis/
 # Rust build artifacts (any crate)
 target/
-freedom-kernel/target/
+authgate-kernel/target/
 **/target/
 *.so
 *.dll

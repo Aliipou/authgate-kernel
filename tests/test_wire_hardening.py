@@ -8,7 +8,7 @@ Tests assert either:
   - Documented gap behavior is stable (ACCEPTED — known, non-critical, noted)
 
 These tests run on the Python authgate runtime. The Rust path is covered by
-freedom-kernel/src/wire.rs validate_*() functions (11 inline tests there).
+authgate-kernel/src/wire.rs validate_*() functions (11 inline tests there).
 """
 from __future__ import annotations
 

@@ -3,9 +3,9 @@ requires = ["maturin>=1.5,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "freedom-kernel"
+name = "authgate-kernel"
 version = "0.1.0"
 requires-python = ">=3.11"
 
 [tool.maturin]
-module-name = "freedom_kernel"
+module-name = "authgate_kernel"

@@ -27,5 +27,5 @@ plan is to extract them into a sibling repository so the authgate identity
 stays focused on "capability enforcement, nothing else".
 
 If you are evaluating authgate for deployment: ignore this module. The
-authorization decision uses only `authgate.kernel` and `freedom-kernel/src/tcb/`.
+authorization decision uses only `authgate.kernel` and `authgate-kernel/src/tcb/`.
 """

@@ -1,5 +1,5 @@
 [package]
-name = "freedom-kernel-fuzz"
+name = "authgate-kernel-fuzz"
 version = "0.0.1"
 edition = "2021"
 publish = false
@@ -11,7 +11,7 @@ cargo-fuzz = true
 libfuzzer-sys = "0.4"
 serde_json = "1"
 
-[dependencies.freedom-kernel]
+[dependencies.authgate-kernel]
 path = ".."
 
 [[bin]]
