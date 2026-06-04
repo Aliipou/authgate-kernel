@@ -32,7 +32,7 @@ if not _FORCE_PYTHON:
             RightsClaim,
             VerificationResult,
         )
-        _BACKEND = "rust"
+        _BACKEND = "rust"  # pragma: no cover - requires the compiled Rust extension (not installed in this env)
     except ImportError:
         _FORCE_PYTHON = True
 
