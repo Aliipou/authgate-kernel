@@ -55,7 +55,7 @@ class ConsentRegistry:
             )
         # ConsentCapability.__post_init__ already checks grantor.kind == HUMAN,
         # but we re-enforce here to make the registry boundary explicit.
-        if consent.grantor.kind != AgentType.HUMAN:
+        if consent.grantor.kind != AgentType.HUMAN:  # pragma: no cover - unreachable: ConsentCapability enforces HUMAN grantor at construction
             raise TypeError(
                 f"Only humans can grant consent. "
                 f"Grantor '{consent.grantor.name}' is {consent.grantor.kind.name}."
@@ -140,7 +140,7 @@ class ConsentRegistry:
             return False, (
                 f"consent for {grantee.name} on {resource.name} is bound to a different context"
             )
-        return False, f"no valid consent for {grantee.name} on {resource.name}"
+        return False, f"no valid consent for {grantee.name} on {resource.name}"  # pragma: no cover - unreachable: valid+covered candidates are caught by covers() above
 
     def active_consents(
         self,
