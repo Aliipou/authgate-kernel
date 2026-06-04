@@ -15,6 +15,15 @@ A wire format and a verify function. See [POSITIONING.md](POSITIONING.md).
 [![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm--Noncommercial--1.0.0-orange.svg)](LICENSE)
 
+> **Branch note — `nazariye-azadi`.** This branch is engineering-identical to `main`:
+> same TCB, same wire format, same proofs, no behavioral change. The only difference is
+> an added, code-free [`PHILOSOPHY/`](PHILOSOPHY/) directory that traces each component
+> back to the **نظریه آزادی (Theory of Freedom)** the kernel was derived from — axioms,
+> the ownership hierarchy, consent, justice, guidance, and the Mahdavi compass — mapped
+> line-by-line to where they live in `src/`. `main` keeps the framework-neutral framing;
+> this branch makes the theoretical lineage explicit. Nothing in the trusted core
+> changes. See [`PHILOSOPHY/README.md`](PHILOSOPHY/README.md).
+
 ## The problem
 
 > Any decision-maker can execute IO without proving authority.
