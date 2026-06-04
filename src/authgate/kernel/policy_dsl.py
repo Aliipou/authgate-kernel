@@ -182,7 +182,7 @@ class PolicyDSL:
         for lineno, raw in logical_lines:
             # Strip inline comments and trailing whitespace
             stripped = _strip_comment(raw).rstrip()
-            if not stripped.strip():
+            if not stripped.strip():  # pragma: no cover - unreachable: _logical_lines already drops blank/comment-only lines
                 continue  # blank after comment removal
 
             if _is_indented(stripped):
@@ -287,7 +287,7 @@ class PolicyDSL:
                 lineno,
                 f"statement must begin with ALLOW or DENY, got: {parts[0]!r}",
             )
-        if not subject:
+        if not subject:  # pragma: no cover - unreachable: split(None, 1) cannot yield an empty subject
             raise PolicyDSLSyntaxError(
                 lineno,
                 f"{effect_token} statement missing subject",

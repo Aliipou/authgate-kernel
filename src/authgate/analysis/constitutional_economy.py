@@ -67,7 +67,7 @@ class ConstitutionalEconomyChecker:
             return signals
 
         total_resources = len({c.resource.name for c in claims})
-        if total_resources == 0:
+        if total_resources == 0:  # pragma: no cover - unreachable: non-empty claims always have >=1 resource name
             return signals
 
         # Resources held per entity
