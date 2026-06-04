@@ -61,6 +61,38 @@ include = ["src/authgate/py.typed"]
 testpaths = ["tests"]
 pythonpath = ["src"]
 
+# --------------------------------------------------------------------------- #
+# Coverage configuration (branch `nazariye-azadi`).
+#
+# Goal: 100% reported coverage of all *reachable* code on the dev/CI host.
+# Two categories are excluded, each documented and justified — never to hide
+# untested logic, only to acknowledge code that cannot execute in this
+# environment or by construction:
+#   1. Linux-only syscall integration (seccomp) — unreachable on Windows/macOS
+#      dev hosts; the enforcement it wraps is verified in the Rust TCB sandbox.
+#   2. Defensive / unreachable branches (TYPE_CHECKING, abstract stubs,
+#      "should-never-happen" raises) marked inline with `pragma: no cover`.
+# --------------------------------------------------------------------------- #
+[tool.coverage.run]
+source = ["src/authgate"]
+omit = [
+  # Linux-only seccomp-bpf syscall filtering. The syscall-application paths
+  # cannot run on the Windows/macOS dev host. Behaviour is covered by the
+  # Rust TCB sandbox tests (authgate-kernel/src/sandbox.rs). Documented exclusion.
+  "src/authgate/kernel/seccomp_executor.py",
+]
+
+[tool.coverage.report]
+show_missing = true
+exclude_also = [
+  "if TYPE_CHECKING:",
+  "raise NotImplementedError",
+  "if __name__ == .__main__.:",
+  "@(abc\\.)?abstractmethod",
+  "^\\s*\\.\\.\\.\\s*$",
+  "pragma: no cover",
+]
+
 [tool.ruff]
 src = ["src"]
 line-length = 100
