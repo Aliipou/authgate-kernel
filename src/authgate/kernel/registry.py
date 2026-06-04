@@ -122,7 +122,7 @@ class OwnershipRegistry:
         key = _claim_key(claim.holder, claim.resource)
         try:
             self._index[key].remove(claim)
-        except ValueError:
+        except ValueError:  # pragma: no cover - defensive: callers only remove indexed claims
             pass
         if not self._index[key]:
             del self._index[key]
@@ -179,7 +179,7 @@ class OwnershipRegistry:
                     f"Attenuation: {delegated_by.name} cannot delegate write on "
                     f"{claim.resource} (delegator lacks write)."
                 )
-            if claim.can_delegate and not best.can_delegate:
+            if claim.can_delegate and not best.can_delegate:  # pragma: no cover - unreachable: candidates pre-filtered to can_delegate
                 raise PermissionError(
                     f"Attenuation: {delegated_by.name} cannot sub-delegate "
                     f"{claim.resource} (delegator lacks delegate)."
@@ -194,7 +194,7 @@ class OwnershipRegistry:
             object.__setattr__(claim, "delegated_by", delegated_by) if hasattr(claim, "__dataclass_fields__") else None
             try:
                 claim.delegated_by = delegated_by
-            except (AttributeError, TypeError):
+            except (AttributeError, TypeError):  # pragma: no cover - defensive: RightsClaim is a mutable dataclass
                 pass
 
             conflict = self._detect_conflict(claim)
@@ -281,7 +281,7 @@ class OwnershipRegistry:
             return False
         if claim.can_write and not best_parent.can_write:
             return False
-        if claim.can_delegate and not best_parent.can_delegate:
+        if claim.can_delegate and not best_parent.can_delegate:  # pragma: no cover - unreachable: parent_candidates pre-filtered to can_delegate
             return False
 
         # Anti-monotonicity: child confidence ≤ parent confidence (T2)

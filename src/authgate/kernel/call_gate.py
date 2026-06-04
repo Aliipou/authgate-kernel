@@ -210,6 +210,6 @@ class CallGate:
                     rights.add("network")
                 if res.rtype == ResourceType.MODEL_WEIGHTS:
                     rights.add("model_invoke")
-        except ImportError:
+        except ImportError:  # pragma: no cover - defensive: entities is always importable
             pass
         return rights
