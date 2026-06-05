@@ -48,6 +48,22 @@ def test_freedom_tool_without_verifier_is_noop():
     assert tool.run(5) == 10
 
 
+def test_freedom_tool_subclass_without_langchain_installed(monkeypatch):
+    import sys
+    # Force the langchain_core import inside __init_subclass__ to fail, exercising
+    # the ImportError fallback (lines 148-149)
+    monkeypatch.setitem(sys.modules, "langchain_core", None)
+    monkeypatch.setitem(sys.modules, "langchain_core.tools", None)
+
+    class NoLangChainTool(FreedomTool):
+        name = "nlc"
+
+        def _run(self, x):
+            return x + 1
+
+    assert NoLangChainTool().run(1) == 2
+
+
 # --------------------------------------------------------------------------- #
 # adapters/anthropic.py
 # --------------------------------------------------------------------------- #

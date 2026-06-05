@@ -117,8 +117,10 @@ def test_extended_verifier_admit_rule_and_hook():
 # --------------------------------------------------------------------------- #
 
 def test_policy_dsl_indented_without_header_raises():
-    with pytest.raises(PolicyDSLSyntaxError):  # line 191
-        PolicyDSL.parse("    READ proj/x")
+    # Two lines so textwrap.dedent (no common prefix) keeps the first line indented;
+    # an indented first line with no open statement -> error (line 191)
+    with pytest.raises(PolicyDSLSyntaxError):
+        PolicyDSL.parse("    READ proj/x\nALLOW foo")
 
 
 # --------------------------------------------------------------------------- #
