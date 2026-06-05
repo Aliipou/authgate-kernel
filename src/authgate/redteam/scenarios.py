@@ -177,7 +177,7 @@ class RecursiveToolAbuseAttack:
                 RightsClaim(child_bot, self.resource, can_read=True, can_write=True),
                 delegated_by=root_bot,
             )
-            explanation = "UNEXPECTED: delegation of ungranted write succeeded — attenuation violated."
+            explanation = "UNEXPECTED: delegation of ungranted write succeeded — attenuation violated."  # pragma: no cover - unreachable: delegate() always raises here
         except PermissionError as e:
             blocked = True
             explanation = f"Correctly blocked at delegation: {e}"
@@ -260,7 +260,7 @@ class ConfidenceInflationAttack:
                 RightsClaim(bot, self.resource, can_read=True, confidence=0.9),
                 delegated_by=self.alice,
             )
-            explanation = "UNEXPECTED: confidence inflation succeeded — attenuation violated."
+            explanation = "UNEXPECTED: confidence inflation succeeded — attenuation violated."  # pragma: no cover - unreachable: delegate() always raises here
         except PermissionError as e:
             blocked = True
             explanation = f"Correctly blocked: {e}"
