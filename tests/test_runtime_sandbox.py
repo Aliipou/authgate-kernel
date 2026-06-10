@@ -8,12 +8,69 @@ oversized output is capped.
 """
 from __future__ import annotations
 
+import io
+import json
 import os
 import time
 
 import pytest
 
+from authgate.runtime import _sandbox_runner as runner
 from authgate.runtime.sandbox import SandboxPolicy, run_tool_sandboxed
+
+# --- sandbox child runner (in-process, so coverage sees it) ----------------
+
+def _run_job(monkeypatch, capsys, job: dict) -> dict:
+    monkeypatch.setattr("sys.stdin", io.StringIO(json.dumps(job)))
+    rc = runner.main()
+    assert rc == 0
+    out = capsys.readouterr().out
+    return json.loads(out.split(runner.RESULT_MARKER)[-1].strip())
+
+
+def test_runner_executes_importable_entry(monkeypatch, capsys):
+    res = _run_job(monkeypatch, capsys, {
+        "entry": "authgate.runtime.tools:calculate",
+        "args": {"expression": "6 * 7"}, "limits": {},
+    })
+    assert res["ok"] and res["output"] == "42"
+
+
+def test_runner_executes_file_read_builtin(tmp_path, monkeypatch, capsys):
+    (tmp_path / "n.txt").write_text("inside", encoding="utf-8")
+    res = _run_job(monkeypatch, capsys, {
+        "builtin": "file_read", "sandbox_root": str(tmp_path),
+        "args": {"filename": "n.txt"}, "limits": {},
+    })
+    assert res["ok"] and res["output"] == "inside"
+
+
+def test_runner_reports_tool_error_as_not_ok(monkeypatch, capsys):
+    res = _run_job(monkeypatch, capsys, {
+        "entry": "authgate.runtime.tools:calculate",
+        "args": {"expression": "open('x')"}, "limits": {},
+    })
+    assert not res["ok"] and "ValueError" in res["error"]
+
+
+def test_runner_rejects_jobless_request(monkeypatch, capsys):
+    res = _run_job(monkeypatch, capsys, {"args": {}, "limits": {}})
+    assert not res["ok"]
+
+
+def test_runner_handles_bad_json(monkeypatch, capsys):
+    monkeypatch.setattr("sys.stdin", io.StringIO("{not json"))
+    runner.main()
+    out = capsys.readouterr().out
+    assert not json.loads(out.split(runner.RESULT_MARKER)[-1].strip())["ok"]
+
+
+def test_runner_truncates_output(monkeypatch, capsys):
+    res = _run_job(monkeypatch, capsys, {
+        "entry": "authgate.runtime.tools:web_search",
+        "args": {"query": "Z" * 4000}, "limits": {"max_output_bytes": 50},
+    })
+    assert res["ok"] and len(res["output"]) <= 50 and res["truncated"]
 
 
 def test_sandbox_runs_calculator_in_subprocess(tmp_path):
