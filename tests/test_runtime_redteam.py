@@ -45,6 +45,12 @@ def _load_harness():
 _harness = _load_harness()
 
 
+def _rust_available() -> bool:
+    """True iff the compiled verified-kernel extension can be imported."""
+    from authgate.runtime.rust_backend import rust_backend_available
+    return rust_backend_available()
+
+
 @pytest.fixture(scope="module")
 def report():
     return _harness.run_redteam(1000, master_seed=1337)
@@ -99,3 +105,16 @@ def test_no_real_file_leaked(report):
     assert sandbox_blocked == sandbox_total
     # The markers the harness scans for include 'root:' (the /etc/passwd tell).
     assert "root:" in str(_harness._LEAK_MARKERS).lower()
+
+
+@pytest.mark.skipif(
+    not _rust_available(),
+    reason="verified Rust extension (authgate_kernel) not built in this environment",
+)
+def test_no_escapes_on_verified_rust_backend():
+    """The same adversaries, but every permit/deny decision is made by the
+    formally-verified Rust engine. Zero escapes is the bar regardless of backend."""
+    report = _harness.run_redteam(1000, master_seed=1337, backend="rust")
+    assert report.total == 1000
+    assert report.blocked == 1000
+    assert report.escapes == []

@@ -28,6 +28,8 @@ from __future__ import annotations
 from authgate.runtime.agent import AgentRuntime, RunResult, StepOutcome, build_runtime
 from authgate.runtime.planner import MockPlanner, Planner, PlanStep, ScriptedPlanner
 from authgate.runtime.run_log import RunLog
+from authgate.runtime.rust_backend import RustBackedVerifier, rust_backend_available
+from authgate.runtime.sandbox import SandboxPolicy, SandboxResult, run_tool_sandboxed
 from authgate.runtime.tools import Tool, ToolRegistry, build_default_tools
 
 __all__ = [
@@ -43,4 +45,9 @@ __all__ = [
     "Tool",
     "ToolRegistry",
     "build_default_tools",
+    "SandboxPolicy",
+    "SandboxResult",
+    "run_tool_sandboxed",
+    "RustBackedVerifier",
+    "rust_backend_available",
 ]

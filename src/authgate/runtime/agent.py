@@ -149,6 +149,37 @@ class AgentRuntime:
         )
 
 
+def _make_verifier(backend: str, registry: OwnershipRegistry, audit: AuditLog, freeze: bool):
+    """Select the authorization engine. "python" = reference verifier; "rust" =
+    the formally-verified Rust engine (requires the built extension); "auto" =
+    Rust when available, else Python."""
+    if backend == "python":
+        return FreedomVerifier(registry, audit_log=audit, freeze=freeze)
+    from authgate.runtime.rust_backend import RustBackedVerifier, rust_backend_available
+    if backend == "rust":
+        return RustBackedVerifier(registry, audit_log=audit, freeze=freeze)
+    if backend == "auto":
+        if rust_backend_available():
+            return RustBackedVerifier(registry, audit_log=audit, freeze=freeze)
+        return FreedomVerifier(registry, audit_log=audit, freeze=freeze)
+    raise ValueError(f"unknown backend {backend!r}; use 'python', 'rust', or 'auto'")
+
+
+def _make_sandboxed_fn(tool_name: str, sandbox_root: Path, policy: Any):
+    """Wrap a tool so it executes in an isolated subprocess under `policy`. A
+    limit breach (timeout/OOM/crash) surfaces as an exception, which the gate
+    turns into a clean denial — same contract as an in-process tool raising."""
+    from authgate.runtime.sandbox import run_tool_sandboxed
+
+    def run(**args: Any) -> Any:
+        result = run_tool_sandboxed(tool_name, args, sandbox_root, policy)
+        if result.ok:
+            return result.output
+        raise RuntimeError(result.error or "sandbox denied")
+
+    return run
+
+
 def build_runtime(
     intent_planner: Planner,
     sandbox_root: Path,
@@ -156,12 +187,18 @@ def build_runtime(
     audit_log: AuditLog | None = None,
     run_log: RunLog | None = None,
     freeze: bool = False,
+    backend: str = "python",
+    sandbox_policy: Any = None,
 ) -> tuple[AgentRuntime, OwnershipRegistry]:
     """Wire a single-agent runtime for demos/tests.
 
     Creates a human owner, a machine agent it owns, and delegates read claims for
     each tool in `granted_tools` (default: all). Tools NOT granted will be denied
     by the gate when the planner tries to use them — exactly the MVP behavior.
+
+    backend: "python" (default), "rust" (verified Rust engine via JSON wire), or
+        "auto". sandbox_policy: when set (a SandboxPolicy), tools run in an
+        isolated subprocess under OS resource limits instead of in-process.
 
     Returns (runtime, registry). The registry is returned so callers can revoke
     claims / advance epochs and observe the gate react (when freeze=False).
@@ -182,10 +219,11 @@ def build_runtime(
                           delegated_by=owner)
 
     audit = audit_log if audit_log is not None else AuditLog()
-    verifier = FreedomVerifier(registry, audit_log=audit, freeze=freeze)
+    verifier = _make_verifier(backend, registry, audit, freeze)
     gate = CallGate(verifier)
     for tool in tools:
-        gate.register(tool.name, tool.fn)
+        fn = _make_sandboxed_fn(tool.name, sandbox_root, sandbox_policy) if sandbox_policy else tool.fn
+        gate.register(tool.name, fn)
 
     runtime = AgentRuntime(agent=agent, gate=gate, tools=tools,
                            planner=intent_planner, run_log=run_log)

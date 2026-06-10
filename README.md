@@ -10,7 +10,8 @@ A wire format and a verify function. See [POSITIONING.md](POSITIONING.md).
 
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
-[![Tests](https://img.shields.io/badge/tests-1155%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-1297%20passing-brightgreen.svg)](tests/)
+[![Red team](https://img.shields.io/badge/red--team-1000%20engineers%2C%200%20escapes-brightgreen.svg)](redteam/)
 [![Kani](https://img.shields.io/badge/Kani-24%20harnesses-green.svg)](formal/)
 [![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm--Noncommercial--1.0.0-orange.svg)](LICENSE)
@@ -56,6 +57,79 @@ CrewAI, LangGraph, DSPy, MCP) live in `src/authgate/adapters/` as **conveniences
 not as the product**. When a framework dies, its adapter dies. The wire format lives.
 
 This is the same principle as capability-based OS security (seL4, CHERI), applied to autonomous agent tool execution.
+
+---
+
+## Agent runtime (operational layer)
+
+`src/authgate/runtime/` is a minimal, working agent runtime that puts the gate on
+the real path — **not** part of the TCB:
+
+```
+intent → Planner → [PlanStep] → runtime loop → verify(action) → sandboxed tool → RunLog + AuditLog
+                                                    │ deny → stop, nothing further runs
+```
+
+Single agent, 3 tools (calculator, file_read, web_search), deterministic planner.
+A denied step halts the plan. Two things make it more than a demo:
+
+**1. It can run on the *verified* kernel.** `build_runtime(..., backend="rust")`
+routes every permit/deny decision into the Kani/Lean-verified Rust engine
+(`engine::verify`) and returns an ed25519-signed verdict. The boundary is **JSON**
+(`verify_json`) — no Rust objects enter Python, so the running system and the
+proven code are finally the same code for the decision that matters. `backend=
+"python"` (default) uses the pure-Python reference verifier; `"auto"` picks Rust
+when the extension is built. Epoch-revocation semantics (which the wire format
+does not model) are preserved by serializing only currently-valid claims.
+
+**2. Tools run in a real sandbox.** `SandboxPolicy` executes each tool in an
+isolated subprocess under a wall-clock deadline and output cap (every platform),
+plus opt-in POSIX rlimits (CPU/memory/file-size). A tool that hangs, crashes, or
+runs away is *killed and reaped*, surfacing as a clean denial — not an in-process
+prefix check.
+
+### Adversarial verification — 1000 engineers
+
+`redteam/runtime_redteam.py` synthesizes 1000 deterministic adversarial
+"engineers" across 10 attack classes (sandbox escape, capability forgery,
+calculator injection, plan injection, revocation/epoch bypass, denial probing,
+audit tampering, replay-after-deny, argument fuzzing, identity spoofing). The bar
+is **zero escapes** — any one is a hard failure.
+
+| Backend | Result |
+|---|---|
+| Pure-Python verifier | 1000/1000 blocked, 0 escapes |
+| **Verified Rust engine** (via JSON wire) | 1000/1000 blocked, 0 escapes |
+
+Two real vulnerabilities were found and fixed by this harness: an unbounded-`**`
+calculator DoS (a `2**2**2**2**2**2` that hangs the process) and a Windows
+reserved-device-name sandbox bypass (`CON` blocks forever; `NUL`/`COMn` open
+devices). Both are now regression-covered.
+
+### Benchmark — cost of a verified decision
+
+`verify()` latency per gated tool call (`redteam/bench_verify.py`):
+
+| Path | Latency | Throughput |
+|---|---|---|
+| Pure-Python `FreedomVerifier` | ~38 µs/decision | ~26,000 /s |
+| Verified Rust engine (JSON wire + ed25519 sign) | ~544 µs/decision | ~1,800 /s |
+
+Routing through the verified engine costs ~14× (JSON marshalling + per-call
+signing) but stays sub-millisecond — a sound default for an agent runtime.
+
+### Building the verified extension
+
+The Rust kernel exposes a PyO3 module (`authgate_kernel`). Build it with:
+
+```bash
+# ASCII build dir (the C toolchain mangles non-ASCII paths); GNU toolchain.
+CARGO_TARGET_DIR=/tmp/akbuild cargo build --lib --release
+# copy the cdylib next to the package as authgate_kernel.{pyd,so}
+```
+
+The runtime falls back to the pure-Python verifier wherever the extension is not
+built (CI included), so the runtime tests are green with or without it.
 
 ---
 
@@ -343,8 +417,10 @@ The gap between `Permit/Deny` and actual constrained execution:
 
 | Gap | Status | What closes it |
 |---|---|---|
+| **Runtime decides on the verified TCB** | **Done** (`backend="rust"`) | Runtime routes verify() into `engine::verify` over the JSON wire; 1000-engineer red team green on the Rust backend |
+| **Real tool sandbox** (process isolation) | **Done** (`SandboxPolicy`) | Subprocess + wall-clock deadline + output cap everywhere; opt-in POSIX rlimits. Kills hangs/runaways/crashes |
 | **WASM sandbox** (`cargo build --features sandbox`) | Blocked: Windows SDK kernel32.lib missing | Install Windows SDK 10.0.22621 or build on Linux |
-| **OS-level confinement** (seccomp-bpf) | Not implemented | Wrap tool subprocess with seccomp filter |
+| **OS-level confinement** (seccomp-bpf, network jail) | Partial: process isolation + rlimits done; no syscall/network jail | seccomp filter / namespaces / WASM around the tool subprocess |
 | **End-to-end integration test** | **Done** (`tests/test_integration_e2e.py`) | 18 assertions: tool call → gate → audit chain |
 | **TLC model checker** | Java not installed | `java -jar tla2tools.jar -tool MC_AuthGateV3` |
 | **CLI** | Exists; not packaged | `pip install authgate-kernel` |

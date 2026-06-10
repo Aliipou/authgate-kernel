@@ -60,9 +60,18 @@ from authgate.runtime import (  # noqa: E402
     AgentRuntime,
     PlanStep,
     ScriptedPlanner,
-    build_runtime,
 )
+from authgate.runtime import build_runtime as _build_runtime_impl  # noqa: E402
 from authgate.runtime.tools import calculate  # noqa: E402
+
+# Which authorization engine every attack runs against. run_redteam() sets this;
+# wrapping build_runtime here means all attacks pick it up without per-call edits.
+_ACTIVE_BACKEND = "python"
+
+
+def build_runtime(*args: object, **kwargs: object):  # noqa: ANN002, ANN003
+    kwargs.setdefault("backend", _ACTIVE_BACKEND)
+    return _build_runtime_impl(*args, **kwargs)
 
 # Sentinel that must NEVER appear in any returned output: it is the marker of a
 # real system-file read leaking through the sandbox.
@@ -539,8 +548,15 @@ def _run_one(profile: EngineerProfile) -> AttackResult:
                         blocked=blocked, detail=detail)
 
 
-def run_redteam(n: int = 1000, master_seed: int = 1337) -> RedTeamReport:
-    """Run n engineers against the runtime and return a deterministic report."""
+def run_redteam(n: int = 1000, master_seed: int = 1337, backend: str = "python") -> RedTeamReport:
+    """Run n engineers against the runtime and return a deterministic report.
+
+    backend: which authorization engine to attack — "python" (reference) or
+    "rust" (the formally-verified engine via the JSON wire). Same attacks, same
+    pass/fail bar: ZERO escapes regardless of which engine decides.
+    """
+    global _ACTIVE_BACKEND
+    _ACTIVE_BACKEND = backend
     profiles = _make_profiles(n, master_seed)
     results = [_run_one(p) for p in profiles]
 
