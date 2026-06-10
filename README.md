@@ -11,7 +11,7 @@ A wire format and a verify function. See [POSITIONING.md](POSITIONING.md).
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
 [![Tests](https://img.shields.io/badge/tests-1297%20passing-brightgreen.svg)](tests/)
-[![Red team](https://img.shields.io/badge/red--team-1000%20engineers%2C%200%20escapes-brightgreen.svg)](redteam/)
+[![Runtime red team](https://img.shields.io/badge/runtime%20red--team-1000%20cases%2C%200%20escapes-brightgreen.svg)](redteam/)
 [![Kani](https://img.shields.io/badge/Kani-24%20harnesses-green.svg)](formal/)
 [![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm--Noncommercial--1.0.0-orange.svg)](LICENSE)
@@ -81,20 +81,23 @@ intent → Planner → [PlanStep] → runtime loop → verify(action) → sandbo
 Single agent, 3 tools (calculator, file_read, web_search), deterministic planner.
 A denied step halts the plan. Two things make it more than a demo:
 
-**1. It can run on the *verified* kernel.** `build_runtime(..., backend="rust")`
-routes every permit/deny decision into the Kani/Lean-verified Rust engine
-(`engine::verify`) and returns an ed25519-signed verdict. The boundary is **JSON**
-(`verify_json`) — no Rust objects enter Python, so the running system and the
-proven code are finally the same code for the decision that matters. `backend=
-"python"` (default) uses the pure-Python reference verifier; `"auto"` picks Rust
-when the extension is built. Epoch-revocation semantics (which the wire format
-does not model) are preserved by serializing only currently-valid claims.
+**1. It can run on the *verified* kernel (opt-in).** `build_runtime(backend="rust")`
+routes each permit/deny decision into the Kani/Lean-verified Rust engine
+(`engine::verify`) over a **JSON** boundary (`verify_json`), returning an
+ed25519-signed verdict — no Rust objects enter Python. When that backend is
+selected, the decision is made by the verified code instead of the Python
+reimplementation. **The default is `backend="python"`** (the pure-Python
+reference verifier), and that is the path CI runs — the Rust backend requires the
+compiled extension (below) and is **not** exercised by CI. `"auto"` picks Rust
+only when the extension is importable. Epoch-revocation semantics (absent from the
+wire format) are preserved by serializing only currently-valid claims.
 
-**2. Tools run in a real sandbox.** `SandboxPolicy` executes each tool in an
-isolated subprocess under a wall-clock deadline and output cap (every platform),
-plus opt-in POSIX rlimits (CPU/memory/file-size). A tool that hangs, crashes, or
-runs away is *killed and reaped*, surfacing as a clean denial — not an in-process
-prefix check.
+**2. Tools can run in a real sandbox (opt-in).** Pass a `SandboxPolicy` and each
+tool executes in an isolated subprocess under a wall-clock deadline and output cap
+(every platform), plus opt-in POSIX rlimits (CPU/memory/file-size). A tool that
+hangs, crashes, or runs away is *killed and reaped* → clean denial, rather than an
+in-process check. It bounds time/memory/output and isolates crashes; it is **not**
+a network or syscall jail, and it is **off by default** (`sandbox_policy=None`).
 
 ### Adversarial verification — 1000 engineers
 
@@ -114,6 +117,11 @@ calculator DoS (a `2**2**2**2**2**2` that hangs the process) and a Windows
 reserved-device-name sandbox bypass (`CON` blocks forever; `NUL`/`COMn` open
 devices). Both are now regression-covered.
 
+**Scope, honestly:** these are *self-authored* attack classes against the 3 MVP
+tools. A green result is evidence that the *known* vectors are closed on both
+backends — it is **not** a proof of security and **not** a substitute for
+independent external review (still an open milestone).
+
 ### Benchmark — cost of a verified decision
 
 `verify()` latency per gated tool call (`redteam/bench_verify.py`):
@@ -124,7 +132,8 @@ devices). Both are now regression-covered.
 | Verified Rust engine (JSON wire + ed25519 sign) | ~544 µs/decision | ~1,800 /s |
 
 Routing through the verified engine costs ~14× (JSON marshalling + per-call
-signing) but stays sub-millisecond — a sound default for an agent runtime.
+signing) but stays sub-millisecond. Figures from one machine (Windows, CPython
+3.13); treat as order-of-magnitude, not a spec.
 
 ### Building the verified extension
 
@@ -425,8 +434,8 @@ The gap between `Permit/Deny` and actual constrained execution:
 
 | Gap | Status | What closes it |
 |---|---|---|
-| **Runtime decides on the verified TCB** | **Done** (`backend="rust"`) | Runtime routes verify() into `engine::verify` over the JSON wire; 1000-engineer red team green on the Rust backend |
-| **Real tool sandbox** (process isolation) | **Done** (`SandboxPolicy`) | Subprocess + wall-clock deadline + output cap everywhere; opt-in POSIX rlimits. Kills hangs/runaways/crashes |
+| **Runtime decides on the verified TCB** | Opt-in (`backend="rust"`); needs the built extension; **not run by CI** (CI uses Python) | A CI job that builds the extension and runs the runtime suite on the Rust backend |
+| **Real tool sandbox** (process isolation) | Opt-in (`SandboxPolicy`, off by default); bounds time/memory/output + isolates crashes; **not** a syscall/network jail | seccomp / namespaces / WASM for syscall + network confinement |
 | **WASM sandbox** (`cargo build --features sandbox`) | Blocked: Windows SDK kernel32.lib missing | Install Windows SDK 10.0.22621 or build on Linux |
 | **OS-level confinement** (seccomp-bpf, network jail) | Partial: process isolation + rlimits done; no syscall/network jail | seccomp filter / namespaces / WASM around the tool subprocess |
 | **End-to-end integration test** | **Done** (`tests/test_integration_e2e.py`) | 18 assertions: tool call → gate → audit chain |
