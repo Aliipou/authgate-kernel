@@ -16,6 +16,14 @@ A wire format and a verify function. See [POSITIONING.md](POSITIONING.md).
 [![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm--Noncommercial--1.0.0-orange.svg)](LICENSE)
 
+> ### 👉 Branch [`nazariye-azadi`](../../tree/nazariye-azadi)
+> The engineering on this branch was derived from the **نظریه آزادی (Theory of Freedom)**.
+> The [`nazariye-azadi`](../../tree/nazariye-azadi) branch is **engineering-identical** to
+> `main` but adds a code-free [`PHILOSOPHY/`](../../tree/nazariye-azadi/PHILOSOPHY) layer
+> that traces every component — axioms, the God→Human→Machine ownership hierarchy, consent,
+> justice, guidance, the Mahdavi compass — line-by-line back to that theory. Same kernel,
+> the lineage made explicit.
+
 ## The problem
 
 > Any decision-maker can execute IO without proving authority.
