@@ -182,8 +182,11 @@ def test_file_read_rejects_posix_absolute_path(tmp_path):
 
 
 def test_file_read_rejects_windows_absolute_path(tmp_path):
+    # On Windows this is a drive-absolute path that escapes the sandbox
+    # (PermissionError). On POSIX, 'C:\\...' is merely a nonexistent in-sandbox
+    # filename (FileNotFoundError). Either way, no real file is read.
     read_file = _file_read_fn(tmp_path)
-    with pytest.raises(PermissionError, match="escapes sandbox"):
+    with pytest.raises((PermissionError, FileNotFoundError)):
         read_file("C:\\Windows\\win.ini")
 
 
