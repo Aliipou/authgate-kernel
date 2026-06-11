@@ -10,14 +10,14 @@ import time
 
 import pytest
 
+from authgate.analysis.exit_guarantees import SovereignExitChecker
+from authgate.analysis.override_detector import LockInPattern, OverrideDetector
 from authgate.authority.base import CapabilityRequest, IssuedCapability
 from authgate.authority.human_delegation import (
     HumanDelegationSource,
     MarketOracleSource,
     ReputationGateSource,
 )
-from authgate.analysis.exit_guarantees import SovereignExitChecker
-from authgate.analysis.override_detector import LockInPattern, OverrideDetector
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.hardened import HardenedVerifier, TrustBoundaryError
 from authgate.kernel.registry import OwnershipRegistry
@@ -158,8 +158,10 @@ def test_exit_checker_delegation_cycle_guard():
     reg.register_machine(m1, alice)
     reg.register_machine(m2, alice)
     res = _res("doc")
-    c1 = RightsClaim(m1, res, can_read=True); c1.delegated_by = m2
-    c2 = RightsClaim(m2, res, can_read=True); c2.delegated_by = m1
+    c1 = RightsClaim(m1, res, can_read=True)
+    c1.delegated_by = m2
+    c2 = RightsClaim(m2, res, can_read=True)
+    c2.delegated_by = m1
     reg.add_claim(c1)
     reg.add_claim(c2)
     # Must terminate (cycle guard) and return a list

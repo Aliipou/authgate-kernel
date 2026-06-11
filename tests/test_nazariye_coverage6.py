@@ -17,7 +17,6 @@ from authgate.extensions.detection import DetectionResult, detect
 from authgate.kernel.audit import AuditLog
 from authgate.kernel.verifier import VerificationResult
 
-
 # --------------------------------------------------------------------------- #
 # key_rotation.py — validation branches
 # --------------------------------------------------------------------------- #

@@ -15,8 +15,8 @@ from authgate.kernel.consent import ConsentAnnotation, ConsentCapability
 from authgate.kernel.consent_registry import ConsentRegistry
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.policy import Policy, PolicyRule, PolicyVerifier
-from authgate.kernel.verifier import Action, FreedomVerifier
 from authgate.kernel.registry import OwnershipRegistry
+from authgate.kernel.verifier import Action, FreedomVerifier
 
 
 def _human(name="Alice"):

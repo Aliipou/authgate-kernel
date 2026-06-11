@@ -15,7 +15,7 @@ from authgate.kernel.audit import AuditLog
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.goals import GoalVerificationResult
 from authgate.kernel.registry import OwnershipRegistry
-from authgate.kernel.verifier import Action, FreedomVerifier, VerificationResult
+from authgate.kernel.verifier import FreedomVerifier, VerificationResult
 
 
 def _human(name="Alice"):

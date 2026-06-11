@@ -161,9 +161,12 @@ def test_delegation_depth_walk_and_cycle_guard():
     res = _res("r")
 
     # Build a delegated_by cycle: bot<-alice, alice<-bob, bob<-alice
-    c1 = RightsClaim(bot, res); c1.delegated_by = alice
-    c2 = RightsClaim(alice, res); c2.delegated_by = bob
-    c3 = RightsClaim(bob, res); c3.delegated_by = alice
+    c1 = RightsClaim(bot, res)
+    c1.delegated_by = alice
+    c2 = RightsClaim(alice, res)
+    c2.delegated_by = bob
+    c3 = RightsClaim(bob, res)
+    c3.delegated_by = alice
     all_claims = [c1, c2, c3]
     # Walk terminates via cycle guard (line 103) and the parent-walk step (line 113)
     depth = _delegation_depth(c1, all_claims)

@@ -11,7 +11,10 @@ from __future__ import annotations
 
 import pytest
 
+from authgate import settings as settings_mod
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType
+from authgate.kernel.registry import OwnershipRegistry
+from authgate.kernel.verifier import FreedomVerifier
 from authgate.redteam.scenarios import (
     AttackResult,
     AuthorityLaunderingAttack,
@@ -21,10 +24,6 @@ from authgate.redteam.scenarios import (
     RecursiveToolAbuseAttack,
     SovereigntyFlagInjectionAttack,
 )
-from authgate.kernel.registry import OwnershipRegistry
-from authgate.kernel.verifier import FreedomVerifier
-from authgate import settings as settings_mod
-
 
 # --------------------------------------------------------------------------- #
 # settings.py
@@ -164,11 +163,11 @@ def test_malicious_agent_all_attempts():
 # adapters/mcp_gate.py  (pure-Python adapter, no MCP dependency)
 # --------------------------------------------------------------------------- #
 
-from authgate.adapters.mcp_gate import MCPGate, MCPToolCall  # noqa: E402
 from authgate.adapters.langgraph import (  # noqa: E402
     FreedomGraphNode,
     make_verified_tool,
 )
+from authgate.adapters.mcp_gate import MCPGate, MCPToolCall  # noqa: E402
 from authgate.kernel.entities import RightsClaim  # noqa: E402
 
 

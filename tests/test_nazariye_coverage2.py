@@ -14,7 +14,6 @@ from authgate import errors
 from authgate import wire_validator as wv
 from authgate.kernel.tracing import TraceCollector
 
-
 # --------------------------------------------------------------------------- #
 # errors.py — every __str__ branch, with and without optional fields
 # --------------------------------------------------------------------------- #
