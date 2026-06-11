@@ -8,6 +8,16 @@ holds a valid, signed, non-revoked capability for the resource. No proof, no exe
 Not a framework plugin. Not model-specific. Not tied to today's agent architectures.
 A wire format and a verify function. See [POSITIONING.md](POSITIONING.md).
 
+> **Related — the decision layer *above* this kernel.** AuthGate answers
+> *authority*: "does this agent hold a valid capability for resource X?" The
+> **prior** question — *legitimacy*: "should this action happen at all, under
+> property rights, consent, and non-domination?" — is answered one layer up by a
+> **separate sibling project, the [Freedom Decision Kernel](https://github.com/Aliipou/freedom-decision-kernel)**
+> (pure Python, **no cryptography**). They are kept deliberately apart, because
+> legitimacy ≠ authority: the FDK decides *whether* an action is legitimate and
+> hands the chosen action to AuthGate, which enforces *whether* the actor is
+> authorized — "seccomp/SELinux for AI decisions." **Legitimacy first, then authority.**
+
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
 [![Tests](https://img.shields.io/badge/tests-1155%20passing-brightgreen.svg)](tests/)
