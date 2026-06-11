@@ -38,6 +38,7 @@ fn root_cap(root_sk: &SigningKey, subject: Bytes32, resource: Bytes32, rights: R
 /// Build a consent signed by `signer`, but label the grantor identity with
 /// `claimed_grantor` / `claimed_pubkey`. For a *legitimate* consent, pass the
 /// signer's own pubkey; for forgeries, mismatch them.
+#[allow(clippy::too_many_arguments)] // test helper; mirrors the wide ConsentRecord shape
 fn consent_signed_by(
     signer: &SigningKey,
     claimed_grantor: Bytes32,
