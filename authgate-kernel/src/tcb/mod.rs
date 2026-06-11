@@ -36,3 +36,5 @@ pub(crate) mod engine;
 mod tests;
 #[cfg(test)]
 mod hardening_tests;
+#[cfg(test)]
+mod consent_redteam;

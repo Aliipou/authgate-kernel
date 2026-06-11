@@ -18,6 +18,8 @@
 
 pub mod metric;
 pub mod violation_registry;
+#[cfg(test)]
+mod redteam;
 
 pub use metric::{
     annotate, coercion_decreases, flagged_below, rights_violations_decrease, score,

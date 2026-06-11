@@ -13,6 +13,8 @@ pub mod tcb;
 pub mod sequence;
 /// Semantic gate — heuristic coercion/deception analysis (NOT in TCB, advisory).
 pub mod semantic_gate;
+#[cfg(test)]
+mod semantic_gate_redteam;
 /// Capability-constrained WASM tool executor. Enable with `--features sandbox`.
 #[cfg(feature = "sandbox")]
 pub mod sandbox;
