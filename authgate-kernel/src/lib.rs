@@ -9,6 +9,8 @@ pub mod authority_graph;
 pub mod tcb;
 /// Composition safety — session-scoped rights accumulation (NOT in TCB).
 pub mod sequence;
+/// Semantic gate — heuristic coercion/deception analysis (NOT in TCB, advisory).
+pub mod semantic_gate;
 /// Capability-constrained WASM tool executor. Enable with `--features sandbox`.
 #[cfg(feature = "sandbox")]
 pub mod sandbox;
