@@ -127,6 +127,8 @@ mod tests {
             nonce: [0x11u8; 16],
             timestamp: 1000,
             min_epoch,
+            requires_consent: false,
+            consent_proofs: vec![],
             binding_hash: [0u8; 32],
         };
         a.binding_hash = a.compute_hash();

@@ -28,6 +28,7 @@
 /// - INV-CANONICAL:    action.binding_hash == H(all other fields) before any processing
 /// - INV-REVOCATION:   only root-signed revocations affect permit/deny decisions
 pub mod call_gate;
+pub mod consent;
 pub mod dag;
 pub mod types;
 pub(crate) mod engine;

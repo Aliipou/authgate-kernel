@@ -15,6 +15,7 @@
 //!     Intermediate delegation nodes (subject_id == delegator) serve chain traversal only.
 
 use ed25519_dalek::{Signature, VerifyingKey, Verifier};
+use crate::tcb::consent::verify_consent;
 use crate::tcb::types::{CanonicalAction, Decision, RevocationProof};
 use crate::tcb::dag::validate_chain;
 
@@ -102,6 +103,29 @@ pub(crate) fn verify(
         }
     }
 
+    // ── Layer 4: Consent gate ─────────────────────────────────────────────────
+    // `requires_consent` is adapter-set (untrusted, like required_rights) but
+    // tamper-evident via the binding hash checked in Layer 1. When set, at
+    // least one bundled consent must be cryptographically valid for this
+    // actor/resource/rights at this time AND not revoked. A root-signed
+    // revocation targeting a consent's `consent_id` revokes it — but only if
+    // the grantor marked the consent revocable.
+    if action.requires_consent {
+        let has_valid_consent = action.consent_proofs.iter().any(|c| {
+            if verify_consent(c, action.actor_id, action.resource_hash, action.required_rights, now).is_err() {
+                return false;
+            }
+            let revoked = c.revocable
+                && action.revocation_proofs.iter().any(|rev| {
+                    rev.target_proof_hash == c.consent_id && verify_revocation_sig(rev, root_key)
+                });
+            !revoked
+        });
+        if !has_valid_consent {
+            return Decision::Deny { reason: "consent required but absent, invalid, or revoked" };
+        }
+    }
+
     Decision::Permit
 }
 
@@ -159,6 +183,8 @@ mod tests {
             nonce: [0u8; 16],
             timestamp: 1000,
             min_epoch,
+            requires_consent: false,
+            consent_proofs: vec![],
             binding_hash: [0u8; 32],
         };
         a.binding_hash = a.compute_hash();
@@ -265,6 +291,8 @@ mod tests {
             nonce,
             timestamp: 1000,
             min_epoch,
+            requires_consent: false,
+            consent_proofs: vec![],
             binding_hash: [0u8; 32],
         };
         a.binding_hash = a.compute_hash();
