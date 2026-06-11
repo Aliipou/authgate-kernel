@@ -71,6 +71,8 @@ mod hardening_tests {
             nonce: [0xDE; 16],
             timestamp: NOW,
             min_epoch,
+            requires_consent: false,
+            consent_proofs: vec![],
             binding_hash: [0; 32],
         };
         a.binding_hash = a.compute_hash();

@@ -5,6 +5,8 @@
 use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 
+use crate::tcb::consent::ConsentRecord;
+
 pub type Bytes16 = [u8; 16];
 pub type Bytes32 = [u8; 32];
 pub type Bytes64 = [u8; 64];
@@ -152,6 +154,13 @@ pub struct CanonicalAction {
     /// Caller sets this to the current epoch known to them.
     /// Proofs with `epoch < min_epoch` are rejected.
     pub min_epoch: u64,
+    /// Whether this action requires consent from an affected party.
+    /// Set by the UNTRUSTED adapter (same trust assumption as
+    /// `required_rights`); the binding hash makes it tamper-evident
+    /// after construction. See `crate::tcb::consent` for the full model.
+    pub requires_consent: bool,
+    /// Consent records bundled with this request (see ConsentRecord docs).
+    pub consent_proofs: Vec<ConsentRecord>,
     /// SHA-256 of all fields above, in canonical order.
     /// Kernel recomputes and rejects if mismatched.
     pub binding_hash: Bytes32,
@@ -175,6 +184,11 @@ impl CanonicalAction {
         h.update((self.revocation_proofs.len() as u32).to_be_bytes());
         for rev in &self.revocation_proofs {
             h.update(rev.to_canonical_bytes());
+        }
+        h.update([self.requires_consent as u8]);
+        h.update((self.consent_proofs.len() as u32).to_be_bytes());
+        for consent in &self.consent_proofs {
+            h.update(consent.to_canonical_bytes());
         }
         h.finalize().into()
     }

@@ -258,6 +258,8 @@ mod inner {
                 nonce:              [0xEE; 16],
                 timestamp:          NOW,
                 min_epoch:          MIN_EPOCH,
+                requires_consent:   false,
+                consent_proofs:     vec![],
                 binding_hash:       [0; 32],
             };
             a.binding_hash = a.compute_hash();
@@ -422,6 +424,8 @@ mod inner {
                 nonce:             [0xEE; 16],
                 timestamp:         NOW,
                 min_epoch:         MIN_EPOCH,
+                requires_consent:  false,
+                consent_proofs:    vec![],
                 binding_hash:      [0; 32],
             };
             action.binding_hash = action.compute_hash();
