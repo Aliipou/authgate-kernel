@@ -78,7 +78,7 @@ This is the same principle as capability-based OS security (seL4, CHERI), applie
 | Side-channel defense | Timing attacks, covert channels — out of scope by design. |
 | Python-equivalent security | The Python layer is a compatibility runtime — not formally checked. |
 
-The Python layer (`src/authgate/`) enforces the same logical invariants as the Rust TCB, but without hardware-level enforcement. A malicious Python tool can call `subprocess` directly. The Rust WASM sandbox closes this gap at the OS level — see [Engineering Gaps](#engineering-gaps) below.
+The Python layer (`src/authgate/`) is a **compatibility runtime, not a security boundary**. It mirrors the *shape* of the TCB's checks for ergonomics, prototyping, and tests — but it is **not formally verified and is bypassable**: a malicious Python tool can call `subprocess` directly. Only the Rust TCB (`authgate-kernel/src/tcb/`) carries the security guarantees. Treat every `src/authgate/**` module as untrusted regardless of how authoritative its filename sounds. The Rust WASM sandbox closes the execution gap at the OS level — see [Engineering Gaps](#engineering-gaps) below.
 
 Full enumeration: [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md)
 
@@ -89,7 +89,7 @@ Full enumeration: [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md)
 | Metric | Value |
 |---|---|
 | Security-enforcing Rust LOC | `engine.rs`: 250 LOC. Full path (`engine.rs` + `dag.rs` + `call_gate.rs`): ~934 LOC |
-| TCB Rust tests | 141 (all passing) |
+| Rust kernel-crate lib tests (`cargo test --lib`) | 293 (all passing) — includes the consent TCB gate and 47 red-team attack tests |
 | Python integration tests | 905 (all passing) |
 | Kani harnesses (bounded model checking) | 19 (all proved) |
 | Lean 4 theorems | 16 (4 fully proved scope theorems + 2 admitted; 2 crypto axioms) |
@@ -98,6 +98,25 @@ Full enumeration: [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md)
 | Python verify() latency | p50 ≈ 9.7µs (10-claim registry), 17.4µs (1 000-claim) |
 | Delegation lattice theorems | T1–T4 proved: transitivity, anti-monotone, DAG, bounded distributive lattice |
 | TLA+ invariants | 9 + PermitSoundness (TLC run pending Java setup) |
+
+---
+
+## Theory → Engineering coverage (نظریه آزادی)
+
+The `nazariye-azadi` line maps the Theory of Freedom's seven axioms to code (see
+[`PHILOSOPHY/AXIOM_MAP.md`](PHILOSOPHY/AXIOM_MAP.md) and
+[`Theory_to_Engineering_Plan.md`](Theory_to_Engineering_Plan.md)). Three axioms
+that previously lived only in the Python layer now have first-class Rust:
+
+| Axiom | Module | Trust level | What it guarantees |
+|---|---|---|---|
+| **A3** — consent must be recorded, not assumed | `authgate-kernel/src/tcb/consent.rs` | **TCB** — in the trusted core | When the adapter sets `requires_consent`, no `Permit` is possible without a consent record that ed25519-verifies under its claimed grantor key, is unexpired and unrevoked, and covers the actor, resource, and rights. Folded into the binding hash (tamper-evident). The kernel does **not** verify the grantor is the resource's rightful owner — that is the policy layer's job (L2). |
+| **A4/A5** — no action may coerce or deceive | `authgate-kernel/src/semantic_gate.rs` | **NOT TCB** — advisory heuristic | A typed `SemanticGate` interface + `CoercionAnalyzer` (exit-blocking, HHI concentration, deception markers). Returns a `SemanticVerdict`; it **never structurally denies** — it is an input to a policy decision. |
+| **A7** — MahdaviCompass (move toward the final order) | `authgate-kernel/src/compass/` | **NOT TCB** — advisory scorer | `C(a) = w₁·RVD + w₂·VOI + w₃·CD` as a **post-hoc scorer that annotates, never denies**. Any deny threshold is operator policy, not theory (`flagged_below`). |
+
+Each ships with adversarial coverage: `consent_redteam.rs` (18), `semantic_gate_redteam.rs`
+(15), and `compass/redteam.rs` (14) — including honest tests for known heuristic
+evasions (e.g. unicode homoglyphs) and a test asserting the Compass never denies.
 
 ---
 
