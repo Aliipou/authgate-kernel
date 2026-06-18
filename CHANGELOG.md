@@ -5,6 +5,27 @@ All notable changes to Freedom Kernel are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+**FDK → AuthGate boundary seam** — consume a Freedom Decision Kernel legitimacy
+verdict before the capability gate, connecting the two products into
+`Request → Planner → FDK → PolicyDecision → AuthGate → TCB → Execution`.
+- `authgate.integrations.fdk.enforce_legitimacy()` — runs the `CallGate` ONLY on
+  an explicit FDK `ALLOW` bound to the same `action_id`; fail-closed on DENY,
+  DEFER, `fail_closed`, malformed payload, or id mismatch. Imports no FDK code —
+  the boundary is a JSON contract, not shared code.
+- `spec/policy_decision.schema.json` — the `PolicyDecision` contract (verdict,
+  action_id, reasons, axiom_trace, fail_closed). No `confidence` field by design:
+  FDK is a deterministic categorical gate; `DEFER` means "ask a human".
+- `tests/test_fdk_bridge.py` (15) — golden end-to-end flow + JSON round-trip +
+  every non-ALLOW/malformed path, against a real registry/verifier/CallGate.
+- `tests/test_policy_decision_contract.py` (4) — pins the parser to the published
+  schema so the cross-repo contract cannot drift silently.
+- `examples/fdk_authgate_flow.py` — decoupled runnable demo of the three outcomes.
+- `DECISIONS.md` — records the contract-not-code boundary decision.
+
 ## v2.4.0 — 2026-05-29
 
 ### Added
