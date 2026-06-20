@@ -20,6 +20,26 @@ AuthGate honestly stands.
 > problem (validated by frontier work: DeepMind CaMeL, dual-LLM, agent taint-tracking), not a
 > settled one. It is the only thread here that survived every kill-test.
 
+**Reframed positioning (industrial, legible):** *Runtime purpose-bound data governance for AI
+agents.* Not "a new authorization model" — an enforcement layer that binds data use to the
+purpose it was obtained under, **independently of whether the model itself can be trusted to.**
+
+**What the real-agent test (`REAL_AGENT_TEST.md`) changed.** The original pitch — *agents leak
+PII, AuthGate stops it* — was **falsified on real agents**: capable aligned models self-defend
+(0/8 SSN leaks; 5/5 refused under honest framing). But the same models leaked email+phone 2/3 of
+the time when the cross-purpose move was **disguised as a formatting task** — a classic *policy-
+robustness failure* (behavior depends on framing / prompt / model). So the legitimate question is
+no longer *"can the model be trusted?"* but **"can enforcement be made independent of model
+behavior?"** — which is exactly what a provenance-based, framing-blind gate provides. That is the
+surviving, defensible thesis.
+
+**The next kill-test is no longer technical — it is market.** The real risk is not DLP; it is
+*"do companies feel this pain enough to pay, or is **Microsoft Purview + DLP + audit logs** good
+enough for them?"* This must be killed or confirmed by customer evidence, not code: find teams
+deploying autonomous agents on sensitive data who have *experienced* a framing-robustness leak and
+do **not** consider their existing governance stack sufficient. If they don't exist (or Purview
+suffices), AuthGate closes like FDK. If they do, there is a product.
+
 ## What it reduces to (one buildable, measurable experiment)
 
 The thesis lives or dies on a single technical question (`LABEL_PROPAGATION.md`):
