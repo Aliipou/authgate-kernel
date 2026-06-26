@@ -96,7 +96,7 @@ Full enumeration: [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md)
 | Concurrent verify() calls (stress test) | 1 000 via ThreadPoolExecutor, 200 concurrent audit appends |
 | Python verify() latency | p50 ≈ 9.7µs (10-claim registry), 17.4µs (1 000-claim) |
 | Delegation lattice theorems | T1–T4 proved: transitivity, anti-monotone, DAG, bounded distributive lattice |
-| TLA+ invariants | 9 + PermitSoundness (TLC run pending Java setup) |
+| TLA+ invariants | 9 + PermitSoundness (**TLC-VERIFIED** — 3,572,640 distinct states, depth 11, no errors) |
 
 ---
 
@@ -354,7 +354,7 @@ The gap between `Permit/Deny` and actual constrained execution:
 | **WASM sandbox** (`cargo build --features sandbox`) | Blocked: Windows SDK kernel32.lib missing | Install Windows SDK 10.0.22621 or build on Linux |
 | **OS-level confinement** (seccomp-bpf) | Not implemented | Wrap tool subprocess with seccomp filter |
 | **End-to-end integration test** | **Done** (`tests/test_integration_e2e.py`) | 18 assertions: tool call → gate → audit chain |
-| **TLC model checker** | Java not installed | `java -jar tla2tools.jar -tool MC_AuthGateV3` |
+| **TLC model checker** | ✓ verified — 3.5M states, no errors (see `formal/tlc_run.log`) | `java -jar tla2tools.jar -tool MC_AuthGateV3` |
 | **CLI** | Exists; not packaged | `pip install authgate-kernel` |
 
 The WASM sandbox is the most important. When it exists, the enforcement chain becomes:

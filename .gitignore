@@ -29,3 +29,5 @@ extracted_raw.txt
 *.db-wal
 CLAUDE.md
 ANTI_GARBAGE_CHECKLIST.md
+formal/states/
+formal/tla2tools.jar

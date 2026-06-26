@@ -103,7 +103,7 @@ unzip /tmp/apalache.zip -d /tmp/
 /tmp/apalache/bin/apalache-mc check \
   --inv=SovereigntyAlwaysBlocks \
   --length=5 \
-  formal/authgate_v3.tla
+  formal/AuthGateV3.tla
 ```
 
 ---
@@ -171,12 +171,14 @@ spec means the state machine is stuck — usually a missing transition.
 
 ## Current status
 
-**TLC has not yet been run** — this is MASTER_PLAN success criterion #1 (pending Java setup).
+**TLC VERIFIED (2026-06-26)** — MASTER_PLAN success criterion #1 met. All 9 invariants +
+PermitSoundness hold over **3,572,640 distinct states** (65.3M generated, depth 11):
+"Model checking completed. No error has been found." Full log: `formal/tlc_run.log`.
 
-The spec (`authgate_v3.tla`) and model (`MC_AuthGateV3.tla`, `MC_AuthGateV3.cfg`)
-are complete and ready. The only requirement is Java installation and tla2tools.jar download.
-
-Estimated time to run: <5 minutes on a laptop once Java is available.
+Note: TLA+ requires the filename to match the module name, so the spec file is
+`AuthGateV3.tla` (module `AuthGateV3`), not `authgate_v3.tla` — without this, `MC_AuthGateV3`
+cannot resolve the spec. Actual runtime was ~74 min on a 4-core laptop (the earlier
+"<5 min" estimate was optimistic for this model size).
 
 ---
 
