@@ -16,7 +16,13 @@ A wire format and a verify function. See [POSITIONING.md](POSITIONING.md).
 > (pure Python, **no cryptography**). They are kept deliberately apart, because
 > legitimacy ≠ authority: the FDK decides *whether* an action is legitimate and
 > hands the chosen action to AuthGate, which enforces *whether* the actor is
-> authorized — "seccomp/SELinux for AI decisions." **Legitimacy first, then authority.**
+> authorized — "seccomp/SELinux for AI decisions." **Canonical pipeline (locked):**
+> identity admission → FDK legitimacy (DENY-only) → **AuthGate authority (grant
+> within legitimacy, this kernel)** → PEP execute + audit. **Invariant:** legitimacy
+> may only DENY; authority never overrides a legitimacy denial. Both layers are the
+> same theory made executable — this authority kernel is not neutral plumbing under
+> a philosophy; it is equally part of it (lineage traced in the `nazariye-azadi`
+> branch; framework-neutral framing on `main`).
 
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
