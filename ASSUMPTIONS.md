@@ -36,6 +36,7 @@ Status vocabulary, strongest to weakest:
 | `PROVEN` | A named, mechanically-checked theorem, re-checked on 2026-08-01, whose statement covers the axiom's meaning |
 | `PARTIAL` | A real proof exists but covers strictly less than the axiom says — the shortfall is named in the row |
 | `ASSUMED` | An explicit, non-vacuous axiom, stated and referenced |
+| `CHECKED-BOUNDED` | Exhaustively model-checked, but at a bound so small the result covers far less than the axiom — the bound is stated in the row |
 | `STATED-ONLY` | A property is written down (TLA+ invariant, Kani harness) but has never been executed |
 | `NONE` | No formal counterpart exists |
 | `BROKEN` | An artifact exists and is cited as proof, but does not compile or depends on `sorryAx` |
@@ -53,19 +54,115 @@ Unlike every prior status document here, this one is based on execution.
 | Lean 4 | **Yes** — 4.32.2 and 4.31.0 via elan | **Yes** | **5 of 6 Lean files fail to compile.** Identical errors on both toolchains, so this is not version drift. §2 |
 | `cargo build` | **Yes** (gnu toolchain) | **Yes** | `authgate-kernel` compiles clean, exit 0. Note: harness code is `#[cfg(kani)]` and was **not** compiled |
 | Kani | **No** — not installed, `cargo kani` → `no such command` | No | 0 of 32 harness functions have ever been compiled or run |
-| Java 17 | **Yes** — Temurin 17.0.10 on PATH | n/a | `tla2tools.jar` absent; TLC has never been run |
+| TLC | **Yes** — Java 17 on PATH; `tla2tools.jar` v1.8.0 fetched | **Yes** | **First TLC run in this project's history.** The committed spec does not parse; at a reduced bound it completes. §2A |
 
-**The stated blocker for TLC is false.** `README.md:358` ("Java not installed"),
+**The stated blocker for TLC was false.** `README.md:358` ("Java not installed"),
 `formal/TLC_SETUP.md:174` ("pending Java setup") and
 `REVIEW_PACKET/04:21` ("Java availability unverified") are all falsified — Java 17
-is installed and on PATH. The only missing step is downloading `tla2tools.jar`.
-By the project's own estimate (`TLC_SETUP.md:8`) that is a <5-minute job, and it
-is `MASTER_PLAN.md:235` success criterion #1. **This is the cheapest available
-upgrade to this table and it has not been taken.**
+is installed and on PATH. TLC has now been run (§2A). All runs were performed on
+copies in a scratch directory; `git status --ignored formal/` is empty, so the
+repository was not modified by the audit.
 
 **No CI job runs Lean, Kani, or TLC.** A recursive grep over
 `.github/workflows/` for `lean|lake|kani|tlc|tla2tools` returns zero matches.
 Nothing in this repository's formal layer is gated on anything.
+
+---
+
+## 2A. TLA+ / TLC — first execution, and what it showed
+
+Every result below was reproduced directly from pristine repo files, not taken
+on report. Copies only; the repo was never written to.
+
+### The committed spec does not parse
+
+Running the exact command the docs give (`TLC_SETUP.md:53`, `README.md:358`):
+
+```
+Cannot find source file for module AuthGateV3 imported in module MC_AuthGateV3.
+*** Errors: 1
+```
+
+`MC_AuthGateV3.tla:42` says `EXTENDS AuthGateV3`. TLA+ requires filename to match
+module name. The module on line 1 of `formal/authgate_v3.tla` is `AuthGateV3`;
+the **file** is `authgate_v3.tla`. They differ by more than case, so this fails
+on every platform.
+
+**This converts "TLC has never been run" from inference to proof.** Anyone who
+had ever typed the documented command once, anywhere, would have hit this in
+under a second. It also falsifies `formal/TLC_SETUP.md:176` ("complete and ready").
+
+**One-line fix:** rename `formal/authgate_v3.tla` → `formal/AuthGateV3.tla`.
+Not done here — it is a rename in a file this audit was not scoped to change.
+
+### The committed bound is not checkable
+
+At the shipped constraint `MCConstraint == Len(audit_log) <= 3`
+(`MC_AuthGateV3.tla:277`): 26.5M states generated / 2.3M distinct after 10
+minutes on 4 workers, **queue still growing**, throughput collapsing as the
+fingerprint set went to disk. Reachable state count is on the order of 10⁹.
+This falsifies `formal/TLC_SETUP.md:8` ("Estimated runtime: <5 minutes on a
+4-core machine") and `MC_AuthGateV3.tla:11` ("feasible on a laptop in ~minutes").
+
+### The first completed result this project has ever had
+
+Reducing **only** the constraint to `Len(audit_log) <= 1`, nothing else changed,
+against the repo's unmodified 10-invariant cfg:
+
+```
+Model checking completed. No error has been found.
+77257 states generated, 4227 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 9.
+Finished in 03s
+```
+
+All ten cfg-listed invariants hold exhaustively. **This is real and citable.** It
+is also very small: an audit log of **at most one entry**, so no multi-decision
+interaction — no revoke-then-use, no epoch-advance-then-replay — is reachable at
+all. It is weaker than the bound the project itself chose to ship.
+
+### Mutation testing: the suite is blind to A1 and to signature checking
+
+A suite that constrains an axiom must fail when that axiom's enforcement is
+deleted. Deleting the A1 canonical gate — `authgate_v3.tla:132`,
+`IF ~action.binding_valid THEN "Deny"` → `IF FALSE THEN "Deny"` — and running
+the repo's **unmodified** cfg:
+
+```
+Model checking completed. No error has been found.
+77257 states generated, 4227 distinct states found, 0 states left on queue.
+```
+
+Identical to baseline. To rule out a no-op edit, A1 was then stated as a real
+invariant and added to the cfg:
+
+```
+NoPermitOnTamperedBinding ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" => audit_log[i].action.binding_valid
+```
+
+Baseline: passes. Mutant: **`Error: Invariant NoPermitOnTamperedBinding is
+violated`**, with a concrete counterexample — a `Permit` on an action carrying
+`binding_valid |-> FALSE`. The mutation is live and produces a genuinely unsafe
+decision. **The repo's ten invariants cannot see it.** The same holds for
+deleting `sig_valid` at both chain-walk sites.
+
+Root cause: the invariants are largely self-referential. `PermitSoundness` and
+`ChainEpoch` re-invoke the very `Verify`/`ValidChain` definitions that computed
+the decision, so weakening enforcement weakens the invariant in lockstep and
+nothing can fire.
+
+### Expiry is structurally unverifiable in this spec
+
+All six model capabilities carry `expiry |-> 2` (`MC_AuthGateV3.tla:73,88,102,
+116,131,145`) and `now` is drawn from `0..MCMaxEpoch` = `{0,1,2}`, so
+`c.expiry >= now` is **universally true in every reachable state** — the model
+contains no expired capability. Worse, `ExecuteVerify` records only
+`[action, decision, revoked_at]` (`authgate_v3.tla:269-272`) and **never records
+`now`**. No invariant over `audit_log` can constrain expiry, because the value it
+would need was never written down. This is not "unchecked"; it is unstatable
+without changing the spec.
 
 ---
 
@@ -161,16 +258,18 @@ pure-`Nat` results or the `List Char`/`List Nat` type errors.
 | **Status** | **`NONE`** |
 | Lean translation | **None.** No Lean theorem in the repo mentions binding, hashing, or field coverage |
 | TLA+ translation | `binding_valid : BOOLEAN` (`formal/authgate_v3.tla:80`), gate at `:132`. An **uninterpreted Boolean handed to the model as part of the action** — there is no hash function, no field enumeration, and no relation to the other fields |
-| Checked by TLC? | **No.** Not among the 10 invariants in `MC_AuthGateV3.cfg:24-34`, and TLC has never run |
+| Checked by TLC? | **No — and now proven blind.** Not among the 10 invariants in `MC_AuthGateV3.cfg:24-34`. TLC has now been run (§2A): deleting the gate at `authgate_v3.tla:132` leaves all ten invariants passing with byte-identical state counts, while an audit-added probe invariant fails on the mutant with a concrete `binding_valid |-> FALSE` Permit |
 | Kani | **None.** No harness targets binding |
 | Proven | **Nothing.** `AXIOMATIC_FOUNDATION.md:51` lists Python attack simulations under a row labelled "Proof" |
 | Assumed | — |
 | No formal counterpart | The entire content of the axiom: that the hash *covers every field*, and that mutation is *detected* |
 
 **Why this rounds to `NONE` rather than `PARTIAL`:** the TLA+ model is not merely
-weak, it is **unfalsifiable**. Delete the gate at `authgate_v3.tla:132` and every
-cfg-listed invariant still holds — `PermitSoundness` (`:336-347`) does not
-mention `binding_valid`, so a Permit on a tampered action violates nothing.
+weak, it is **unfalsifiable — now demonstrated, not argued**. Deleting the gate
+at `authgate_v3.tla:132` and running the repo's own cfg yields
+`Model checking completed. No error has been found.` `PermitSoundness`
+(`:336-347`) does not mention `binding_valid`, so a Permit on a tampered action
+violates nothing.
 `attack_harness/ATTACK_MATRIX.md:52` grades AT-1 coverage "**Full** … TLC
 verifies this always produces Deny". Nothing asserts that, and TLC has not run.
 
@@ -215,10 +314,10 @@ in the layer the same document says is unverified.
 
 | | |
 |---|---|
-| **Status** | **`STATED-ONLY`** |
+| **Status** | **`CHECKED-BOUNDED`** — audit log ≤ 1 entry |
 | Lean | **None.** No theorem concerns key-to-identity derivation. `subject_mismatch_violates_binding` (`Proofs.lean:55`) is about `subject ≠ actor`, a different property, in an unbuildable file |
 | TLA+ | `IdentityBinding`, `formal/authgate_v3.tla:181-187`. **Is** in the cfg (`MC_AuthGateV3.cfg:27`) — the strongest TLA+ position of any axiom |
-| Checked by TLC? | **No.** Never run |
+| Checked by TLC? | **Yes, at `Len(audit_log) <= 1`** (§2A) — `IdentityBinding` holds exhaustively over 4227 distinct states. Not checked at the committed bound of 3, which does not terminate |
 | Kani | None |
 | **What is proven** | **Nothing mechanically.** |
 | **What is assumed** | Hash injectivity, as an explicit TLA+ `ASSUME`: `authgate_v3.tla:45` — `\A k1,k2 \in PublicKeys : Hash(k1) = Hash(k2) => k1 = k2`. `Hash` is uninterpreted, instantiated as a 4-entry lookup table (`MC_AuthGateV3.tla:56-61`). Preimage and collision resistance are assumed, not modelled |
@@ -261,10 +360,10 @@ observes it can impersonate. Documented at `src/authgate/kernel/entities.py:105-
 | | |
 |---|---|
 | **Status** | **`ASSUMED` for (a); `NONE` for (b); `STATED-ONLY` for (c)** |
-| **(a) Signature — assumed** | **`ed25519_euf_cma`**, `formal/lean4/FreedomKernel/Ed25519.lean` — added by this change (§5). Explicit, non-vacuous, compiles, and demonstrably load-bearing |
+| **(a) Signature — `ASSUMED`** | **`ed25519_euf_cma`**, `formal/lean4/FreedomKernel/Ed25519.lean` — added by this change (§5). Explicit, non-vacuous, compiles, and demonstrably load-bearing. On the TLA+ side there is **nothing**: replacing `current.sig_valid` with `TRUE` at both chain-walk sites leaves all ten invariants passing (§2A) |
 | **(a) — superseded** | `sig_euf_cma`, `formal/lean4/Proofs.lean:66`. **VACUOUS** — its conclusion is `True`, which is provable without it. It assumes nothing and can support no theorem. `AXIOMATIC_FOUNDATION.md:119,203` and `REVIEW_PACKET/04:96` all cite it as the project's cryptographic assumption. It never was one |
-| **(b) Expiry** | **No invariant anywhere.** `grep -n expiry formal/authgate_v3.tla` yields the record field (`:66`), a comment (`:121`), and the gate (`:137`) — no named property. `PermitSoundness` (`:341-346`) **deliberately omits** the expiry conjunct that `Verify` has, so an expired-cap Permit violates nothing. No Lean theorem. `formal/COVERAGE.md:11` tracks "I3 ExpiryGate" — **that operator does not exist in any `.tla` file** |
-| **(c) Epoch** | `EpochSafety` (`authgate_v3.tla:173`) and `ChainEpoch` (`:233`), both in the cfg (`:26`, `:31`). **Never run.** Lean side is broken: `stale_epoch_implies_deny` (`Proofs.lean:46`) → `sorryAx`; `epoch_gate_total` (`Proofs.lean:38`) → `sorryAx` |
+| **(b) Expiry — `NONE`, and unstatable** | **No invariant anywhere**, and §2A shows one cannot be written without changing the spec: every model capability has `expiry |-> 2` while `now \in {0,1,2}`, so the guard is universally true, and `ExecuteVerify` never records `now` into the audit log at all. `grep -n expiry formal/authgate_v3.tla` yields the record field (`:66`), a comment (`:121`), and the gate (`:137`) — no named property. `PermitSoundness` (`:341-346`) **deliberately omits** the expiry conjunct that `Verify` has, so an expired-cap Permit violates nothing. No Lean theorem. `formal/COVERAGE.md:11` tracks "I3 ExpiryGate" — **that operator does not exist in any `.tla` file** |
+| **(c) Epoch — `CHECKED-BOUNDED`** | `EpochSafety` (`authgate_v3.tla:173`) and `ChainEpoch` (`:233`), both in the cfg (`:26`, `:31`). **Both now hold exhaustively at `Len(audit_log) <= 1`** (§2A). Lean side is still broken: `stale_epoch_implies_deny` (`Proofs.lean:46`) → `sorryAx`; `epoch_gate_total` (`Proofs.lean:38`) → `sorryAx` |
 | Kani | **`prop_epoch_check` does not exist.** Cited at `AXIOMATIC_FOUNDATION.md:122` as `(✓ proved)`. The nearest match, `proof_epoch_check` (`formal/kani/prop_chain.rs:67`), is in a directory that **belongs to no crate** — there is no `Cargo.toml` under `formal/` — so `cargo kani` cannot resolve it. Its body asserts `(a<b) != (a>=b)`, a fact about `u64`. `proof_forged_revocation_ignored` (`prop_revocation.rs:35`) is literally **`kani::assert(true, …)`** |
 | **What is missing** | Expiry has no formal counterpart at all. The epoch invariants have never been executed. The signature half is an assumption, not a result — and see §5 for six things that assumption does **not** give you |
 
@@ -274,14 +373,14 @@ observes it can impersonate. Documented at `src/authgate/kernel/entities.py:105-
 
 | | |
 |---|---|
-| **Status** | **`PARTIAL` for clause 1; `NONE` for clause 2** |
+| **Status** | **`PARTIAL` for clause 1 (`CHECKED-BOUNDED` in TLA+); `NONE` for clause 2** |
 | Lean — proven | **`attenuation_transitive`**, `formal/lean4/Proofs.lean:18-23`, sorry-free. Statement: `Attenuated b a → Attenuated c b → Attenuated c a`. Real, but it is **transitivity of `⊆`** — it takes pairwise attenuation as a *hypothesis* and concludes the chain property. It does not prove that anything checks attenuation. It also lives in an unbuildable file (§2) |
 | Lean — tautology | **`attenuation_cannot_escalate`**, `MultiAgent.lean:38`. Cited by `AXIOMATIC_FOUNDATION.md:139` as "(proved)". Its body is **`:= h`** — it assumes `authorityAttenuated child parent` and concludes `∀ cp ∈ child, ∃ pp ∈ parent, permissionSubset cp pp`, which is that hypothesis unfolded. It proves nothing. The file also does not typecheck as committed |
 | Lean — broken | `rights_sufficiency_correct` (`Proofs.lean:28`) → `sorryAx`. `attenuationHolds` (`FreedomKernel.lean:173`) is a `def`, never proved |
 | **Clause 2 — Lean** | **`machine_cannot_govern_human`**, `TCB.lean:135`, is **`: True := trivial`**. This is the entire Lean content for "a machine cannot govern any human" |
 | **Clause 2 — TLA+** | **Nothing.** `grep -in "govern" formal/*.tla` returns zero hits in every TLA+ file |
 | **Clause 2 — Kani** | `prop_machine_governs_human_blocked` (`kani_proofs.rs:130`) — one concrete input, v1 engine, never run |
-| TLA+ (clause 1) | `Attenuation`, `authgate_v3.tla:190-196`, **is** in the cfg (`:28`). Never run |
+| TLA+ (clause 1) | `Attenuation`, `authgate_v3.tla:190-196`, **is** in the cfg (`:28`). **Holds exhaustively at `Len(audit_log) <= 1`** (§2A) |
 | Kani (clause 1) | **`prop_attenuation_two_node` does not exist.** Cited at `AXIOMATIC_FOUNDATION.md:141` as "(✓ proved)". The nearest match, `proof_attenuation_two_node` (`formal/kani/prop_chain.rs:39`), is in the crate-less directory, and its own comment (`:44-46`) says *"we stub the chain validation and only verify the rights check logic"*. It imports `validate_chain` at `:18` and **never calls it**. Its body proves `x & ~y == 0 ⟹ x & y == x` — elementary Boolean algebra over two integers. **It does not prove attenuation for arbitrary chains, and it does not prove it for 2 nodes either** |
 | **What is proven** | Set-subset transitivity, given pairwise attenuation as an assumption |
 | **What is missing** | That the implementation performs the pairwise check; the entire second clause of the axiom; and the resource-propagation restriction — `ValidChain` compares only rights and epoch across a parent edge, so a delegator redirecting a child cap to a *different resource* is not blocked by the modelled check |
@@ -295,9 +394,9 @@ observes it can impersonate. Documented at `src/authgate/kernel/entities.py:105-
 
 | | |
 |---|---|
-| **Status** | **`STATED-ONLY`** |
+| **Status** | **`CHECKED-BOUNDED`** — audit log ≤ 1 entry |
 | Lean | **No theorem states "no claim ⇒ deny".** The closest result, `public_read_permitted` (`FreedomKernel.lean:184`), is sorry-free but proves the **opposite direction** — that public reads *are* permitted. It is the axiom's documented exception, not the axiom |
-| TLA+ | Default-deny is a property of `Verify`'s definition (`authgate_v3.tla:142`: `IF valid_caps = {} THEN "Deny"`). Nearest named invariant is `PermitSoundness` (`:336-347`), in the cfg (`:34`). Never run |
+| TLA+ | Default-deny is a property of `Verify`'s definition (`authgate_v3.tla:142`: `IF valid_caps = {} THEN "Deny"`). Nearest named invariant is `PermitSoundness` (`:336-347`), in the cfg (`:34`). **Holds exhaustively at `Len(audit_log) <= 1`** (§2A) |
 | Fidelity of that invariant | **Near-tautological.** `PermitSoundness` re-states the same `valid_caps` set-builder that `ExecuteVerify` used to compute the decision (`:268`). It checks that the log agrees with `Verify`, not that `Verify` is right. It is strictly *weaker* than `Verify` — it drops `binding_valid` and `expiry` — so it cannot detect the failures A1 and A5(b) care about |
 | Kani | `prop_read_denied_without_claim` (`kani_proofs.rs:179`), `prop_write_denied_without_claim` (`:160`), `prop_delegation_denied_without_delegate_claim` (`:198`) all exist. All use **fully concrete inputs** — not one `kani::any()` appears in `kani_proofs.rs`. All target the **superseded v1 engine**. None has ever been compiled or run |
 | **What is proven** | Nothing about default-deny |
@@ -309,16 +408,18 @@ observes it can impersonate. Documented at `src/authgate/kernel/entities.py:105-
 
 | Axiom | Status | One-line reason |
 |---|---|---|
-| A1 Action integrity | **`NONE`** | Formal counterpart is an uninterpreted Boolean constrained by no invariant; delete the gate and nothing fails |
+| A1 Action integrity | **`NONE`** | **Demonstrated by mutation testing:** delete the gate, all ten invariants still pass with identical state counts (§2A) |
 | A2 Sovereignty flags | **`PARTIAL`** | Real proof, but about a 2-line model of the check; the theorem over the full gate is broken |
-| A3 Identity binding | **`STATED-ONLY`** | TLA+ invariant exists and is wired into the cfg, but has never run; hash injectivity is assumed; root caps are never identity-checked |
+| A3 Identity binding | **`CHECKED-BOUNDED`** | `IdentityBinding` holds exhaustively — but at an audit log of ≤1 entry; hash injectivity is assumed, not modelled; root caps are never identity-checked |
 | A4 No ownerless machine | **`PARTIAL`** | Genuinely proved over a composite gate model — the strongest result here — but its file does not compile and nothing links the model to code |
-| A5 Signed + time-bounded | **`ASSUMED` / `NONE` / `STATED-ONLY`** | Signature now explicitly assumed (§5); expiry has no formal counterpart at all; epoch invariants never executed |
-| A6 Attenuation + no dominion | **`PARTIAL` / `NONE`** | Only real content is transitivity of `⊆`; the cited theorem is `:= h`; clause 2's entire Lean content is `: True := trivial` |
-| A7 No ambient authority | **`STATED-ONLY`** | No theorem states the axiom's direction; the nearest TLA+ invariant restates the decision procedure |
+| A5 Signed + time-bounded | **`ASSUMED` / `NONE` / `CHECKED-BOUNDED`** | Signature explicitly assumed (§5) and the TLA+ suite is provably blind to deleting it; expiry is **unstatable** in this spec, not merely unchecked; epoch holds at ≤1 log entry |
+| A6 Attenuation + no dominion | **`PARTIAL` / `NONE`** | Only real Lean content is transitivity of `⊆`; the cited theorem is `:= h`; clause 2's entire Lean content is `: True := trivial`. `Attenuation` does hold in TLC at ≤1 log entry |
+| A7 No ambient authority | **`CHECKED-BOUNDED`** | `PermitSoundness` holds at ≤1 log entry, but it restates the decision procedure; no Lean theorem states the axiom's direction |
 
-**Zero axioms are `PROVEN`. Zero formal artifacts in this repository have ever
-been executed by CI. Kani has never been installed. TLC has never been run.**
+**Zero axioms are `PROVEN`. Zero formal artifacts in this repository are executed
+by CI. Kani has never been installed. TLC had never been run before this audit;
+it now has, and the result is a real but very small one (§2A) plus proof that the
+invariant suite is blind to two of the axioms it is supposed to constrain.**
 
 ---
 
@@ -446,7 +547,10 @@ falsifies. Fix or delete them before the review packet ships.
 | `formal/INCOMPLETENESS.md:87-94` | 8 harnesses marked "Unconditional" | All use fully concrete inputs. "Unconditional" is exactly what they lack |
 | `formal/lean4/FreedomKernel/Scope.lean:140-141` | "T-SC3 and T-SC4 are fully proved without sorry" | **T-SC4 depends on `sorryAx`.** T-SC3 does hold. T-SC2, undisclosed, is also broken |
 | `formal/TLC_SETUP.md:66-82` | Quotes `MC_AuthGateV3.cfg`'s invariant list | **Not one of the nine names is in the actual cfg.** Four exist in no `.tla` file at all. Following this document verbatim produces a config TLC rejects |
-| `formal/TLC_SETUP.md:174`, `README.md:358`, `REVIEW_PACKET/04:21` | TLC blocked on Java | **Java 17 is installed and on PATH.** Only `tla2tools.jar` is missing |
+| `formal/TLC_SETUP.md:174`, `README.md:358`, `REVIEW_PACKET/04:21` | TLC blocked on Java | **Java 17 is installed and on PATH.** The real blocker was a filename/module mismatch that makes the spec unparseable (§2A) |
+| `formal/TLC_SETUP.md:176` | Spec is "complete and ready" | **It does not parse.** `MC_AuthGateV3.tla:42` extends `AuthGateV3`; the file is `authgate_v3.tla` |
+| `formal/TLC_SETUP.md:8`, `MC_AuthGateV3.tla:11` | "<5 minutes on a 4-core machine", "feasible on a laptop in ~minutes" | **Does not terminate.** 26.5M states in 10 min at the committed bound, queue still growing (§2A) |
+| `attack_harness/ATTACK_MATRIX.md:52` | AT-1 TLA+ coverage "Full" | **Measured false.** Deleting the A1 gate leaves all ten invariants passing (§2A) |
 | `formal/COVERAGE.md:11,9` | Tracks "I1 CanonicalBinding", "I3 ExpiryGate" | Neither operator exists in any `.tla` file |
 | `formal/COVERAGE.md:34` | "Run `cargo kani` from `freedom-kernel/`" | Directory does not exist |
 | `formal/INVARIANT_LATTICE.md:246` | "cfg is wired to check all 10 invariants (I1–I8 + …)" | I5 `CompositionMono` is **not** in the cfg's list |
@@ -468,41 +572,56 @@ and names its blockers (only the Java one has since become false).
 
 In cost order. Note that the top three are hours, not months.
 
-1. **Run TLC.** Download `tla2tools.jar`; Java is already present. Moves A3, A5(c),
-   A6(1), A7 from `STATED-ONLY`. **But read §9 first** — a green run proves less
-   than it sounds.
-2. **Make the Lean build.** Add `lean-toolchain`, a lakefile covering all files,
+1. **Rename `formal/authgate_v3.tla` → `formal/AuthGateV3.tla`.** One line. Until
+   this is done the spec **does not parse** and TLC cannot run at all (§2A). This
+   is the single highest-value change in the repository right now.
+2. **Fix the invariant suite so it can fail.** Mutation testing (§2A) shows the
+   ten invariants pass unchanged when the A1 binding gate and both signature
+   checks are deleted. Add the two probe invariants from §2A to the cfg, and
+   record `now` in the audit log so expiry becomes statable at all. An invariant
+   suite that cannot fail is not evidence, and this one demonstrably cannot fail
+   for A1 or A5(a).
+3. **Pick a checkable bound.** `Len(audit_log) <= 3` does not terminate;
+   `<= 1` runs in 3s but admits no multi-decision interaction. `<= 2` is untried
+   and is the obvious next experiment.
+4. **Make the Lean build.** Add `lean-toolchain`, a lakefile covering all files,
    and a Mathlib dependency; fix the ~8 compile errors; delete or repair the 3
    vacuous `: True` theorems and the 2 tautologies. Then add `lake build` to CI so
    this cannot regress. Until this is done, **no Lean claim in this repo is
    reproducible by a reviewer.**
-3. **Install Kani and run the harnesses.** They have never been compiled. Two
+5. **Install Kani and run the harnesses.** They have never been compiled. Two
    mutually inconsistent Kani APIs are in use (`kani::assert!` macro form in
    `kani_proofs.rs` vs `kani::assert(cond, msg)` function form in `formal/kani/`),
    so expect compile errors before any proof runs.
-4. **Replace concrete Kani inputs with `kani::any()`.** Only 5 of 32 harnesses —
+6. **Replace concrete Kani inputs with `kani::any()`.** Only 5 of 32 harnesses —
    all in `tcb/sequence.rs`, which is explicitly outside the TCB — quantify over
    symbolic inputs. The other 27 are unit tests wearing a model checker's hat.
-5. **Point the harnesses at the v2 TCB.** Currently zero harnesses touch
+7. **Point the harnesses at the v2 TCB.** Currently zero harnesses touch
    `tcb/engine.rs`, `tcb/dag.rs`, or `tcb/call_gate.rs`.
-6. **Write the missing statements.** A1 needs an invariant that fails when the
+8. **Write the missing statements.** A1 needs an invariant that fails when the
    binding gate is removed. A5(b) needs any expiry property at all. A6 clause 2
    needs a real theorem instead of `: True := trivial`. A7 needs a theorem in the
    axiom's own direction.
-7. **Refinement.** Nothing connects the Lean models to the Rust or Python code.
+9. **Refinement.** Nothing connects the Lean models to the Rust or Python code.
    `A4` is proved about `permitted`, a hand-written model. Closing this is the
    contextual-refinement work, and it is the real project.
 
 ---
 
-## 9. Read this before celebrating a green TLC run
+## 9. Read this before citing the green TLC run
 
-Static analysis of the bounded model, so that a pass is not over-read:
+The run in §2A is real. These are the reasons it proves much less than
+"TLA+ verified" would suggest — the first three are now measured, not predicted:
 
 - **Bounds:** 4 actors, **1 resource**, `MaxChainDepth = 2`, `MaxEpoch = 2`,
-  `Len(audit_log) ≤ 3`, `CHECK_DEADLOCK FALSE`, no `PROPERTY` section (so **no
-  liveness is checked at all**). Only `"READ"` and `"WRITE"` of the 8 rights
-  appear.
+  **`Len(audit_log) ≤ 1`** (the committed bound of 3 does not terminate),
+  `CHECK_DEADLOCK FALSE`, no `PROPERTY` section (so **no liveness is checked at
+  all**). Only `"READ"` and `"WRITE"` of the 8 rights appear.
+- **The suite is blind to A1 and to signature checking** — measured by mutation,
+  §2A. This is the single most important caveat: for those two axioms a green
+  run carries no information whatsoever.
+- **Expiry is never exercised**: every model capability has `expiry |-> 2` and
+  `now ∈ {0,1,2}`, so the guard is universally true (§2A).
 - **The action space is hand-enumerated.** `MC_AuthGateV3.tla:269` replaces
   `\E a \in CanonicalAction` with `\E a \in MCActions` — a fixed 9-element set
   built from 6 hand-written capability records. TLC would explore only the
