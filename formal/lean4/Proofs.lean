@@ -63,6 +63,14 @@ theorem subject_mismatch_violates_binding
 -- If IsValidSig(key, sig, msg) holds, then no party without key's private key
 -- could have produced sig. This reduces to ed25519 EUF-CMA security.
 -- Admitted pending Lean 4 ed25519 formalization.
+--
+-- ⚠ SUPERSEDED — DO NOT CITE. Verified 2026-08-01: the conclusion below is
+-- `True`, which is provable without this axiom. It therefore assumes nothing,
+-- grants nothing, and cannot support any theorem. It is NOT the project's
+-- cryptographic assumption, despite being cited as such in
+-- AXIOMATIC_FOUNDATION.md:119,203 and REVIEW_PACKET/04:96.
+-- The real, non-vacuous assumption is `ed25519_euf_cma` in
+-- formal/lean4/FreedomKernel/Ed25519.lean. See ASSUMPTIONS.md §5.
 axiom sig_euf_cma
     (key : PrincipalId) (sig msg : List Nat)
     (h : IsValidSig key sig msg)
@@ -72,6 +80,11 @@ axiom sig_euf_cma
 -- If ¬ValidRevocation(rev), then rev does not contribute to a Deny decision.
 -- This is the "forged revocation ignored" property — proved by engine.rs code review
 -- (the `continue` on invalid sig), admitted here pending code-to-spec correspondence.
+--
+-- ⚠ VACUOUS — DO NOT CITE. Same defect: the conclusion is `True`. See
+-- ASSUMPTIONS.md §6. Note also that the property it gestures at is real but
+-- double-edged: the `continue` at tcb/engine.rs:93-96 is silent (no log, no
+-- error, no metric), which makes revocation fail-open, not merely DoS-resistant.
 axiom forged_revocation_harmless
     (rev : RevProof)
     (h : ¬ ValidRevocation rev)
