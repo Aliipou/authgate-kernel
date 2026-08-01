@@ -148,10 +148,48 @@ violated`**, with a concrete counterexample — a `Permit` on an action carrying
 decision. **The repo's ten invariants cannot see it.** The same holds for
 deleting `sig_valid` at both chain-walk sites.
 
-Root cause: the invariants are largely self-referential. `PermitSoundness` and
-`ChainEpoch` re-invoke the very `Verify`/`ValidChain` definitions that computed
-the decision, so weakening enforcement weakens the invariant in lockstep and
-nothing can fire.
+### The full mutation matrix
+
+Each enforcement check was deleted individually and the repo's **unmodified**
+10-invariant cfg run against the mutant. "Reproduced" marks the rows executed
+directly in this audit; the rest are reported and consistent with the two root
+causes below, but were not individually re-run.
+
+| Enforcement check deleted | Axiom | Repo's invariants | Reproduced here |
+|---|---|---|---|
+| `binding_valid` canonical gate | A1 | **NOT CAUGHT** | ✔ |
+| root signature `current.sig_valid` | A5(a) | **NOT CAUGHT** | ✔ |
+| intermediate signature | A5(a) | **NOT CAUGHT** | ✔ |
+| **attenuation `rights ⊆ parent.rights`** | **A6** | **NOT CAUGHT** | ✔ |
+| `c.expiry >= now` | A5(b) | **NOT CAUGHT** | — (structurally unstatable, see below) |
+| leaf epoch `c.epoch >= min_epoch` | A5(c) | **NOT CAUGHT** | — |
+| chain epoch | A5(c) | **NOT CAUGHT** | — |
+| `HasParent` chain completeness | I8 | **NOT CAUGHT** | — |
+| resource binding | A6/I6 | **NOT CAUGHT** | — |
+| identity binding | A3 | CAUGHT (`IdentityBinding`) | — |
+| rights coverage | A7 | CAUGHT (`PermitSoundness`) | — |
+| revocation | I4 | CAUGHT (`RevocationSafety`) | — |
+| actor match | A7 | CAUGHT (`EpochSafety`) | — |
+
+**Two distinct root causes, needing different fixes:**
+
+1. **Self-reference** (binding, both signatures, both epochs). `PermitSoundness`
+   and `ChainEpoch` re-invoke the very `Verify`/`ValidChain` definitions that
+   computed the decision, so weakening enforcement weakens the invariant in
+   lockstep and nothing can fire. Fix: write independent invariants, like the
+   two probes above.
+2. **Missing test data** (attenuation, `HasParent`, resource binding, expiry).
+   The invariant is fine; the model contains no input that could violate it.
+   **All six model capabilities carry `rights |-> {"READ"}`** — identical — so
+   no capability can escalate relative to its parent. Deleting the attenuation
+   check changes nothing, and an independently-written attenuation probe also
+   passes on the mutant. `MC_AuthGateV3.tla:31` documents
+   `EscalationCap  delegated cap claiming WRITE but parent only has READ
+   (triggers I3)` — **that capability is never defined.** Only the comment
+   exists. Fix: write the adversarial capabilities the header already promises.
+
+The second cause is the more dangerous of the two, because the invariant *looks*
+correct and *is* in the cfg. `Attenuation` passing is not evidence about A6.
 
 ### Expiry is structurally unverifiable in this spec
 
@@ -380,7 +418,7 @@ observes it can impersonate. Documented at `src/authgate/kernel/entities.py:105-
 | **Clause 2 — Lean** | **`machine_cannot_govern_human`**, `TCB.lean:135`, is **`: True := trivial`**. This is the entire Lean content for "a machine cannot govern any human" |
 | **Clause 2 — TLA+** | **Nothing.** `grep -in "govern" formal/*.tla` returns zero hits in every TLA+ file |
 | **Clause 2 — Kani** | `prop_machine_governs_human_blocked` (`kani_proofs.rs:130`) — one concrete input, v1 engine, never run |
-| TLA+ (clause 1) | `Attenuation`, `authgate_v3.tla:190-196`, **is** in the cfg (`:28`). **Holds exhaustively at `Len(audit_log) <= 1`** (§2A) |
+| TLA+ (clause 1) | `Attenuation`, `authgate_v3.tla:190-196`, **is** in the cfg (`:28`) and passes at `Len(audit_log) <= 1` — **but the pass carries no information.** Every model capability has `rights \|-> {"READ"}`, so escalation is unrepresentable; deleting the attenuation check entirely is not caught, and neither is it caught by an independently-written probe (§2A). The model's own documented escalation test case, `EscalationCap` (`MC_AuthGateV3.tla:31`), was never defined |
 | Kani (clause 1) | **`prop_attenuation_two_node` does not exist.** Cited at `AXIOMATIC_FOUNDATION.md:141` as "(✓ proved)". The nearest match, `proof_attenuation_two_node` (`formal/kani/prop_chain.rs:39`), is in the crate-less directory, and its own comment (`:44-46`) says *"we stub the chain validation and only verify the rights check logic"*. It imports `validate_chain` at `:18` and **never calls it**. Its body proves `x & ~y == 0 ⟹ x & y == x` — elementary Boolean algebra over two integers. **It does not prove attenuation for arbitrary chains, and it does not prove it for 2 nodes either** |
 | **What is proven** | Set-subset transitivity, given pairwise attenuation as an assumption |
 | **What is missing** | That the implementation performs the pairwise check; the entire second clause of the axiom; and the resource-propagation restriction — `ValidChain` compares only rights and epoch across a parent edge, so a delegator redirecting a child cap to a *different resource* is not blocked by the modelled check |
@@ -413,7 +451,7 @@ observes it can impersonate. Documented at `src/authgate/kernel/entities.py:105-
 | A3 Identity binding | **`CHECKED-BOUNDED`** | `IdentityBinding` holds exhaustively — but at an audit log of ≤1 entry; hash injectivity is assumed, not modelled; root caps are never identity-checked |
 | A4 No ownerless machine | **`PARTIAL`** | Genuinely proved over a composite gate model — the strongest result here — but its file does not compile and nothing links the model to code |
 | A5 Signed + time-bounded | **`ASSUMED` / `NONE` / `CHECKED-BOUNDED`** | Signature explicitly assumed (§5) and the TLA+ suite is provably blind to deleting it; expiry is **unstatable** in this spec, not merely unchecked; epoch holds at ≤1 log entry |
-| A6 Attenuation + no dominion | **`PARTIAL` / `NONE`** | Only real Lean content is transitivity of `⊆`; the cited theorem is `:= h`; clause 2's entire Lean content is `: True := trivial`. `Attenuation` does hold in TLC at ≤1 log entry |
+| A6 Attenuation + no dominion | **`PARTIAL` / `NONE`** | Only real Lean content is transitivity of `⊆`; the cited theorem is `:= h`; clause 2's entire Lean content is `: True := trivial`. The TLA+ `Attenuation` invariant passes but is **unfalsifiable** — no model capability can escalate (§2A) |
 | A7 No ambient authority | **`CHECKED-BOUNDED`** | `PermitSoundness` holds at ≤1 log entry, but it restates the decision procedure; no Lean theorem states the axiom's direction |
 
 **Zero axioms are `PROVEN`. Zero formal artifacts in this repository are executed
@@ -522,6 +560,7 @@ be re-cited by accident.
 | `proof_epoch_gate_priority` | `formal/kani/prop_revocation.rs:52` | Restates its own `let` binding |
 | `SovereigntyAlwaysBlocks` | `formal/freedom_kernel.tla:127` | `P ⇒ ¬(¬P ∧ …)` — `Permitted`'s own conjunct |
 | `OwnerlessMachineBlocked` | `formal/freedom_kernel.tla:131` | Same shape |
+| *(whole module)* | `formal/freedom_kernel.tla:77` | **Does not typecheck.** Line 77 uses `IsSeq`, which is not an operator in `Naturals, FiniteSets, Sequences, TLC` (its `EXTENDS`, line 27) — nor anywhere else. The module cannot be checked even in principle without editing it, which is why the two tautologies above have never been detected as such |
 | `RevocationSafety` | `formal/authgate_v3.tla:206` | Re-checks the same filter that produced the decision |
 
 All 7 files in `formal/kani/` belong to **no crate** — there is no `Cargo.toml`
@@ -556,6 +595,8 @@ falsifies. Fix or delete them before the review packet ships.
 | `formal/INVARIANT_LATTICE.md:246` | "cfg is wired to check all 10 invariants (I1–I8 + …)" | I5 `CompositionMono` is **not** in the cfg's list |
 | `formal/README.md:89` | "`MC_AuthGateV3.tla` — pending creation" | It exists and is 279 lines |
 | `SEMANTICS.md:276` | "`formal/authgate_kernel.tla` specifies the five core invariants" | No such file; the four listed belong to the orphan module |
+| `formal/freedom_kernel.tla:192` | `THEOREM Spec => []AttenuationHolds` | **A false theorem, not merely an unproved one.** `AttenuationHolds` (`:137-144`) quantifies over *every* pair of claims with different holders and the same resource where the delegator has `can_delegate` — **it requires no delegation relation between them**, so two entirely unrelated claims must be confidence-ordered. Reported violated by TLC within seconds once `IsSeq` is patched. The definition is verified here; the run is reported, not reproduced |
+| `MC_AuthGateV3.tla:31` | Documents `EscalationCap` as the attenuation test case | **Never defined.** Only the comment exists; all six model caps have `rights \|-> {"READ"}` (§2A) |
 | `MASTER_PLAN.md:63-67` | Top-priority TLC task | Describes `freedom_kernel.tla`'s constants and theorem count, but **that module has no `.cfg`**. The plan's highest-leverage action targets the model that cannot be run |
 | `attack_harness/ATTACK_MATRIX.md:52,251` | "TLC verifies…", "Verified by `ResourceBinding` in TLC" | TLC has never run. For `:52`, no invariant constrains `binding_valid` at all; for `:251`, `MCResources = {"r1"}` makes a cross-resource attack inexpressible |
 | `kani_proofs.rs:82-83` | "regardless of all other action fields" | `base_action()` five lines later pins every other field to a literal |
