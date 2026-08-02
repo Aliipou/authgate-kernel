@@ -9,7 +9,51 @@
  *   4. Attenuation             — delegation cannot exceed delegator's authority
  *   5. Machine sovereignty     — no machine accumulates unconstrained authority
  *
- * Status: research-grade specification with stated invariants.
+ * ┌───────────────────────────────────────────────────────────────────────────┐
+ * │ ORPHAN MODULE — NOT MODEL-CHECKED, NOT CHECKABLE AS WRITTEN               │
+ * └───────────────────────────────────────────────────────────────────────────┘
+ *
+ * Marked 2026-08-02 by adversarial audit. Read this before citing anything
+ * in this file as a verification result.
+ *
+ * 1. THERE IS NO .cfg FOR THIS MODULE. `MC_AuthGateV3.cfg` configures
+ *    AuthGateV3, a different module. No configuration in this repository
+ *    instantiates Humans, Machines, Resources or MaxDepth, so TLC cannot be
+ *    run against FreedomKernel at all. The THEOREM declarations below have
+ *    never been checked by anything.
+ *
+ * 2. TWO OF THE FOUR SAFETY INVARIANTS ARE PROPOSITIONAL TAUTOLOGIES of this
+ *    module's own `Permitted` definition, and would hold in any state
+ *    whatsoever:
+ *      - SovereigntyAlwaysBlocks (:127) asserts
+ *          SovereigntyFlags(a) => ~Permitted(a)
+ *        while Permitted (:114) is *defined* as `~SovereigntyFlags(a) /\ ...`.
+ *        The invariant restates the first conjunct of the definition.
+ *      - OwnerlessMachineBlocked (:132) asserts
+ *          (actor \in Machines /\ ~HasOwner(actor)) => ~Permitted(a)
+ *        while Permitted's second conjunct is
+ *          (a.actor \in Machines => HasOwner(a.actor)).
+ *        Again a restatement, not a constraint.
+ *    Checking these against a model would confirm the definition is
+ *    self-consistent — not that the kernel is safe.
+ *
+ * 3. The remaining two are NOT tautologies and would be worth checking if a
+ *    cfg existed: AttenuationHolds (:137) constrains the `claims` set, and
+ *    MachineWithinOwnerScope (:147) relates machine access to owner scope.
+ *    Note MachineWithinOwnerScope has no THEOREM declaration (see :189-192),
+ *    so it is not even stated as a target.
+ *
+ * 4. Docs that cite this module as evidence of verification are wrong, and
+ *    formal/TLC_SETUP.md previously quoted these invariant names as though
+ *    they were the contents of the runnable model's cfg. That has been
+ *    corrected.
+ *
+ * WHAT WOULD CHANGE THIS: write a FreedomKernel.cfg with concrete constants,
+ * rewrite INV1/INV2 as independent statements that do not re-invoke
+ * `Permitted`, run TLC, and commit the log. Until then this file is a
+ * research sketch.
+ *
+ * Status: research-grade specification with stated invariants. NOT VERIFIED.
  *
  * Honest scope:
  *   DOES model: authority graph, delegation lattice, sovereignty flag gate
@@ -18,7 +62,9 @@
  *                   ownership semantics for non-rival digital goods
  *
  * The THEOREM declarations below are stated targets, not mechanically
- * verified results. Next step: run TLC on a 3-entity/3-resource instance.
+ * verified results. Next step: write a .cfg for THIS module (none exists —
+ * see the ORPHAN notice above), then run TLC on a 3-entity/3-resource
+ * instance.
  *
  * Reference: نظریه آزادی by Mohammad Ali Jannat Khah Doust, pp. 791-816
  * Formal semantics: see SEMANTICS.md

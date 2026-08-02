@@ -61,13 +61,35 @@ extension on top of the gate?*
 **Goal:** Move from "stated invariants" to "verified invariants."
 
 **Priority 1.1 — TLC model check**
-Run the TLA+ spec through the TLC model checker on a finite instance:
-- 2 humans, 2 machines, 3 resources, `MaxDepth = 3`
-- Verify all 4 THEOREM declarations exhaustively
-- Document any violations found (they are bugs in the spec, not edge cases to ignore)
 
-This is the single highest-leverage action. It moves the project from
-"we believe these invariants hold" to "we have checked them mechanically."
+> **Repointed 2026-08-02.** This task previously specified "2 humans, 2
+> machines, 3 resources, `MaxDepth = 3`" and "all 4 THEOREM declarations" —
+> those are the constants and theorems of `formal/freedom_kernel.tla`, which
+> is an **orphan module with no `.cfg`** and therefore cannot be run at all
+> (see the ORPHAN notice in that file). The project's highest-priority task
+> was aimed at the one model that is not runnable.
+
+Run the **runnable** model — `AuthGateV3` via `MC_AuthGateV3` — through TLC:
+
+- Constants come from `MC_AuthGateV3.tla:46-52`: 4 actors, 1 resource (widen to
+  2 — with a single resource, cross-resource reuse is inexpressible), 5 proof
+  hashes, 4 public keys, `MaxChainDepth = 2`, `MaxEpoch = 2`.
+- First, make it parse: `MC_AuthGateV3.tla:42` extends module `AuthGateV3` but
+  the file is named `authgate_v3.tla`. Nothing has ever run because of this.
+- Check the 10 invariants named in `MC_AuthGateV3.cfg`, at a **stated bound**.
+  The shipped `Len(audit_log) <= 3` does not complete (~10⁹ states); report the
+  bound alongside every result.
+- Document any violations found — they are bugs in the spec, not edge cases to
+  ignore.
+- **Then mutate.** A green run whose invariants survive deletion of the
+  enforcement checks proves nothing. Deleting 9 of 13 checks currently leaves
+  every declared invariant green. Passing the mutation matrix, not passing TLC,
+  is the real exit criterion here.
+
+This remains the highest-leverage action, but note what it does and does not
+buy: it moves the project from "we believe these invariants hold" to "we have
+checked them mechanically **at these bounds**." That is exhaustive testing of a
+finite model, not a proof for arbitrary N.
 
 **Priority 1.2 — Delegation lattice proof**
 Formally prove or disprove: does the delegation relation form a bounded distributive lattice?

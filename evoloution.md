@@ -1175,7 +1175,15 @@ LOC ceiling	Must stay ≤ 200 lines
 Self-contained	No use crate:: imports
 Enums only	No struct definitions — structs carry state and open extension points
 Security guarantees
-These are formal properties of engine.rs, verified by Kani and Lean 4. They apply to the Rust TCB only.
+These are formal properties of engine.rs *stated as targets* for Kani and Lean 4. They apply to the Rust TCB only.
+
+> **Corrected 2026-08-02.** This line previously read "verified by Kani and
+> Lean 4". Neither verification has occurred: Kani is not installed and **none
+> of the harnesses have ever been run**, and **5 of 6 Lean files do not
+> compile**. Read P1–P3 below as intended properties, not established ones. In
+> particular P3's "Verified exhaustively by Kani over all possible input
+> combinations" is unsupported — and note that a Kani result is bounded by its
+> unwind bound in any case, which is not recorded anywhere in this repository.
 
 Property	Formal statement
 P1 Confinement	An agent cannot act on resources outside its explicit claim set. For all actions A and resources R: if verify(A) = PERMITTED then ∀r ∈ resources(A): actor holds valid claim on r.
