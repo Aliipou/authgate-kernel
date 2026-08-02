@@ -24,6 +24,24 @@ Any reviewer should therefore treat the columns below as **claims to be tested**
 as results. If you reproduce any row, please open an issue and say so; that is the
 single most useful contribution to this packet.
 
+### Update 2026-08-02 — three rows above are superseded
+
+The 2026-07-29 snapshot is preserved as written. Subsequent execution corrected
+it, in both directions:
+
+| Row | 2026-07-29 said | Established 2026-08-02 |
+|---|---|---|
+| Rust build | MSVC linker absent, no build | **`cargo build` compiles clean** (exit 0) on the gnu toolchain. Note the Kani harnesses are `#[cfg(kani)]` and are *not* compiled by this |
+| Lean | toolchain not resident | Toolchain resident (elan 4.2.3, Lean 4.32.2). **5 of 6 Lean files fail to compile**, identically under 4.32.2 and 4.31.0 — so this is a real defect, not version drift |
+| TLC | "Java availability unverified" | **Java 17.0.10 is installed and on PATH.** Java was never the blocker. The real blocker: the spec does not parse — `MC_AuthGateV3.tla:42` extends module `AuthGateV3`, but the file is named `authgate_v3.tla`. TLC had therefore never run against this spec, ever |
+| Kani | not installed | Unchanged — still not installed, still 0 of the harnesses run |
+
+The TLA+ row is the one that matters most for this packet's credibility: the
+stated blocker was false, and the true blocker was a one-line filename mismatch
+that any single attempt to run the documented command would have surfaced in
+under a second. That is independent evidence that the command had never been
+run. See `ASSUMPTIONS.md` and `formal/TLC_SETUP.md`.
+
 ## 2. Kani harnesses
 
 `kani::proof` appears **23 times** across non-target Rust sources. Distinct harness
@@ -113,7 +131,13 @@ cargo kani --harness prop_permitted_implies_no_violations
 # Lean 4
 cd formal/lean4 && lake build
 
-# TLA+, requires Java and tla2tools.jar
+# TLA+. Java 17 IS installed here; the earlier "Java unverified" note was wrong.
+# NOTE: as committed this fails immediately with
+#   "Cannot find source file for module AuthGateV3 imported in module MC_AuthGateV3"
+# because MC_AuthGateV3.tla:42 extends module AuthGateV3 while the file is
+# named authgate_v3.tla. Rename the file to AuthGateV3.tla first.
+# The shipped bound Len(audit_log) <= 3 does not complete (~10^9 states);
+# use a smaller bound and state which bound you used.
 java -cp tla2tools.jar tlc2.TLC -config formal/MC_AuthGateV3.cfg formal/MC_AuthGateV3.tla
 ```
 
@@ -123,5 +147,15 @@ The point of publishing a table of failures is that it is checkable. A reviewer 
 run one command and move a cell, and every moved cell is worth more than any sentence
 in the README. If you are reading this because you received an outreach email: the
 claim being made to you is **not** "this kernel is verified". The claim is "here are
-thirteen bounded properties, ten model-checked invariants and a Lean development with
-two admitted steps, and here is exactly how to attack them".
+thirteen bounded properties, ten **declared** invariants and a Lean development, and
+here is exactly how to attack them".
+
+Corrected 2026-08-02: the phrase "ten model-checked invariants" above was wrong —
+they are ten *declared* invariants, and none had been model-checked when this
+packet was written. Worse, and more useful to a reviewer: mutation testing shows
+that **deleting 9 of 13 enforcement checks in the model leaves all ten declared
+invariants green.** Several of them cannot distinguish a correct implementation
+from a broken one, because they re-invoke the same `Verify`/`ValidChain`
+definitions that produced the decision under test. If you attack one thing in
+this repository, attack that. See `ASSUMPTIONS.md` for the full mutation matrix
+and `attack_harness/ATTACK_MATRIX.md` for the re-adjudicated per-class verdicts.

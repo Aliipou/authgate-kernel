@@ -3,9 +3,21 @@
 This document provides step-by-step setup to run the TLA+ model checker (TLC)
 against `formal/AuthGateV3.tla` and `formal/MC_AuthGateV3.tla`.
 
-TLC will verify 9 invariants + PermitSoundness exhaustively on the finite
-model (3 actors, 3 resources, 3 epochs). Estimated runtime: <5 minutes on
-a 4-core machine.
+> **Read this first.** Two claims that stood in this document for months were
+> false, and are corrected below:
+>
+> 1. The blocker was never Java. Java 17 is installed and on PATH; TLC was
+>    never run because **the committed spec does not parse** (see
+>    "Current status").
+> 2. The runtime estimate below was never measured. At the bound the model
+>    actually ships (`Len(audit_log) <= 3`) the state space is on the order
+>    of 10⁹ and does **not** complete.
+
+The cfg declares 10 invariants (`TypeInvariant`, `EpochSafety`,
+`IdentityBinding`, `Attenuation`, `RevocationSafety`, `ResourceBinding`,
+`ChainEpoch`, `ChainComplete`, `BigSafety`, `PermitSoundness`) over a finite
+model of **4 actors, 1 resource, 5 proof hashes, 4 public keys,
+MaxChainDepth = 2, MaxEpoch = 2** (`MC_AuthGateV3.tla:46-52`).
 
 ---
 
@@ -63,25 +75,61 @@ Model checking completed. No error has been found.
 
 ### What TLC checks
 
-The `MC_AuthGateV3.cfg` file specifies:
+The `MC_AuthGateV3.cfg` file specifies, verbatim:
 
 ```
-SPECIFICATION Spec
-INVARIANT
-  SovereigntyAlwaysBlocks
-  OwnerlessMachineBlocked
-  AttenuationHolds
-  MachineWithinOwnerScope
-  NoDominionWithoutOwnership
-  NoForbiddenFlagPermitted
-  HighConfidenceRequiresExplicitClaim
-  EpochSafetyHolds
-  RevocationHonored
-THEOREM PermitSoundness
+SPECIFICATION MCSpec
+
+CONSTANTS
+  Actors      <- MCActors
+  Resources   <- MCResources
+  ProofHashes <- MCProofHashes
+  PublicKeys  <- MCPublicKeys
+  RootKey     <- MCRootKey
+  MaxChainDepth <- MCMaxChainDepth
+  MaxEpoch    <- MCMaxEpoch
+  Hash        <- MCHash
+
 CONSTRAINT MCConstraint
+
+INVARIANTS
+  TypeInvariant
+  EpochSafety
+  IdentityBinding
+  Attenuation
+  RevocationSafety
+  ResourceBinding
+  ChainEpoch
+  ChainComplete
+  BigSafety
+  PermitSoundness
+
+CHECK_DEADLOCK FALSE
 ```
 
-`MCConstraint` bounds the state space to ≤3 log entries to make TLC tractable.
+> **Correction.** Every previous revision of this document quoted a config that
+> does not exist, naming nine invariants. **Not one of the nine appears in
+> `MC_AuthGateV3.cfg`** — the file this document claimed to be quoting.
+> Specifically:
+>
+> - `SovereigntyAlwaysBlocks`, `OwnerlessMachineBlocked`, `AttenuationHolds`,
+>   `MachineWithinOwnerScope` are real definitions, but they live in
+>   `formal/freedom_kernel.tla` — a **different module, with no `.cfg` at all**
+>   (see the ORPHAN notice in that file). Quoting them here attributed the
+>   orphan module's invariants to the runnable model.
+> - `NoDominionWithoutOwnership`, `NoForbiddenFlagPermitted`,
+>   `HighConfidenceRequiresExplicitClaim`, `EpochSafetyHolds`,
+>   `RevocationHonored` appear in **no `.tla` or `.cfg` file in this
+>   repository** at all.
+>
+> The quote also wrote `SPECIFICATION Spec` (the real cfg uses `MCSpec`) and
+> `THEOREM PermitSoundness`, which is not a TLC config keyword. The block above
+> is copied verbatim from the real `MC_AuthGateV3.cfg`.
+
+`MCConstraint == Len(audit_log) <= 3` (`MC_AuthGateV3.tla:277`) is the shipped
+bound. It is **not tractable**: 26.5M states generated / 2.3M distinct after
+10 minutes on 4 workers with the queue still growing. Use a smaller bound to
+get a completing run, and state the bound whenever you cite the result.
 
 ### Parallel TLC (faster on multi-core)
 
@@ -99,12 +147,15 @@ Apalache can check some properties symbolically without state enumeration:
 curl -L https://github.com/apalache-mc/apalache/releases/download/v0.42.0/apalache.zip -o /tmp/apalache.zip
 unzip /tmp/apalache.zip -d /tmp/
 
-# Check one invariant
+# Check one invariant (use a name that actually exists in the spec)
 /tmp/apalache/bin/apalache-mc check \
-  --inv=SovereigntyAlwaysBlocks \
+  --inv=PermitSoundness \
   --length=5 \
   formal/AuthGateV3.tla
 ```
+
+Apalache has **not** been run against this spec. Nothing below the line
+"Apalache can check some properties symbolically" has ever been executed here.
 
 ---
 
@@ -171,18 +222,44 @@ spec means the state machine is stuck — usually a missing transition.
 
 ## Current status
 
-**TLC has not yet been run** — this is MASTER_PLAN success criterion #1 (pending Java setup).
+**Java was never the blocker.** Java 17.0.10 is installed and on PATH. The
+previous text here ("pending Java setup") was false.
 
-The spec (`AuthGateV3.tla`) and model (`MC_AuthGateV3.tla`, `MC_AuthGateV3.cfg`)
-are complete and ready. The only requirement is Java installation and tla2tools.jar download.
+**The committed spec does not parse.** Running the exact command this document
+gives:
 
-Estimated time to run: <5 minutes on a laptop once Java is available.
+```
+Cannot find source file for module AuthGateV3 imported in module MC_AuthGateV3.
+*** Errors: 1
+```
+
+`MC_AuthGateV3.tla:42` says `EXTENDS AuthGateV3`. TLA+ requires the filename to
+match the module name. The module declared on line 1 of `formal/authgate_v3.tla`
+is `AuthGateV3`; the **file** is `authgate_v3.tla`. These differ by more than
+case, so this fails on every platform. Anyone who had ever run the documented
+command once, anywhere, would have hit this in under a second — which is
+independent proof that TLC had never been run here.
+
+The fix is a one-line rename (`authgate_v3.tla` → `AuthGateV3.tla`); it is
+being made on the `tlc-remediation` branch, not here, because this branch is
+scoped to correcting claims rather than changing the model.
+
+The previous claim that the spec and model are "complete and ready" was
+therefore also false, and is withdrawn.
 
 ---
 
 ## After running TLC
 
-1. If all invariants pass: mark criterion #1 ✓ in `TODO.md`
-2. Commit `tlc_run.log` to `spec-core` branch
-3. Update `formal/COVERAGE.md`: change PENDING TLC → ✓ VERIFIED (date)
-4. Update `README.md` badge: TLA+ → VERIFIED
+1. Commit the run log (with its exact bound and command line) to
+   `formal/tlc_runs/`.
+2. Update `formal/COVERAGE.md` and the status tables — but record
+   **"checked at bound X"**, never "VERIFIED". A completing TLC run at these
+   bounds is an exhaustive check of a finite model, not a proof for arbitrary
+   N. State the bound in the same sentence as the result, every time.
+3. A green run does **not** license a "verified" badge in `README.md`. A green
+   run whose invariants cannot detect a deleted enforcement check (see
+   `ASSUMPTIONS.md`, mutation matrix) licenses nothing at all — fix the
+   invariants first, then re-run.
+4. Statuses may only stay the same or go DOWN as a result of review. They go
+   up only against a new run or proof committed as evidence.

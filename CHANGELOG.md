@@ -5,6 +5,21 @@ All notable changes to Freedom Kernel are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+> **Standing correction, added 2026-08-02.** Past entries below are preserved as
+> written — a changelog is a historical record and is not rewritten here. But
+> two recurring claims in them are false and should not be relied on:
+>
+> - **"Kani harnesses: N (all proved)"** (e.g. v-entries at :89, :138). Kani has
+>   never been installed on this project's machine and **not one harness has
+>   ever been run**. They are written, not proved.
+> - Any entry implying the TLA+ invariants were model-checked. **TLC had never
+>   been run against this spec** as of 2026-08-01 — the spec did not parse
+>   (`MC_AuthGateV3.tla:42` extends module `AuthGateV3`; the file is named
+>   `authgate_v3.tla`).
+>
+> Current, execution-backed status lives in `ASSUMPTIONS.md`. Where this
+> changelog and that file disagree, that file is correct.
+
 ## v2.4.0 — 2026-05-29
 
 ### Added

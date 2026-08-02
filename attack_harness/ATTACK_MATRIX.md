@@ -2,6 +2,34 @@
 
 Branch: `adversarial-lab` | Status: formal closure analysis
 
+## Adjudicated TLA+ coverage (2026-08-02)
+
+Every "TLA+ coverage" grade below this line was originally **self-assigned**.
+An adversarial audit re-graded all seven against the actual spec and against
+mutation testing (delete the enforcement check, re-run the unmodified cfg, see
+whether any declared invariant fires). Statuses moved **down** in five of seven
+classes. Per this repo's rules, statuses may only stay the same or go down
+under review; they go up only against a new run or proof committed as evidence.
+
+| Class | Was (self-graded) | **Now (adjudicated)** | Why it moved |
+|---|---|---|---|
+| AT-1 | Full | **NONE** | No invariant constrains `binding_valid`; deleting the gate changes nothing |
+| AT-2 | Full (structural) | **PARTIAL** | `RootKey` never executes; `sig_valid` opaque; attenuation unfalsifiable |
+| AT-3 | Full | **PARTIAL** | Epoch vacuity; `RevocationSafety` near-tautological; expiry has no invariant |
+| AT-4 | Partial | **PARTIAL** | Stands — the only self-grade that survived. `CompositionMono` is tautological-by-construction |
+| AT-5 | Full | **PARTIAL** | Strongest of the seven, but root nodes uncovered and `Hash` injectivity is an `ASSUME` |
+| AT-6 | Full | **NONE** | `MCResources == {"r1"}` — cross-resource reuse is *inexpressible*, not merely unchecked |
+| AT-7 | NONE | **NONE** | Confirmed. The one class graded honestly on the first pass |
+
+**As of this adjudication, TLC had never been run against this spec** — not for
+want of Java (17 is installed), but because the spec did not parse
+(`MC_AuthGateV3.tla:42` extends module `AuthGateV3`; the file is named
+`authgate_v3.tla`). Any sentence in this document of the form "TLC verifies…"
+predates any execution and should be read as an intention, not a result. See
+`ASSUMPTIONS.md` and `formal/TLC_SETUP.md`.
+
+---
+
 ## Purpose
 
 This document is the **bridge layer** between three truths:
@@ -49,7 +77,13 @@ Verify(action, ...) ==
   IF ~action.binding_valid THEN "Deny"
 ```
 
-**TLA+ coverage:** Full. `binding_valid` is a boolean field; the MC model includes `TamperedAction` with `binding_valid = FALSE`. TLC verifies this always produces "Deny".
+**TLA+ coverage:** **NONE** (adjudicated 2026-08-02; previously self-graded "Full").
+No invariant constrains `binding_valid`. Delete the gate at `authgate_v3.tla:132`
+(`IF ~action.binding_valid THEN "Deny"` → `IF FALSE THEN "Deny"`) and every
+invariant in the cfg still holds, with byte-identical state counts — so the
+model cannot see this check at all. The previous sentence "TLC verifies this
+always produces Deny" was false twice over: TLC had never been run, and it
+would not have caught this if it had.
 
 **TCB code closure:**
 ```
@@ -74,7 +108,20 @@ engine.rs: first check before any proof processing
 
 **Simulation scenarios:** `tamper_actor_id`, `tamper_resource_hash`, `tamper_required_rights_escalate`, `tamper_min_epoch_lower`, `tamper_nonce`, `tamper_timestamp`, `at7_post_seal_rights_escalate`, `at7_post_seal_actor_swap`
 
-**TLA+ blind spot:** None for this class. The `binding_valid` abstraction captures the check exactly. The SHA-256 collision resistance is an **assumption**, not a proof — but this is standard for protocol-level specs.
+**TLA+ blind spot:** The whole class, at present. The `binding_valid` abstraction
+does describe the check, but nothing in the model *tests* it, so the abstraction
+is decorative rather than load-bearing. Closing this needs an independent
+invariant, e.g.
+
+```tla
+NoPermitOnTamperedBinding ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" => audit_log[i].action.binding_valid
+```
+
+which passes on the baseline and *does* catch the mutant above. SHA-256
+collision resistance remains an **assumption**, not a proof — standard for
+protocol-level specs, and separately declared.
 
 **Closure condition:** AT-1 is closed when `verify_binding()` is the first check in `verify()` and is constant-time. This is verified by code inspection (no timing branch before the check).
 
@@ -88,7 +135,22 @@ engine.rs: first check before any proof processing
 - `Attenuation` (I3): `child.rights ⊆ parent.rights`
 - `ValidChain` predicate: `sig_valid`, `HasParent`, depth limit
 
-**TLA+ coverage:** Full for structural properties. `ValidChain` in the spec models: signature validity (via `sig_valid` field), parent chain completeness (`HasParent`), attenuation (`rights ⊆`), and depth limit. The MC model includes `BadSigCap`, `ImpersonationCap` scenarios.
+**TLA+ coverage:** **PARTIAL** (adjudicated 2026-08-02; previously self-graded
+"Full for structural properties"). `ValidChain` does *state* signature validity,
+parent completeness, attenuation and the depth limit, and `ImpersonationCap`
+genuinely exercises identity binding. But three specific holes remain:
+
+- **`RootKey` never appears in any executable expression.** Root validation
+  checks only `current.sig_valid` (`authgate_v3.tla:103`), so any
+  `issuer_pubkey` whatsoever validates a root cap as long as `sig_valid` is
+  TRUE. The distinguished root key is declared and then never used.
+- **`sig_valid` is an opaque Boolean.** Deleting the root or intermediate
+  signature check leaves every declared invariant green.
+- **Attenuation is unfalsifiable at this model.** All six model capabilities
+  carry `rights |-> {"READ"}`, so no capability *can* escalate relative to its
+  parent. The `EscalationCap` promised in the header comment at
+  `MC_AuthGateV3.tla:31` ("delegated cap claiming WRITE but parent only has
+  READ") **is never defined — only the comment exists.**
 
 **TCB code closure:**
 ```
@@ -131,7 +193,22 @@ Both of these are prevented by **AT-5 (identity binding)** and **AT-1 (binding i
 - `ChainEpoch` (I7): every chain node `epoch >= min_epoch`
 - `RevocationSafety` (I4): revoked proof_hash never Permit
 
-**TLA+ coverage:** Full. The spec models `AdvanceEpoch` as a monotone transition. The `EpochSafety` and `ChainEpoch` invariants are checked on every `audit_log` entry. The MC model includes `StaleEpochAction` (I1), `StaleIntermediateAction` (I7), and the `Revoke` transition (I4).
+**TLA+ coverage:** **PARTIAL** (adjudicated 2026-08-02; previously self-graded
+"Full"). `AdvanceEpoch` is genuinely modeled as a monotone transition, and the
+adversarial actions exist. What does not hold up:
+
+- **Epoch vacuity.** `ExecuteVerify` requires `action.min_epoch = global_epoch`,
+  and the pre-enumerated actions fix `min_epoch` at 1 or 2, so verification is
+  enabled at only one epoch value along most traces. Deleting the leaf-epoch or
+  chain-epoch check leaves every declared invariant green.
+- **`RevocationSafety` is near-tautological.** `Verify` filters on
+  `revoked_set`, records the same set as `revoked_at`, and the invariant then
+  re-checks that stored value — it restates the filter that produced the
+  decision rather than testing it against independently tracked history.
+  `PermitSoundness` has the same shape: it re-invokes `Verify`'s own predicates.
+- **Expiry has no invariant at all.** `c.expiry >= now` is enforced inside
+  `Verify` and asserted nowhere, so AT-3.6 is closed in Rust but untested in the
+  model.
 
 **TCB code closure:**
 ```
@@ -166,7 +243,18 @@ engine.rs: cap.proof_hash == rev.target_proof_hash + sig verify → Deny (I4)
 - `CompositionMono` (I5): `session_rights` only grows; never decreases
 - The spec models `SequenceContext` state accumulation
 
-**TLA+ coverage:** Partial. The spec models that `session_rights` can only grow (monotonicity). It does NOT model session limits or policy rules that compare `session_rights` against a maximum. This means TLA+ covers "monotone accumulation" but not "limit enforcement" — the latter is a policy layer concern.
+**TLA+ coverage:** **PARTIAL** (adjudicated 2026-08-02 — the previous
+self-grade of "Partial" stands, and is the only self-grade in this document
+that survived adjudication unchanged). The spec models that `session_rights`
+can only grow. It does NOT model session limits or policy rules comparing
+`session_rights` against a maximum — TLA+ covers "monotone accumulation" but
+not "limit enforcement", which is a policy-layer concern.
+
+One caveat to add: `CompositionMono` asserts that `session_rights` equals the
+union of `required_rights` over Permitted log entries — which is precisely what
+`ExecuteVerify` does to `session_rights` on Permit. It is therefore
+tautological-by-construction: it restates the update rule rather than
+constraining it, and cannot fail unless the two definitions are edited apart.
 
 **TCB code closure:**
 ```
@@ -197,7 +285,18 @@ policy layer (outside TCB): compare accumulated_rights vs session_limit
 **Formal invariant target:**
 - `IdentityBinding` (I2): `Hash(child.issuer_pubkey) = parent.subject_id`
 
-**TLA+ coverage:** Full. `ValidChain` in the spec checks `Hash(current.issuer_pubkey) = parent.subject_id` at every Delegated node. The MC model includes `ImpersonationCap` where `MCHash("pk3") = "a3" ≠ RootCap.subject_id = "a1"`.
+**TLA+ coverage:** **PARTIAL** (adjudicated 2026-08-02; previously self-graded
+"Full"). This is the **strongest** of the seven — identity binding is the one
+enforcement check that mutation testing confirms the declared invariants
+actually catch, and `ImpersonationCap` is a real adversarial witness. Two
+qualifications keep it from Full:
+
+- The identity check applies only to `Delegated` nodes. Root nodes are checked
+  against `sig_valid` alone, and `RootKey` appears in no executable expression
+  (see AT-2), so AT-5.3 "root cap requires sig against known root_key" holds in
+  Rust but has **no counterpart in the model**.
+- `Hash` injectivity is an `ASSUME` (`authgate_v3.tla:45`), not a result. The
+  identity argument rests on it.
 
 **TCB code closure:**
 ```
@@ -231,7 +330,14 @@ dag.rs: validate_chain()
 **Formal invariant target:**
 - `ResourceBinding` (I6): `c.resource_hash = action.resource_hash` for every Permit
 
-**TLA+ coverage:** Full. `Verify` checks `c.resource_hash = action.resource_hash` in the `valid_caps` set builder. `ResourceBinding` invariant is checked on every audit_log entry.
+**TLA+ coverage:** **NONE** (adjudicated 2026-08-02; previously self-graded
+"Full"). **The MC model defines exactly one resource** —
+`MCResources == {"r1"}` (`MC_AuthGateV3.tla:47`), a choice the header comment
+justifies as "reduces state explosion". Cross-resource reuse is therefore not
+merely unchecked but **inexpressible**: there is no second resource to reuse a
+capability *for*. Deleting the resource-binding check leaves every declared
+invariant green. Closing this requires at minimum
+`MCResources == {"r1","r2"}` plus a bundle carrying a wrong-resource cap.
 
 **TCB code closure:**
 ```
@@ -248,7 +354,15 @@ engine.rs: check_cap() — cap.resource_hash != action.resource_hash → Deny
 
 **TLA+ blind spot:** The spec models `Resources` as abstract set elements. It cannot model that two different human-meaningful resources might map to the same `resource_hash` (collision). Collision resistance is a **cryptographic assumption**, not a proof.
 
-**Closure condition:** AT-6 is closed when every Permit's cap bundle contains a cap whose `resource_hash` equals the action's `resource_hash`. Verified by `ResourceBinding` invariant in TLC.
+**Closure condition:** AT-6 is closed when every Permit's cap bundle contains a
+cap whose `resource_hash` equals the action's `resource_hash`. This is enforced
+in `engine.rs` and covered by the simulation scenarios above.
+
+> **Retracted claim.** This line previously read "Verified by `ResourceBinding`
+> invariant in TLC." That was false in two independent ways: TLC had never been
+> run against this spec at all, and with a single-element `MCResources` the
+> invariant could not have distinguished a correct implementation from a broken
+> one even if it had.
 
 ---
 
@@ -258,7 +372,11 @@ engine.rs: check_cap() — cap.resource_hash != action.resource_hash → Deny
 
 **Formal invariant target:** No invariant in `AuthGateV3.tla` models this class. The spec assumes `verify()` is called — it cannot model the absence of a call.
 
-**TLA+ coverage:** NONE. This is a **structural blind spot** in the formal model by design. The spec models what `verify()` does when called; it cannot model a system that doesn't call it.
+**TLA+ coverage:** **NONE** (adjudicated 2026-08-02 — self-grade confirmed).
+This is a **structural blind spot** in the formal model by design: the spec
+models what `verify()` does when called and cannot model a system that never
+calls it. Recorded here as the one class this document graded honestly on the
+first pass.
 
 **TCB code closure:**
 

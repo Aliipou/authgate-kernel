@@ -45,19 +45,24 @@
 --   authgate-kernel/src/tcb/dag.rs:71      (intermediate delegation signature)
 --   authgate-kernel/src/tcb/engine.rs:110  (revocation signature)
 -- Feature set: default + rand_core. `batch` OFF, `legacy_compatibility` OFF.
+-- Neither ed25519-dalek nor curve25519-dalek carries a machine-checked proof of
+-- correctness or of constant-time execution AS BUILT.
 --
--- CORRECTION (2026-08-02): this file previously asserted
---   "There is no HACL*/Fiat/EverCrypt code anywhere in the dependency graph."
--- That was FALSE. `fiat-crypto 0.2.9` is pinned at Cargo.lock:634 and
--- `curve25519-dalek 4.1.3` depends on it unconditionally (Cargo.lock:486).
--- The accurate statement is narrower: Fiat-Crypto's verified field arithmetic
--- is COMPILED BUT NOT SELECTED. curve25519-dalek picks its backend at build
--- time and, with no `curve25519_dalek_backend` cfg set, defaults to
--- serial/simd rather than `fiat`. The verified code ships in the dependency
--- tree and is never called. Selecting it is a build flag, not a port:
+-- CORRECTED 2026-08-02: this comment previously read "There is no
+-- HACL*/Fiat/EverCrypt code anywhere in the dependency graph." That is false.
+-- `fiat-crypto 0.2.9` is pinned at Cargo.lock:634, and curve25519-dalek 4.1.3
+-- depends on it unconditionally (Cargo.lock:477-489). Fiat-Crypto's verified
+-- field arithmetic is therefore COMPILED BUT NOT SELECTED: the arithmetic
+-- backend is chosen at build time and, with no `curve25519_dalek_backend` cfg
+-- set, defaults to simd/serial rather than `fiat`. The verified code ships in
+-- the dependency tree and is never called.
+--
+-- Selecting it is one build flag:
 --   RUSTFLAGS='--cfg curve25519_dalek_backend="fiat"' cargo build
--- Neither ed25519-dalek nor curve25519-dalek AS BUILT carries a machine-checked
--- proof of correctness or of constant-time execution.
+-- That would cover field arithmetic only — NOT point decompression, NOT
+-- small-order handling (see `SmallOrder` below), NOT scalar range checks, and
+-- NOT unforgeability. It shrinks this axiom's surface; it does not discharge
+-- it. See formal/CRYPTO_VERIFICATION_PLAN.md §3.
 --
 -- ── Scope ──────────────────────────────────────────────────────────────────
 -- These axioms constrain `authgate-kernel/src/tcb/dag.rs` and
@@ -148,6 +153,17 @@ that marks this "verified" after a library swap is wrong.
 The conclusion is `Signed pk m` — a real proposition, not `True`. Removing this
 axiom must break any proof that depends on it; if it does not, the proof never
 depended on signatures.
+
+**THE SPLIT THIS DOCSTRING USED TO DEMAND HAS BEEN CARRIED OUT.** An earlier
+version of this passage read "THIS AXIOM CONFLATES TWO SEPARABLE CLAIMS AND
+SHOULD BE SPLIT", written when a single fused `ed25519_euf_cma` asserted both
+(a) implementation correctness — that `Verify` computes the RFC 8032 predicate —
+and (b) cryptographic hardness. That recommendation was acted on: (a) is now
+`ed25519_verify_matches_rfc8032` (:134) and (b) is *this* axiom. The warning it
+carried still stands and is stated where it belongs, directly above: only (a) is
+dischargeable by a verified implementation, so a status table that marks this
+axiom "verified" after a library swap is wrong.
+See formal/CRYPTO_VERIFICATION_PLAN.md §6.
 
 The two hypotheses are not decoration. They are exactly the two guarantees the
 code does NOT establish for itself, and they attach HERE, to hardness, rather

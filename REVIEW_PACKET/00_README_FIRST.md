@@ -32,10 +32,14 @@ Everything else is outside the TCB by construction.
 
 ## 3. Where to go, by what you care about
 
+**If you are short on time, read `05_WHAT_TO_ATTACK.md` instead of this table.**
+It lists the six places we believe this project is weakest, with the evidence
+for each, and opens with a one-command falsification of our own formal layer.
+
 | You work on | Read | Then attack |
 |---|---|---|
-| Capability security | `PRIOR_ART.md` (568 lines, Lampson 1974 onward), `SEMANTICS.md` | `Attenuation`: can rights re-widen along any path? |
-| Formal methods | `04_FORMAL_VERIFICATION_STATUS.md`, `formal/` | The two admitted Lean steps, and the unwind bounds |
+| Capability security | `PRIOR_ART.md` (568 lines, Lampson 1974 onward), `SEMANTICS.md` | `Attenuation`: can rights re-widen along any path? Note it is currently **unfalsifiable in the model** — all six model caps hold identical rights |
+| Formal methods | `05_WHAT_TO_ATTACK.md`, `ASSUMPTIONS.md`, `04_FORMAL_VERIFICATION_STATUS.md`, `formal/` | That 9 of 13 enforcement checks can be deleted with every declared invariant still green |
 | Agent security | `THREAT_MODEL.md`, `EXTERNAL_REVIEW_PACKAGE.md` | Injection that spends a legitimately held capability |
 | Systems | `ARCHITECTURE.md`, `TCB.md`, `NON_GOALS.md` | Anything reachable that bypasses `CallGate` |
 

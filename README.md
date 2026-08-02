@@ -91,13 +91,13 @@ Full enumeration: [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md)
 | Security-enforcing Rust LOC | `engine.rs`: 250 LOC. Full path (`engine.rs` + `dag.rs` + `call_gate.rs`): ~934 LOC |
 | TCB Rust tests | 141 (all passing) |
 | Python integration tests | 905 (all passing) |
-| Kani harnesses (bounded model checking) | 19 (all proved) |
-| Lean 4 theorems | 16 (4 fully proved scope theorems + 2 admitted; 2 crypto axioms) |
+| Kani harnesses (bounded model checking) | 19 written. **0 ever run** — Kani is not installed (`cargo kani` → no such command), and the harnesses are `#[cfg(kani)]`, so `cargo build` never compiles them either. "All proved" was false. |
+| Lean 4 theorems | 16 declared, but **5 of 6 Lean files fail to compile** (identical errors under toolchains 4.32.2 and 4.31.0, so this is not version drift). A theorem in a file that does not build is not discharged. |
 | Wire boundary attack classes | 18 (WA-1 through WA-18); 37 pytest assertions in `test_wire_hardening.py` |
 | Concurrent verify() calls (stress test) | 1 000 via ThreadPoolExecutor, 200 concurrent audit appends |
 | Python verify() latency | p50 ≈ 9.7µs (10-claim registry), 17.4µs (1 000-claim) |
 | Delegation lattice theorems | T1–T4 proved: transitivity, anti-monotone, DAG, bounded distributive lattice |
-| TLA+ invariants | 9 + PermitSoundness (TLC run pending Java setup) |
+| TLA+ invariants | 10 declared in `MC_AuthGateV3.cfg`. TLC had never been run as of 2026-08-01 — not for want of Java (17 is installed) but because the spec does not parse. Mutation testing shows **9 of 13 enforcement checks can be deleted without any declared invariant firing**. See `ASSUMPTIONS.md`. |
 
 ---
 
@@ -160,9 +160,9 @@ freedom-kernel/src/
   sandbox.rs         SandboxedExecutor — WASM capability-gated tool runner
 
 formal/
-  AuthGateV3.tla    TLA+ state machine (9 invariants + PermitSoundness)
-  kani/              Kani harnesses (19 harnesses — all proved)
-  lean4/             Lean 4 proofs (7 theorems)
+  AuthGateV3.tla    TLA+ state machine (10 invariants incl. PermitSoundness; see ASSUMPTIONS.md for what is actually checked)
+  kani/              Kani harnesses (19 written; none have been run)
+  lean4/             Lean 4 proofs (5 of 6 files do not currently compile)
   COVERAGE.md        What is and is not formally verified
   INCOMPLETENESS.md  Explicit enumeration of gaps
 
@@ -355,7 +355,7 @@ The gap between `Permit/Deny` and actual constrained execution:
 | **WASM sandbox** (`cargo build --features sandbox`) | Blocked: Windows SDK kernel32.lib missing | Install Windows SDK 10.0.22621 or build on Linux |
 | **OS-level confinement** (seccomp-bpf) | Not implemented | Wrap tool subprocess with seccomp filter |
 | **End-to-end integration test** | **Done** (`tests/test_integration_e2e.py`) | 18 assertions: tool call → gate → audit chain |
-| **TLC model checker** | Java not installed | `java -jar tla2tools.jar -tool MC_AuthGateV3` |
+| **TLC model checker** | Spec does not parse (`MC_AuthGateV3.tla:42` extends module `AuthGateV3`, file is named `authgate_v3.tla`). Java 17 **is** installed — the previously stated Java blocker was false. | Rename the file to match the module, then run at a stated bound; `Len(audit_log) <= 3` does not complete (~10⁹ states). See `formal/TLC_SETUP.md` and `ASSUMPTIONS.md`. |
 | **CLI** | Exists; not packaged | `pip install authgate-kernel` |
 
 The WASM sandbox is the most important. When it exists, the enforcement chain becomes:

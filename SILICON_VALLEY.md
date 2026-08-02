@@ -88,7 +88,10 @@ The key test: `write_tool_blocked_with_only_read_right` — tool imports `write_
 | "We prevent all harmful actions" | No. We prevent unauthorized actions. A human can authorize a harmful action. |
 | "The Python runtime is as secure as the Rust TCB" | No. The Python layer is a compatibility runtime — useful, tested, not formally checked. |
 | "This replaces behavioral monitoring" | No. This is a structural precondition. Behavioral monitors belong on top. |
-| "TLC has verified the TLA+ spec" | Not yet. The spec exists; TLC requires a Java runtime setup. |
+| "TLC has verified the TLA+ spec" | No. Java was never the blocker (17 is installed); the spec did not parse, so TLC had never run at all. Work to fix that is in progress — but note that a completing run at these bounds is an exhaustive check of a finite model, not a proof for arbitrary N. |
+| "The Kani harnesses are proved" | No. 19 are written; none have ever been run. Kani is not installed and the harnesses are `#[cfg(kani)]`, so ordinary builds skip them. |
+| "The Lean proofs are discharged" | No. 5 of 6 Lean files do not compile. |
+| "The axioms are enforced by the formal layer" | Not established. Deleting 9 of 13 enforcement checks in the TLA+ model leaves every declared invariant green — so those checks are currently unfalsifiable at this model. |
 
 ---
 

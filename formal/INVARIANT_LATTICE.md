@@ -207,29 +207,60 @@ legitimate when issued. Revocation is prospective, not retroactive.
 **Fix:** Record `revoked_set` as a snapshot (`revoked_at`) in each audit_log
 entry at decision time. Check `\notin audit_log[i].revoked_at` instead.
 
-**Significance:** This is exactly the kind of bug that TLA+ is designed to catch.
-The naive formulation "looks right" in isolation but fails as soon as you compose
-it with the `Revoke` transition. Finding this by inspection of the invariant
-structure (not by running TLC) demonstrates the value of explicit lattice analysis.
+**Significance:** The bug report above stands — the naive formulation "looks
+right" in isolation but fails as soon as you compose it with the `Revoke`
+transition, and finding it by inspection was worthwhile.
+
+> **Added 2026-08-02 (adversarial audit).** The framing that followed this bug
+> report was triumphal and is withdrawn. Two corrections:
+>
+> 1. **The fix made `RevocationSafety` tautological.** `Verify` filters
+>    candidate caps on `revoked_set`; `ExecuteVerify` stores that same set as
+>    `revoked_at`; the invariant then checks membership against that stored
+>    value. It re-checks the very filter that produced the decision, so it
+>    cannot fail — it is true by construction rather than by enforcement.
+>    Trading a *false* invariant for a *vacuous* one is progress in honesty,
+>    not in coverage.
+>
+>    The real fix is to track revocation history in a variable written by
+>    `Revoke` and independent of anything `Verify` consumes, then compare
+>    decisions against that. Until then this row is
+>    `tautological-by-construction`, not `checked`.
+>
+> 2. **"Exactly the kind of bug TLA+ is designed to catch" overstates it**,
+>    because TLA+ did not catch it — a human reading the invariant did, and TLC
+>    had never been run against this spec at any point. What the episode
+>    actually demonstrates is the value of reading invariants adversarially. A
+>    model checker that never runs catches nothing.
 
 ---
 
 ## Attack Surface Closure via Lattice
 
-| Attack class | Closed by invariants | Gap |
-|---|---|---|
-| AT-1 (IR tamper) | binding_valid (canonical gate, not an invariant) | none |
-| AT-2 (chain manip) | I2 ∧ I3 ∧ I8 via ValidChain / ChainEpoch | none |
-| AT-3 (epoch) | I1 ∧ I7 (leaf + chain nodes) ∧ I4 (revocation) | clock trust (G3) |
-| AT-4 (composition) | I5 (monotone) | session limits (G4) |
-| AT-5 (identity) | I2 via ValidChain | crypto assumption (G6) |
-| AT-6 (resource) | I6 | crypto assumption (G6) |
-| AT-7 (integration) | binding_valid (AT-7.1/2) | AT-7.5 (G5, CallGate pending) |
+> **Revised 2026-08-02.** The "Gap: none" entries below were wrong. This table
+> described which invariants *mention* each attack class, and reported that as
+> closure. Mutation testing (delete the enforcement check, re-run the
+> unmodified cfg) shows the declared invariants do not detect 9 of 13 checks.
+> The "Detected by mutation?" column is the honest one.
 
-The invariant lattice provides complete coverage for AT-2, AT-3, AT-5, AT-6
-within the TCB scope. AT-1 and AT-7.1/2 are closed by the binding_valid gate
-(not a state invariant — it's checked before any state change). AT-4, AT-7.5
-have documented partial coverage with known open gaps.
+| Attack class | Named invariants | Detected by mutation? | Real gap |
+|---|---|---|---|
+| AT-1 (IR tamper) | binding_valid (canonical gate, not an invariant) | **No** | No invariant constrains `binding_valid` at all |
+| AT-2 (chain manip) | I2 ∧ I3 ∧ I8 via ValidChain / ChainEpoch | **Partly** — I2 yes; signatures and attenuation no | `RootKey` never executes; all model caps hold identical rights, so I3 is unfalsifiable |
+| AT-3 (epoch) | I1 ∧ I7 (leaf + chain nodes) ∧ I4 (revocation) | **Partly** — I4 yes; epoch checks no | Epoch vacuity; I4 tautological; expiry has no invariant |
+| AT-4 (composition) | I5 (monotone) | **No** — I5 restates the update rule | session limits (G4); I5 tautological-by-construction |
+| AT-5 (identity) | I2 via ValidChain | **Yes** | Root nodes uncovered; `Hash` injectivity is an `ASSUME` |
+| AT-6 (resource) | I6 | **No** | `MCResources == {"r1"}` — the attack is inexpressible with one resource |
+| AT-7 (integration) | binding_valid (AT-7.1/2) | **No** | AT-7.5 (G5, CallGate pending); structurally outside the model |
+
+The previous summary — "complete coverage for AT-2, AT-3, AT-5, AT-6 within the
+TCB scope" — is withdrawn. The accurate statement is: **AT-5 is the only class
+whose enforcement the declared invariants demonstrably detect.** AT-2 and AT-3
+are partial. AT-1, AT-4, AT-6 and AT-7 are undetected at the current model.
+
+This is a statement about the *model*, not about the Rust TCB — the enforcement
+checks exist and are exercised by the Rust tests and the simulation suite. What
+the lattice does not currently do is give independent formal evidence for them.
 
 ---
 
