@@ -1,6 +1,7 @@
 -- formal/lean4/FreedomKernel/Ed25519.lean
 --
--- EXPLICIT AXIOM for the unverified Ed25519 signature checker.
+-- EXPLICIT AXIOMS for the unverified Ed25519 signature checker, SPLIT into the
+-- part a verified implementation can discharge and the part nothing can.
 --
 -- Status: this file is an ASSUMPTION, not a proof. It exists so that every
 -- downstream claim that leans on signature checking says so out loud, with a
@@ -13,6 +14,28 @@
 -- it, so it assumes nothing, grants nothing, and cannot support any theorem.
 -- Nothing in this file is inherited from it.
 --
+-- ── 2026-08-02: WHY THE AXIOM IS NOW SPLIT ────────────────────────────────
+-- Review advice from Adam Chlipala (MIT CSAIL, Fiat Cryptography), 2026-07-31:
+--   "That's a start, though it would also be nice to connect the proofs
+--    formally."
+-- The previous single axiom `ed25519_euf_cma` conflated two claims that have
+-- completely different epistemic status:
+--
+--   (a) IMPLEMENTATION CORRECTNESS — `Verify` computes exactly the RFC 8032
+--       verification predicate. This IS dischargeable, by a verified
+--       implementation (HACL*/libcrux, or Fiat-Crypto's field arithmetic).
+--   (b) EUF-CMA HARDNESS — that predicate cannot be satisfied by an adversary
+--       without the private key. This is a COMPUTATIONAL HARDNESS assumption,
+--       established by reduction to discrete log in the random-oracle model.
+--       NO implementation proof discharges it, ever.
+--
+-- Conflating them invites the false claim "the signature checker is verified"
+-- once a verified library is linked. The defensible claim after such a swap is:
+--   "The checker is verified to compute the RFC 8032 predicate. That the
+--    predicate is unforgeable remains a standard cryptographic assumption."
+-- The split below makes that distinction machine-checkable rather than
+-- rhetorical: see `#print axioms` on each headline theorem.
+--
 -- ── What is being axiomatized ──────────────────────────────────────────────
 -- The concrete artifact assumed correct is:
 --   ed25519-dalek v2.2.0 (authgate-kernel/Cargo.lock:564-566),
@@ -22,17 +45,27 @@
 --   authgate-kernel/src/tcb/dag.rs:71      (intermediate delegation signature)
 --   authgate-kernel/src/tcb/engine.rs:110  (revocation signature)
 -- Feature set: default + rand_core. `batch` OFF, `legacy_compatibility` OFF.
--- Neither ed25519-dalek nor curve25519-dalek carries a machine-checked proof of
--- correctness or of constant-time execution. There is no HACL*/Fiat/EverCrypt
--- code anywhere in the dependency graph.
+--
+-- CORRECTION (2026-08-02): this file previously asserted
+--   "There is no HACL*/Fiat/EverCrypt code anywhere in the dependency graph."
+-- That was FALSE. `fiat-crypto 0.2.9` is pinned at Cargo.lock:634 and
+-- `curve25519-dalek 4.1.3` depends on it unconditionally (Cargo.lock:486).
+-- The accurate statement is narrower: Fiat-Crypto's verified field arithmetic
+-- is COMPILED BUT NOT SELECTED. curve25519-dalek picks its backend at build
+-- time and, with no `curve25519_dalek_backend` cfg set, defaults to
+-- serial/simd rather than `fiat`. The verified code ships in the dependency
+-- tree and is never called. Selecting it is a build flag, not a port:
+--   RUSTFLAGS='--cfg curve25519_dalek_backend="fiat"' cargo build
+-- Neither ed25519-dalek nor curve25519-dalek AS BUILT carries a machine-checked
+-- proof of correctness or of constant-time execution.
 --
 -- ── Scope ──────────────────────────────────────────────────────────────────
--- This axiom constrains `authgate-kernel/src/tcb/dag.rs` and
--- `authgate-kernel/src/tcb/engine.rs`. It says nothing about any other layer.
+-- These axioms constrain `authgate-kernel/src/tcb/dag.rs` and
+-- `authgate-kernel/src/tcb/engine.rs`. They say nothing about any other layer.
 -- The Python capability path performs NO signature verification at all
 -- (src/authgate/kernel/verifier.py contains no crypto call); the Go client
 -- never checks the `Signature` field it carries; the CLI has no crypto
--- dependency. Do not cite this axiom outside the Rust TCB.
+-- dependency. Do not cite these axioms outside the Rust TCB.
 
 namespace FreedomKernel.Ed25519
 
@@ -51,9 +84,14 @@ opaque Sig : Type
     types.rs:63-79) or `RevocationProof::signing_message()` (types.rs:120-125). -/
 abbrev Msg := List UInt8
 
-/-- The behaviour of the deployed checker: `verify(pk, msg, sig).is_ok()`.
-    Uninterpreted — this is the thing we are declining to prove. -/
+/-- The behaviour of the DEPLOYED checker: `verify(pk, msg, sig).is_ok()`.
+    Uninterpreted — this is the concrete artifact currently linked. -/
 opaque Verify : PubKey → Msg → Sig → Bool
+
+/-- The RFC 8032 §5.1.7 verification predicate, as a mathematical object,
+    independent of any implementation. This is the specification that a
+    verified implementation is verified AGAINST. -/
+opaque RFC8032Verify : PubKey → Msg → Sig → Bool
 
 /-- `Signed pk m` : the holder of the private key matching `pk` has, at some
     point in this system's history, run the signing algorithm on exactly `m`.
@@ -71,21 +109,50 @@ opaque SmallOrder : PubKey → Prop
     (THREAT_MODEL.md, DEATH_SCENARIOS.md §4). -/
 opaque Compromised : PubKey → Prop
 
--- ── THE AXIOM ──────────────────────────────────────────────────────────────
+-- ── AXIOM (a): IMPLEMENTATION CORRECTNESS — DISCHARGEABLE ──────────────────
 
 /--
-**A-ED25519 (EUF-CMA for the deployed checker).**
+**A-ED25519-IMPL (implementation correctness).**
 
-If the deployed Ed25519 checker accepts `(pk, m, s)`, and `pk` is a well-formed
-non-low-order key whose private half has not leaked, then the holder of that
-private key actually signed exactly the byte string `m`.
+The deployed checker computes exactly the RFC 8032 verification predicate.
+
+This axiom is **dischargeable**. It is precisely what a verified Ed25519
+implementation buys you, and it is what the HACL*/libcrux or Fiat-Crypto route
+would supply. It carries NO cryptographic hypotheses because it is not a
+cryptographic claim — it is a claim about code agreeing with a specification.
+
+To discharge it, inhabit `VerifiedImplementation` below and build the scheme
+with `ed25519Verified` instead of `ed25519Assumed`. Doing so removes THIS
+axiom from the footprint of every downstream theorem, mechanically, with no
+edit to any theorem statement. That is the formal connection.
+-/
+axiom ed25519_verify_matches_rfc8032
+    (pk : PubKey) (m : Msg) (s : Sig)
+    : Verify pk m s = RFC8032Verify pk m s
+
+-- ── AXIOM (b): EUF-CMA HARDNESS — IRREDUCIBLE ──────────────────────────────
+
+/--
+**A-ED25519-EUFCMA (existential unforgeability under chosen-message attack).**
+
+If the RFC 8032 predicate accepts `(pk, m, s)`, and `pk` is a non-low-order key
+whose private half has not leaked, then the holder of that private key actually
+signed exactly the byte string `m`.
+
+**This axiom is IRREDUCIBLE.** It is a computational hardness assumption about
+the mathematics of Ed25519, established in the literature by reduction to the
+discrete logarithm problem in the random-oracle model. No implementation proof
+— not HACL*, not Fiat-Crypto, not EverCrypt — discharges it. Any status table
+that marks this "verified" after a library swap is wrong.
 
 The conclusion is `Signed pk m` — a real proposition, not `True`. Removing this
 axiom must break any proof that depends on it; if it does not, the proof never
 depended on signatures.
 
 The two hypotheses are not decoration. They are exactly the two guarantees the
-code does NOT establish for itself:
+code does NOT establish for itself, and they attach HERE, to hardness, rather
+than to implementation correctness — a correct implementation of RFC 8032 is
+still forgeable against a low-order or leaked key:
   * `¬ SmallOrder pk` — unenforced. The TCB calls non-strict `verify`, never
     calls `is_weak()`, and `CallGate::new` accepts any `VerifyingKey`. A weak
     key admits signatures valid under many messages. Discharging this hypothesis
@@ -93,31 +160,151 @@ code does NOT establish for itself:
   * `¬ Compromised pk` — the standard, declared-out-of-scope key-custody
     assumption.
 -/
-axiom ed25519_euf_cma
+axiom rfc8032_euf_cma
     (pk : PubKey) (m : Msg) (s : Sig)
     (hweak : ¬ SmallOrder pk)
     (hkey  : ¬ Compromised pk)
-    (hver  : Verify pk m s = true)
+    (hver  : RFC8032Verify pk m s = true)
     : Signed pk m
 
--- ── Non-vacuity check ──────────────────────────────────────────────────────
--- The defect in the axiom this file replaces was that it could be deleted with
--- no effect. Guard against repeating that: this lemma is provable ONLY via
--- `ed25519_euf_cma`, so `#print axioms` must list it. If a future edit makes
--- this lemma provable without the axiom, the axiom has gone vacuous again.
+-- ── Non-vacuity checks, one per axiom ──────────────────────────────────────
+-- The defect in the axiom this file replaced was that it could be deleted with
+-- no effect. Guard against repeating that: each lemma below is provable ONLY
+-- via its axiom, so `#print axioms` must list exactly that axiom. If a future
+-- edit makes either lemma provable without its axiom, that axiom has gone
+-- vacuous and the corresponding claim must be withdrawn.
 
+/-- Non-vacuity witness for AXIOM (a). -/
+theorem verify_agrees_with_rfc8032 (pk : PubKey) (m : Msg) (s : Sig) :
+    Verify pk m s = true ↔ RFC8032Verify pk m s = true := by
+  rw [ed25519_verify_matches_rfc8032]
+
+-- Expected: depends on axioms: [ed25519_verify_matches_rfc8032]
+#print axioms verify_agrees_with_rfc8032
+
+/-- Non-vacuity witness for AXIOM (b). -/
+theorem rfc8032_accepted_has_an_honest_signer
+    (pk : PubKey) (m : Msg) (s : Sig)
+    (hweak : ¬ SmallOrder pk) (hkey : ¬ Compromised pk)
+    (hver : RFC8032Verify pk m s = true)
+    : Signed pk m :=
+  rfc8032_euf_cma pk m s hweak hkey hver
+
+-- Expected: depends on axioms: [rfc8032_euf_cma]
+#print axioms rfc8032_accepted_has_an_honest_signer
+
+/-- The original headline claim, now visibly resting on BOTH axioms. -/
 theorem accepted_signature_has_an_honest_signer
     (pk : PubKey) (m : Msg) (s : Sig)
     (hweak : ¬ SmallOrder pk) (hkey : ¬ Compromised pk)
     (hver : Verify pk m s = true)
     : Signed pk m :=
-  ed25519_euf_cma pk m s hweak hkey hver
+  rfc8032_euf_cma pk m s hweak hkey ((ed25519_verify_matches_rfc8032 pk m s).symm.trans hver)
 
--- Expected output: 'FreedomKernel.Ed25519.accepted_signature_has_an_honest_signer'
---   depends on axioms: [FreedomKernel.Ed25519.ed25519_euf_cma]
+-- Expected: depends on axioms:
+--   [ed25519_verify_matches_rfc8032, rfc8032_euf_cma]
 #print axioms accepted_signature_has_an_honest_signer
 
--- ── WHAT THIS AXIOM DOES *NOT* GIVE YOU ───────────────────────────────────
+-- ── The SignatureScheme interface ──────────────────────────────────────────
+-- Per CRYPTO_VERIFICATION_PLAN.md §5.1: parameterise, don't axiomatise.
+--
+-- The point of this structure is that the kernel is proved against an
+-- INTERFACE, not against a particular axiom. Swapping in a verified
+-- implementation then becomes an INSTANTIATION that Lean checks, rather than
+-- an edit a human asserts. `#print axioms` on a theorem stated over `S` shows
+-- no crypto axioms at all; the axioms appear only when a specific instance is
+-- supplied. That is the difference between a connected proof and two
+-- disconnected artifacts.
+
+/-- The contract the kernel needs from *any* signature checker. -/
+structure SignatureScheme where
+  PubKey      : Type
+  Sig         : Type
+  Verify      : PubKey → Msg → Sig → Bool
+  Signed      : PubKey → Msg → Prop
+  SmallOrder  : PubKey → Prop
+  Compromised : PubKey → Prop
+  /-- The obligation an implementation must discharge. -/
+  euf_cma : ∀ (pk : PubKey) (m : Msg) (s : Sig),
+      ¬ SmallOrder pk → ¬ Compromised pk →
+      Verify pk m s = true → Signed pk m
+
+/-- The kernel-level theorem, stated over an arbitrary scheme.
+
+    Note the `#print axioms` result: **no axioms at all**. The cryptographic
+    obligation has become a hypothesis carried by `S`, so this theorem is
+    unconditionally true of every scheme that satisfies the interface. All
+    trust has been pushed to the choice of instance, where it is visible. -/
+theorem scheme_accepted_signature_has_an_honest_signer
+    (S : SignatureScheme)
+    (pk : S.PubKey) (m : Msg) (s : S.Sig)
+    (hweak : ¬ S.SmallOrder pk) (hkey : ¬ S.Compromised pk)
+    (hver : S.Verify pk m s = true)
+    : S.Signed pk m :=
+  S.euf_cma pk m s hweak hkey hver
+
+-- Expected: does not depend on any axioms
+#print axioms scheme_accepted_signature_has_an_honest_signer
+
+-- ── Instance 1: what is actually deployed today ────────────────────────────
+
+/-- The scheme as currently linked: ed25519-dalek's non-strict `verify`, with
+    BOTH axioms assumed. This is the only instance available today. -/
+def ed25519Assumed : SignatureScheme where
+  PubKey      := PubKey
+  Sig         := Sig
+  Verify      := Verify
+  Signed      := Signed
+  SmallOrder  := SmallOrder
+  Compromised := Compromised
+  euf_cma     := accepted_signature_has_an_honest_signer
+
+-- Expected: depends on axioms:
+--   [ed25519_verify_matches_rfc8032, rfc8032_euf_cma]
+#print axioms ed25519Assumed
+
+-- ── Instance 2: the obligation a verified implementation must discharge ────
+
+/--
+**The proof obligation a verified Ed25519 implementation must supply.**
+
+This is the *type* referred to in CRYPTO_VERIFICATION_PLAN.md §5.1. It is
+deliberately NOT inhabited here: no verified implementation is linked, so
+manufacturing an inhabitant would be a lie. Its value is that it is a
+checkable statement of exactly what the HACL*/libcrux (or Fiat-backend) work
+has to deliver — an intention turned into a type.
+-/
+abbrev VerifiedImplementation : Prop :=
+  ∀ (pk : PubKey) (m : Msg) (s : Sig), Verify pk m s = RFC8032Verify pk m s
+
+/--
+The scheme built from a VERIFIED implementation.
+
+This is a *function* of the obligation, not a fake inhabitant: it cannot be
+used until someone supplies `hcorrect`. Note what its axiom footprint proves:
+
+    #print axioms ed25519Verified  -->  [rfc8032_euf_cma]
+
+`ed25519_verify_matches_rfc8032` is GONE — discharged by the hypothesis rather
+than assumed — while `rfc8032_euf_cma` remains, exactly as
+CRYPTO_VERIFICATION_PLAN.md §6 predicts. That is the machine-checked statement
+of what a verified crypto library buys and what it does not, and it is the
+deliverable the review advice asked for.
+-/
+def ed25519Verified (hcorrect : VerifiedImplementation) : SignatureScheme where
+  PubKey      := PubKey
+  Sig         := Sig
+  Verify      := Verify
+  Signed      := Signed
+  SmallOrder  := SmallOrder
+  Compromised := Compromised
+  euf_cma     := fun pk m s hweak hkey hver =>
+    rfc8032_euf_cma pk m s hweak hkey ((hcorrect pk m s).symm.trans hver)
+
+-- Expected: depends on axioms: [rfc8032_euf_cma]  -- axiom (a) discharged
+#print axioms ed25519Verified
+
+-- ── WHAT THESE AXIOMS DO *NOT* GIVE YOU ───────────────────────────────────
 -- Stated as prose, not as axioms, because asserting them would be false. Every
 -- item below is a gap verified in the code on 2026-08-01, not a hypothetical.
 --
@@ -146,7 +333,8 @@ theorem accepted_signature_has_an_honest_signer
 --    hits `continue` with no log, no error, no metric (engine.rs:93-96), so a
 --    revocation lost to corruption or key rotation degrades to Permit.
 --    Combined with (3), a valid signature gives NO assurance the capability has
---    not been revoked. Epoch advancement, not this axiom, is the real mechanism.
+--    not been revoked. Epoch advancement, not these axioms, is the real
+--    mechanism.
 --
 -- 5. NOT domain separation. The SAME root key signs three grammars with no
 --    context string, version byte, or type tag:
@@ -170,6 +358,16 @@ theorem accepted_signature_has_an_honest_signer
 --    verify a third party's signature would get a function that cannot.
 --
 -- 7. NOT constant-time execution. Side channels are out of scope by design
---    (NON_GOALS.md). ed25519-dalek's timing properties are unproved.
+--    (NON_GOALS.md). ed25519-dalek's timing properties are unproved. NOTE:
+--    this is the one gap Route B (libcrux/HACL*) would additionally close,
+--    since HACL* carries a machine-checked secret-independence property.
+--    Route A (Fiat backend) does NOT close it.
+--
+-- 8. NOT any connection to a downstream kernel theorem. As of 2026-08-02 NO
+--    other file in this Lean development imports this one, so no other theorem
+--    in the library currently depends on either axiom. The interface above is
+--    the mechanism by which such theorems WOULD inherit the assumption; it is
+--    not evidence that any do. Stated explicitly so the interface is not
+--    mistaken for coverage it does not yet have.
 
 end FreedomKernel.Ed25519

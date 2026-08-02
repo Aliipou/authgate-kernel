@@ -108,8 +108,12 @@ theorem verify_deterministic (a : ActionIR) : verifyFlags a = verifyFlags a := r
 
 theorem permitted_implies_no_forbidden_flag (a : ActionIR) (h : verifyFlags a = .Permitted) :
     hasForbiddenFlag a = false := by
-  simp [verifyFlags] at h
-  exact Bool.eq_false_iff_ne_true.mpr (by intro hf; simp [hf] at h)
+  -- `Bool.eq_false_iff_ne_true` does not exist in Lean 4.32 core (unknown
+  -- constant), so this file never compiled. Replaced by case analysis on the
+  -- boolean, which is a complete proof of the same statement.
+  cases hf : hasForbiddenFlag a with
+  | false => rfl
+  | true  => simp [verifyFlags, hf] at h
 
 -- ── A4: Ownerless machine model ────────────────────────────────────────────────
 
@@ -133,5 +137,25 @@ theorem ownerless_machine_must_have_owner
 -- For any machine actor and any human target: governance is structurally blocked.
 -- Proved in Kani: prop_machine_governs_human_blocked.
 theorem machine_cannot_govern_human : True := trivial  -- Kani-verified
+
+-- ── Machine-checked axiom audit ──────────────────────────────────────────────
+-- `[propext, Classical.choice, Quot.sound]` = Lean's own logic only, i.e. the
+-- theorem is discharged. Any other name is a trust assumption.
+--
+-- ⚠ READ WITH CARE. An empty axiom list is NOT evidence that a theorem says
+-- anything useful. The last three declarations in this file
+-- (`ownerless_machine_must_have_owner`, `machine_cannot_govern_human`, and
+-- `verify_deterministic`) are VACUOUS: the first two have conclusion `True`,
+-- which is provable without any hypothesis, and the third proves `x = x`.
+-- They will report a clean axiom list precisely because they assert nothing.
+-- See formal/PROOF_STATUS.md §"Vacuous theorems".
+#print axioms forbidden_flags_always_block
+#print axioms sovereignty_flag_blocks
+#print axioms coercion_flag_blocks
+#print axioms deception_flag_blocks
+#print axioms verify_deterministic
+#print axioms permitted_implies_no_forbidden_flag
+#print axioms ownerless_machine_must_have_owner
+#print axioms machine_cannot_govern_human
 
 end FreedomKernel
