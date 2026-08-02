@@ -1,0 +1,38 @@
+MUTANT: root_signature
+sed: 104s|.*|                   /\\ TRUE  \\* MUTANT: root sig check deleted|
+cfg: MC_AuthGateV3_mut.cfg
+verdict: **CAUGHT**
+violated: PermitSoundness 
+
+TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+Running breadth-first search Model-Checking with fp 67 and seed 1895940856478666145 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 10708] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-02 19:08:28)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-08-02 19:08:28.
+Error: Invariant PermitSoundness is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ revocation_history = <<>>
+/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {}
+/\ global_epoch = 0
+/\ audit_log = <<>>
+
+State 2: <AdvanceEpoch(1) line 645, col 3 to line 648, col 77 of module AuthGateV3>
+/\ revocation_history = <<>>
+/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {}
+/\ global_epoch = 1
+/\ audit_log = <<>>
+
+State 3: <ExecuteVerify([resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h4", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> FALSE]}, binding_valid |-> TRUE],0,"BadSig") line 678, col 3 to line 696, col 64 of module AuthGateV3>
+/\ revocation_history = <<>>
+/\ session_rights = [a0 |-> {}, a1 |-> {"READ"}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {}
+/\ global_epoch = 1
+/\ audit_log = <<[action |-> [resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h4", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> FALSE]}, binding_valid |-> TRUE], now |-> 0, rev_len |-> 0, decision |-> "Permit", revoked_at |-> {}, witness |-> {[proof_hash |-> "h4", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> FALSE]}, action_name |-> "BadSig"]>>
+
+86 states generated, 57 distinct states found, 49 states left on queue.
+The depth of the complete state graph search is 4.
+Finished in 01s at (2026-08-02 19:08:28)
+Trace exploration spec path: .\MC_AuthGateV3_TTrace_1785686907.tla

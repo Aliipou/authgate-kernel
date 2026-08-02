@@ -69,7 +69,7 @@ MCResources  == {"r1", "r2"}
 \* StaleIntermediateCap to share the hash "h5". Every capability now has a
 \* distinct proof hash, which revocation semantics depend on.
 MCProofHashes == {"h1", "h2", "h3", "h4", "h5",
-                  "h6", "h7", "h8", "h9", "h10", "h11", "h12"}
+                  "h6", "h7", "h8", "h9", "h10", "h11", "h12", "h13", "h14"}
 MCPublicKeys  == {"pk0", "pk1", "pk2", "pk3"}
 MCRootKey    == "pk0"
 MCMaxChainDepth == 2
@@ -281,6 +281,50 @@ OrphanCap == [
   sig_valid     |-> TRUE
 ]
 
+\* ════════════════════════════════════════════════════════════════════════════
+\* SECOND ROUND OF TEST DATA -- added after the first mutation matrix run
+\* ════════════════════════════════════════════════════════════════════════════
+\*
+\* The first post-fix mutation run (tlc_runs/mutation_matrix_*.md) showed two
+\* checks still ESCAPING, and in both cases the cause was missing test data,
+\* not a blind invariant. These two capabilities close that gap.
+
+\* INTERMEDIATE SIGNATURE. BadSigCap (h4) is a ROOT cap, so the model contained
+\* NO delegated capability with sig_valid = FALSE. Deleting the intermediate
+\* signature check therefore changed no decision anywhere and the mutant was
+\* semantically inert. This is a delegated cap with a bad signature.
+BadSigDelegCap == [
+  proof_hash    |-> "h13",
+  subject_id    |-> "a2",
+  resource_hash |-> "r1",
+  rights        |-> {"READ"},
+  expiry        |-> 2,
+  epoch         |-> 1,
+  issuer        |-> [type |-> "Delegated", parent_hash |-> "h1"],
+  issuer_pubkey |-> "pk1",   \* identity binding OK -- ONLY the signature is bad
+  sig_valid     |-> FALSE
+]
+
+\* CHAIN EPOCH (AT-3.1). Every stale capability in the model -- StaleCap and
+\* StaleIntermediateCap alike -- is the LEAF of its own request, so it is
+\* rejected by the leaf epoch gate before the chain walk is ever reached.
+\* There was no bundle in which a CURRENT leaf has a STALE ANCESTOR, which is
+\* the actual AT-3.1 attack, so the chain-epoch check was unfalsifiable.
+\*
+\* This leaf is current (epoch 1) but its parent is StaleCap (h3, epoch 0).
+\* Only the recursive chain-epoch check can deny it.
+StaleParentDelegCap == [
+  proof_hash    |-> "h14",
+  subject_id    |-> "a2",
+  resource_hash |-> "r1",
+  rights        |-> {"READ"},
+  expiry        |-> 2,
+  epoch         |-> 1,                \* leaf is CURRENT
+  issuer        |-> [type |-> "Delegated", parent_hash |-> "h3"],  \* StaleCap
+  issuer_pubkey |-> "pk1",            \* Hash(pk1) = a1 = StaleCap.subject_id
+  sig_valid     |-> TRUE
+]
+
 \* ── Pre-enumerated actions ───────────────────────────────────────────────────
 \*
 \* Each action is a concrete record. TLC's MCNext quantifies over MCActions
@@ -471,6 +515,29 @@ OrphanAction == [
   binding_valid   |-> TRUE
 ]
 
+\* Delegated cap with an invalid signature. Must Deny.
+BadSigDelegAction == [
+  actor_id        |-> "a2",
+  resource_hash   |-> "r1",
+  required_rights |-> {"READ"},
+  min_epoch       |-> 1,
+  timestamp       |-> 1,
+  cap_bundle      |-> {BadSigDelegCap, RootCap},
+  binding_valid   |-> TRUE
+]
+
+\* AT-3.1: current leaf, STALE ANCESTOR. Only the recursive chain-epoch check
+\* can deny this. Must Deny.
+StaleAncestorAction == [
+  actor_id        |-> "a2",
+  resource_hash   |-> "r1",
+  required_rights |-> {"READ"},
+  min_epoch       |-> 1,
+  timestamp       |-> 1,
+  cap_bundle      |-> {StaleParentDelegCap, StaleCap},
+  binding_valid   |-> TRUE
+]
+
 MCActions == {
   ValidAction,
   DelegatedAction,
@@ -487,7 +554,9 @@ MCActions == {
   ValidR2Action,
   ValidEpoch2Action,
   MixedBundleAction,
-  OrphanAction
+  OrphanAction,
+  BadSigDelegAction,
+  StaleAncestorAction
 }
 
 \* ── Named actions (tlc-remediation) ─────────────────────────────────────────
@@ -518,7 +587,9 @@ MCNamedActions == {
   [name |-> "ValidR2",           act |-> ValidR2Action],
   [name |-> "ValidEpoch2",       act |-> ValidEpoch2Action],
   [name |-> "MixedBundle",       act |-> MixedBundleAction],
-  [name |-> "Orphan",            act |-> OrphanAction]
+  [name |-> "Orphan",            act |-> OrphanAction],
+  [name |-> "BadSigDeleg",       act |-> BadSigDelegAction],
+  [name |-> "StaleAncestor",     act |-> StaleAncestorAction]
 }
 
 \* ── MC-bounded transitions ───────────────────────────────────────────────────

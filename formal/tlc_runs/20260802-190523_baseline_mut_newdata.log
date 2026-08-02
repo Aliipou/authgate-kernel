@@ -1,0 +1,36 @@
+TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+Running breadth-first search Model-Checking with fp 67 and seed -5011152833450260537 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 8660] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Parsing file D:\authgate-kernel-tlc\formal\MC_AuthGateV3.tla
+Parsing file D:\authgate-kernel-tlc\formal\AuthGateV3.tla
+Parsing file C:\Users\admin\AppData\Local\Temp\tlc-18402429925303006182\_TLCTrace.tla (jar:file:/D:/authgate-kernel-tlc/formal/tla2tools.jar!/tla2sany/StandardModules/_TLCTrace.tla)
+Parsing file C:\Users\admin\AppData\Local\Temp\tlc-18402429925303006182\Naturals.tla (jar:file:/D:/authgate-kernel-tlc/formal/tla2tools.jar!/tla2sany/StandardModules/Naturals.tla)
+Parsing file C:\Users\admin\AppData\Local\Temp\tlc-18402429925303006182\FiniteSets.tla (jar:file:/D:/authgate-kernel-tlc/formal/tla2tools.jar!/tla2sany/StandardModules/FiniteSets.tla)
+Parsing file C:\Users\admin\AppData\Local\Temp\tlc-18402429925303006182\Sequences.tla (jar:file:/D:/authgate-kernel-tlc/formal/tla2tools.jar!/tla2sany/StandardModules/Sequences.tla)
+Parsing file C:\Users\admin\AppData\Local\Temp\tlc-18402429925303006182\TLC.tla (jar:file:/D:/authgate-kernel-tlc/formal/tla2tools.jar!/tla2sany/StandardModules/TLC.tla)
+Parsing file C:\Users\admin\AppData\Local\Temp\tlc-18402429925303006182\TLCExt.tla (jar:file:/D:/authgate-kernel-tlc/formal/tla2tools.jar!/tla2sany/StandardModules/TLCExt.tla)
+Parsing file C:\Users\admin\AppData\Local\Temp\tlc-18402429925303006182\Integers.tla (jar:file:/D:/authgate-kernel-tlc/formal/tla2tools.jar!/tla2sany/StandardModules/Integers.tla)
+Semantic processing of module Naturals
+Semantic processing of module Sequences
+Semantic processing of module FiniteSets
+Semantic processing of module TLC
+Semantic processing of module AuthGateV3
+Semantic processing of module Integers
+Semantic processing of module TLCExt
+Semantic processing of module _TLCTrace
+Semantic processing of module MC_AuthGateV3
+Linting of module AuthGateV3
+Linting of module TLCExt
+Linting of module _TLCTrace
+Linting of module MC_AuthGateV3
+Starting... (2026-08-02 19:05:24)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-08-02 19:05:24.
+Progress(5) at 2026-08-02 19:05:27: 27,550 states generated (27,550 s/min), 2,031 distinct states found (2,031 ds/min), 1,560 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 1.9E-11
+117604 states generated, 3003 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 5.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 31 and the 95th percentile is 1).
+Finished in 07s at (2026-08-02 19:05:31)

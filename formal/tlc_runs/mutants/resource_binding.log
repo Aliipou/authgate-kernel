@@ -1,0 +1,38 @@
+MUTANT: resource_binding
+sed: 186s|.*|          /\\ TRUE   \\* MUTANT: resource binding deleted|
+cfg: MC_AuthGateV3_mut.cfg
+verdict: **CAUGHT**
+violated: ResourceBinding 
+
+TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+Running breadth-first search Model-Checking with fp 119 and seed 7853104537456240579 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 5228] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-02 19:08:45)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-08-02 19:08:46.
+Error: Invariant ResourceBinding is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ revocation_history = <<>>
+/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {}
+/\ global_epoch = 0
+/\ audit_log = <<>>
+
+State 2: <AdvanceEpoch(1) line 645, col 3 to line 648, col 77 of module AuthGateV3>
+/\ revocation_history = <<>>
+/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {}
+/\ global_epoch = 1
+/\ audit_log = <<>>
+
+State 3: <ExecuteVerify([resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h1", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h3", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 0, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h9", subject_id |-> "a1", resource_hash |-> "r2", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, binding_valid |-> TRUE],0,"MixedBundle") line 678, col 3 to line 696, col 64 of module AuthGateV3>
+/\ revocation_history = <<>>
+/\ session_rights = [a0 |-> {}, a1 |-> {"READ"}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {}
+/\ global_epoch = 1
+/\ audit_log = <<[action |-> [resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h1", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h3", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 0, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h9", subject_id |-> "a1", resource_hash |-> "r2", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, binding_valid |-> TRUE], now |-> 0, rev_len |-> 0, decision |-> "Permit", revoked_at |-> {}, witness |-> {[proof_hash |-> "h1", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h9", subject_id |-> "a1", resource_hash |-> "r2", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, action_name |-> "MixedBundle"]>>
+
+237 states generated, 129 distinct states found, 114 states left on queue.
+The depth of the complete state graph search is 4.
+Finished in 01s at (2026-08-02 19:08:46)
+Trace exploration spec path: .\MC_AuthGateV3_TTrace_1785686925.tla
