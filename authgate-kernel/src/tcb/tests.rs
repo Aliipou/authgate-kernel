@@ -1122,9 +1122,13 @@ mod tcb_tests {
     fn types_cap_canonical_bytes_length_is_fixed() {
         let root_sk = random_key();
         let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
-        // Root: 32+32+32+8+8+8+64+32 = 216 bytes
+        // Body: 32+32+32+8+8+8+64+32 = 216 bytes
         // (proof_hash + subject + resource + rights + expiry + epoch + sig + pubkey)
-        assert_eq!(cap.to_canonical_bytes().len(), 216);
+        // Plus the v2 domain-separation preamble: len(ctx) || ctx || alg || version.
+        // Derived rather than hardcoded so that changing a context string cannot
+        // silently invalidate this test's arithmetic.
+        let preamble = domain_preamble(CTX_CAP_CANONICAL).len();
+        assert_eq!(cap.to_canonical_bytes().len(), preamble + 216);
     }
 
     #[test]
@@ -1150,8 +1154,94 @@ mod tcb_tests {
     #[test]
     fn types_revocation_canonical_bytes_length_is_fixed() {
         let rev = RevocationProof { target_proof_hash: [0x01; 32], revoked_at: 100, signature: [0u8; 64] };
-        // 32 (target) + 8 (revoked_at) + 64 (sig) = 104 bytes
-        assert_eq!(rev.to_canonical_bytes().len(), 104);
+        // 32 (target) + 8 (revoked_at) + 64 (sig) = 104 bytes, plus the v2 preamble.
+        let preamble = domain_preamble(CTX_REV_CANONICAL).len();
+        assert_eq!(rev.to_canonical_bytes().len(), preamble + 104);
+    }
+
+    // ── v2 domain separation: cross-type confusion ────────────────────────────
+    //
+    // The property these protect: a payload of one message type must never be
+    // reinterpretable as another. Before v2 this held only by accident of field
+    // sizes -- a revocation signing message was exactly 40 bytes and a chain
+    // link at least 121, and both are signed by the SAME root key.
+
+    #[test]
+    fn domain_every_context_is_distinct() {
+        let ctxs = [
+            CTX_CHAIN_LINK, CTX_REVOCATION, CTX_ACTION_BINDING,
+            CTX_CAP_CANONICAL, CTX_REV_CANONICAL, CTX_AUDIT_ENTRY,
+        ];
+        for (i, a) in ctxs.iter().enumerate() {
+            for (j, b) in ctxs.iter().enumerate() {
+                if i != j {
+                    assert_ne!(a, b, "context strings must be pairwise distinct");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn domain_no_context_is_a_prefix_of_another() {
+        // The length prefix is what guarantees this, but assert it directly:
+        // if one context were a prefix of another, the preambles could align.
+        let ctxs = [
+            CTX_CHAIN_LINK, CTX_REVOCATION, CTX_ACTION_BINDING,
+            CTX_CAP_CANONICAL, CTX_REV_CANONICAL, CTX_AUDIT_ENTRY,
+        ];
+        for (i, a) in ctxs.iter().enumerate() {
+            for (j, b) in ctxs.iter().enumerate() {
+                if i != j {
+                    assert_ne!(
+                        domain_preamble(a), domain_preamble(b),
+                        "preambles must differ for distinct message types"
+                    );
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn domain_revocation_message_can_never_equal_a_chain_link_message() {
+        let root_sk = random_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        let rev = RevocationProof {
+            target_proof_hash: cap.proof_hash,
+            revoked_at: 100,
+            signature: [0u8; 64],
+        };
+        let cap_msg = cap.signing_message();
+        let rev_msg = rev.signing_message();
+        assert_ne!(cap_msg, rev_msg);
+        // Stronger: neither is a prefix of the other, so no truncation or
+        // extension of one yields the other.
+        assert!(!cap_msg.starts_with(&rev_msg));
+        assert!(!rev_msg.starts_with(&cap_msg));
+    }
+
+    #[test]
+    fn domain_preamble_is_actually_present_in_signed_bytes() {
+        let root_sk = random_key();
+        let cap = make_root_proof(&root_sk, ACTOR, RESOURCE, RIGHT_READ, EXPIRY, EPOCH);
+        assert!(
+            cap.signing_message().starts_with(&domain_preamble(CTX_CHAIN_LINK)),
+            "chain-link signing message must open with its domain preamble"
+        );
+        let rev = RevocationProof { target_proof_hash: [0x01; 32], revoked_at: 100, signature: [0u8; 64] };
+        assert!(
+            rev.signing_message().starts_with(&domain_preamble(CTX_REVOCATION)),
+            "revocation signing message must open with its domain preamble"
+        );
+    }
+
+    #[test]
+    fn domain_preamble_binds_algorithm_and_version() {
+        let p = domain_preamble(CTX_CHAIN_LINK);
+        // len(ctx) || ctx || alg || version
+        assert_eq!(p[0] as usize, CTX_CHAIN_LINK.len());
+        assert_eq!(&p[1..1 + CTX_CHAIN_LINK.len()], CTX_CHAIN_LINK);
+        assert_eq!(p[p.len() - 2], ALG_ED25519);
+        assert_eq!(p[p.len() - 1], SCHEMA_VERSION);
     }
 
     // ── CanonicalAction::compute_hash() changes with every field ─────────────

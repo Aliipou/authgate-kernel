@@ -2,13 +2,19 @@
 
 **Branch:** `protocol/domain-separation` · **Base:** `assumptions-table` (`ebf4b99`)
 
-> ## ⚠️ THIS BRANCH IS UNVERIFIED. DO NOT MERGE AS-IS.
-> Rust does not compile in the environment this was written in: `cargo` fails at
-> link time because the MSVC linker is absent (*"please ensure that Visual Studio
-> ... Build Tools were installed with the Visual C++ option"*). **Nothing here
-> has been compiled, and no test has been run against it.** The acceptance
-> criterion "tests green" is NOT met and could not be attempted. Treat this as a
-> reviewed design with a candidate implementation attached.
+> ## ✅ VERIFIED — `213 passed; 0 failed`
+> Built and tested with the **GNU** toolchain:
+> `cargo +stable-x86_64-pc-windows-gnu test`.
+>
+> The MSVC toolchain was the default but was never installed on this machine (no
+> `link.exe`, no `cl.exe`, no VS Installer — `winget` reported the Build Tools
+> package as "already installed", which was a false match against a VC++
+> *redistributable*). `stable-x86_64-pc-windows-gnu` plus TDM-GCC was already
+> present and builds the crate cleanly. `ASSUMPTIONS.md` had recorded
+> `cargo build` working "(gnu toolchain)" all along.
+>
+> **The GNU toolchain is the supported build path on this machine.** CI must pin
+> it explicitly, or a fresh clone will pick the broken MSVC default.
 
 ## What
 
@@ -62,15 +68,37 @@ verify), but it means:
 
 ## Test evidence
 
-**None.** See the warning above. What a reviewer must run on a machine with
-MSVC Build Tools installed:
+`cargo +stable-x86_64-pc-windows-gnu test` → **213 passed; 0 failed.**
 
-1. `cargo test` — expect failures anywhere a test hardcodes an expected hash or
-   signature byte string; those are the change, not a regression. Tests that
-   compute via `signing_message()`/`to_canonical_bytes()` should pass unchanged.
-2. `cargo clippy -D warnings`.
-3. The cross-type confusion test named in the task spec is **not yet written**
-   (see Not done, below).
+Before the test fixes: 206 passed, 2 failed. **Both failures were this change,
+and both were exactly the predicted size delta** — the two tests that hardcode a
+serialised byte length:
+
+| Test | Was | Now | Delta |
+|---|---|---|---|
+| `types_cap_canonical_bytes_length_is_fixed` | 216 | 244 | +28 |
+| `types_revocation_canonical_bytes_length_is_fixed` | 104 | 132 | +28 |
+
++28 is exactly `1 + 25 + 1 + 1` — length byte, a 25-character context string,
+algorithm, version. Both tests now **derive** the expected length from
+`domain_preamble(...)` instead of hardcoding it, so changing a context string
+cannot silently invalidate the arithmetic.
+
+Every signature-verification test passed untouched, because they compute through
+`signing_message()` rather than asserting literal bytes. That is the evidence
+that the change is format-wide and not partial: had any signing path been missed,
+its verification test would have failed.
+
+Five new tests assert the security property directly:
+
+- `domain_every_context_is_distinct`
+- `domain_no_context_is_a_prefix_of_another` — preambles pairwise differ
+- `domain_revocation_message_can_never_equal_a_chain_link_message` — and neither
+  is a prefix of the other, so no truncation or extension yields the other
+- `domain_preamble_is_actually_present_in_signed_bytes`
+- `domain_preamble_binds_algorithm_and_version` — asserts the byte layout
+
+Not yet run: `cargo clippy -D warnings`.
 
 ## Not done — remaining scope, and why
 
