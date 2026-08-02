@@ -35,3 +35,9 @@ formal/tla2tools.jar
 formal/*.jar
 # TLC scratch output
 formal/states/
+
+# TLC generated trace-exploration specs
+formal/MC_AuthGateV3_TTrace_*.tla
+formal/*_TTrace_*.tla
+formal/*_TTrace_*.bin
+formal/states/

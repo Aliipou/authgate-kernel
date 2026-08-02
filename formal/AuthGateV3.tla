@@ -242,8 +242,59 @@ TypeInvariant ==
 
 \* ── Safety invariants ───────────────────────────────────────────────────────
 
-\* I1: Epoch Safety — every Permit in audit_log was issued with cap.epoch >= min_epoch.
+\* Every cap on the chain of every justifying cap of audit entry i.
+\* Scoped to the WITNESS, not to all caps in the bundle (audit finding 7), and
+\* built from the purely structural ChainNodes, not from ValidChain (root
+\* cause (a) -- self-reference). Used by both the scoped originals and the
+\* independent invariants further down.
+PermitChainNodes(i) ==
+  UNION {ChainNodes(w, audit_log[i].action.cap_bundle) : w \in audit_log[i].witness}
+
+\* ════════════════════════════════════════════════════════════════════════════
+\* SCOPING NOTE (tlc-remediation, TASK C) -- read before EpochSafety,
+\* ResourceBinding and ChainEpoch below.
+\* ════════════════════════════════════════════════════════════════════════════
+\*
+\* These three were written to quantify over EVERY cap in the bundle whose
+\* subject matches the actor (or, for ChainEpoch, every cap in the bundle at
+\* all) rather than over the cap that actually JUSTIFIED the Permit.
+\*
+\* That is not a true security property, and it is not what the kernel claims.
+\* A caller may legitimately present a bundle containing capabilities it does
+\* not need for this particular request -- a stale one, one for a different
+\* resource. The kernel ignores them and permits on the strength of a good cap.
+\* The wide forms call that a safety violation. They would therefore report
+\* FALSE counterexamples the moment the model contains a realistic mixed
+\* bundle, which is exactly what TASK C widens it to contain.
+\*
+\* So all three are now SCOPED to audit_log[i].witness -- the caps the kernel
+\* actually relied on, recorded at decision time.
+\*
+\* THIS IS A NARROWING, AND IT IS DELIBERATE. Being explicit about what was
+\* given up: the wide forms additionally asserted "no unused cap in a permitted
+\* bundle is stale / for another resource". That was never a security property
+\* of this kernel and was never claimed in SEMANTICS.md or the Rust engine --
+\* it is bundle hygiene, not authorisation soundness.
+\*
+\* This narrowing is NOT done to make TLC go green. To keep it honest the wide
+\* forms are RETAINED verbatim below as EpochSafetyWide / ResourceBindingWide /
+\* ChainEpochWide, and formal/tlc_runs/ contains a run of them against the
+\* widened model showing precisely which false counterexample each produces.
+\* They are not in the main cfg because they are known to be false by design,
+\* not because they are inconvenient.
+
+\* I1: Epoch Safety — the cap that justified a Permit had epoch >= min_epoch.
+\* SCOPED to the witness (see note above).
 EpochSafety ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A w \in audit_log[i].witness :
+        w.epoch >= audit_log[i].action.min_epoch
+
+\* Original unscoped form, retained for the record. Known to be FALSE on the
+\* widened model (MixedBundleAction carries an unused stale cap). Not in the
+\* main cfg. Demonstrated failing in formal/tlc_runs/.
+EpochSafetyWide ==
   \A i \in 1..Len(audit_log) :
     audit_log[i].decision = "Permit" =>
       LET a == audit_log[i].action
@@ -323,17 +374,43 @@ CompositionMono ==
                     /\ audit_log[j].decision = "Permit"
                     /\ audit_log[j].action.actor_id = actor}}
 
-\* I6: Resource Binding — every Permit matches cap resource to action resource.
+\* I6: Resource Binding — the cap that justified a Permit is bound to the
+\* requested resource. SCOPED to the witness (see the scoping note above).
 ResourceBinding ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A w \in audit_log[i].witness :
+        w.resource_hash = audit_log[i].action.resource_hash
+
+\* Original unscoped form, retained for the record. Known to be FALSE on the
+\* widened model (MixedBundleAction carries an unused cap for resource r2).
+ResourceBindingWide ==
   \A i \in 1..Len(audit_log) :
     audit_log[i].decision = "Permit" =>
       \A c \in audit_log[i].action.cap_bundle :
         c.subject_id = audit_log[i].action.actor_id =>
           c.resource_hash = audit_log[i].action.resource_hash
 
-\* I7: Chain Epoch — every node in a valid chain has epoch >= min_epoch.
-\* (Enforced inside ValidChain; stated here as a top-level invariant.)
+\* I7: Chain Epoch — every node on the chain of the JUSTIFYING cap has
+\* epoch >= min_epoch.
+\*
+\* Two changes: (1) scoped to the witness rather than every cap in the bundle;
+\* (2) stated STRUCTURALLY over ChainNodes instead of by re-invoking ValidChain.
+\* (2) is the self-reference fix -- the old form asked "does ValidChain hold?",
+\* which is the same question that produced the decision, so deleting the chain
+\* epoch check from ValidChain weakened this invariant in lockstep and it could
+\* never fire. It is now definitionally identical to WitnessChainEpoch; both
+\* names are kept so the documented lattice (I7) and the cfg stay readable.
 ChainEpoch ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A n \in PermitChainNodes(i) :
+        n.epoch >= audit_log[i].action.min_epoch
+
+\* Original unscoped, self-referential form, retained for the record. Known to
+\* be FALSE on the widened model: it demands ValidChain of EVERY cap in the
+\* bundle, including unused ones.
+ChainEpochWide ==
   \A i \in 1..Len(audit_log) :
     audit_log[i].decision = "Permit" =>
       \A c \in audit_log[i].action.cap_bundle :
@@ -365,11 +442,6 @@ ChainEpoch ==
 \* This is what makes them falsifiable: delete a check from Witnesses/ValidChain,
 \* a bad cap enters the witness set, and the corresponding invariant below fires
 \* with a concrete counterexample.
-
-\* Every cap on the chain of every justifying cap of every Permit.
-\* (Scoped to the WITNESS, not to all caps in the bundle -- see audit finding 7.)
-PermitChainNodes(i) ==
-  UNION {ChainNodes(w, audit_log[i].action.cap_bundle) : w \in audit_log[i].witness}
 
 \* ── A1 / AT-1: the canonical binding gate ───────────────────────────────────
 \* The audit validated this exact form: passes on baseline, CATCHES the mutant
@@ -503,6 +575,54 @@ DenyTampered          == DeniedAlways("Tampered")
 DenyEscalation        == DeniedAlways("Escalation")
 DenyStaleEpoch        == DeniedAlways("StaleEpoch")
 DenyStaleIntermediate == DeniedAlways("StaleIntermediate")
+
+\* ── Deny-completeness for the TASK C adversarial actions ────────────────────
+
+\* A6 / I3. EscalationCap is valid in every respect EXCEPT that it claims WRITE
+\* while its parent grants only READ. Only the attenuation check can deny it,
+\* so this property is a clean, isolated test of attenuation.
+DenyAttenEscalation == DeniedAlways("AttenEscalation")
+
+\* AT-2. A root cap whose issuer_pubkey is not RootKey must never permit.
+DenyForgedRoot == DeniedAlways("ForgedRoot")
+
+\* Expiry is TIME-DEPENDENT, so an unconditional deny property would be FALSE:
+\* ExpiredCap has expiry = 0 and is legitimately valid at now = 0. Stating it
+\* unconditionally would be an incorrect property, so it is stated conditionally
+\* -- denied whenever the decision was taken strictly after the cap expired.
+DenyExpiredWhenPast ==
+  \A i \in 1..Len(audit_log) :
+    (/\ audit_log[i].action_name = "Expired"
+     /\ audit_log[i].now > 0) => audit_log[i].decision = "Deny"
+
+\* ── Permit-REACHABILITY (non-vacuity guards) ────────────────────────────────
+\*
+\* Audit finding 5 was vacuity: every safety invariant is guarded on
+\* decision = "Permit", so an invariant suite in which NOTHING ever permits is
+\* trivially green and worthless.
+\*
+\* These are stated as invariants that are EXPECTED TO FAIL. Running one and
+\* getting a violation is the proof that the corresponding Permit is reachable,
+\* and the counterexample trace is the witness. They are deliberately NOT in the
+\* main cfg -- they are diagnostics, run separately, and their failure is the
+\* intended result. See formal/tlc_runs/.
+NeverPermits ==
+  \A i \in 1..Len(audit_log) : audit_log[i].decision # "Permit"
+
+NeverPermitsAtEpoch2 ==
+  \A i \in 1..Len(audit_log) :
+    ~(/\ audit_log[i].decision = "Permit"
+      /\ audit_log[i].action.min_epoch = 2)
+
+NeverPermitsOnR2 ==
+  \A i \in 1..Len(audit_log) :
+    ~(/\ audit_log[i].decision = "Permit"
+      /\ audit_log[i].action.resource_hash = "r2")
+
+NeverPermitsMixedBundle ==
+  \A i \in 1..Len(audit_log) :
+    ~(/\ audit_log[i].decision = "Permit"
+      /\ audit_log[i].action_name = "MixedBundle")
 
 \* ── State transitions ───────────────────────────────────────────────────────
 
@@ -647,6 +767,10 @@ BigSafety ==
   /\ DenyEscalation
   /\ DenyStaleEpoch
   /\ DenyStaleIntermediate
+  \* ── TASK C adversarial actions ──
+  /\ DenyAttenEscalation
+  /\ DenyForgedRoot
+  /\ DenyExpiredWhenPast
 
 \* PermitSoundness: the primary safety claim of the authgate TCB kernel --
 \* an INDEPENDENT statement of what a Permit means.
