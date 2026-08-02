@@ -559,6 +559,14 @@ MCSpec == Init /\ [][MCNext]_vars /\ WF_vars(MCNext)
 \* result. It is listed as such in formal/tlc_runs/.
 MCRevBound == Len(revocation_history) <= 2
 
+\* Mutation-testing bound: one audit entry, one revocation. Deliberately the
+\* CHEAPEST bound at which every mutation in mutation_matrix.sh can still be
+\* detected -- one decision plus one prior revocation is enough for all of them.
+\* Mutation results are therefore reported AT THIS BOUND; a mutant that escapes
+\* here might still be caught at a larger bound, and that caveat is recorded
+\* with the matrix rather than glossed over.
+MCConstraintMut == Len(audit_log) <= 1 /\ Len(revocation_history) <= 1
+
 MCConstraint1 == Len(audit_log) <= 1 /\ MCRevBound
 MCConstraint2 == Len(audit_log) <= 2 /\ MCRevBound
 MCConstraint3 == Len(audit_log) <= 3 /\ MCRevBound
