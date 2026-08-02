@@ -1,0 +1,65 @@
+==============================================================
+TLC RUN LOG
+==============================================================
+label            : probe_ChainEpochWide
+date (local)     : 2026-08-02 15:39:49 +0300
+repo branch      : tlc-remediation
+repo commit      : dcc5ed1a87515f2a9b7ae3f57b4f6d4aac09ebeb
+git dirty        : YES
+host             : MINGW64_NT-10.0-19045 x86_64
+java             : openjdk version "17.0.10" 2024-01-16 LTS
+tlc version      : TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+jar sha256       : e22f8ffb4bacdea0a871f444dd94fe5fb0d8013b3388ae39e82e26f852c735d5
+jar size (bytes) : 4486015
+config file      : MC_probe_ChainEpochWide.cfg
+bound / constraint: CONSTRAINT MCConstraint1
+timeout (s)      : 600
+command line     : java -XX:+UseParallelGC -jar tla2tools.jar -workers auto -config MC_probe_ChainEpochWide.cfg MC_AuthGateV3.tla
+==============================================================
+
+----- VERBATIM TLC OUTPUT (parser noise filtered) -----
+TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+Running breadth-first search Model-Checking with fp 30 and seed -3312264125701901054 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 1876] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-02 15:39:51)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-08-02 15:39:52.
+Error: Invariant ChainEpochWide is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ revocation_history = <<>>
+/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {}
+/\ global_epoch = 0
+/\ audit_log = <<>>
+
+State 2: <AdvanceEpoch(1) line 639, col 3 to line 642, col 77 of module AuthGateV3>
+/\ revocation_history = <<>>
+/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {}
+/\ global_epoch = 1
+/\ audit_log = <<>>
+
+State 3: <Revoke("h2") line 649, col 3 to line 653, col 58 of module AuthGateV3>
+/\ revocation_history = <<"h2">>
+/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {"h2"}
+/\ global_epoch = 1
+/\ audit_log = <<>>
+
+State 4: <ExecuteVerify([resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h1", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h3", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 0, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h9", subject_id |-> "a1", resource_hash |-> "r2", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, binding_valid |-> TRUE],0,"MixedBundle") line 672, col 3 to line 690, col 64 of module AuthGateV3>
+/\ revocation_history = <<"h2">>
+/\ session_rights = [a0 |-> {}, a1 |-> {"READ"}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {"h2"}
+/\ global_epoch = 1
+/\ audit_log = <<[action |-> [resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h1", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h3", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 0, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h9", subject_id |-> "a1", resource_hash |-> "r2", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, binding_valid |-> TRUE], now |-> 0, rev_len |-> 1, decision |-> "Permit", revoked_at |-> {"h2"}, witness |-> {[proof_hash |-> "h1", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, action_name |-> "MixedBundle"]>>
+
+302 states generated, 275 distinct states found, 253 states left on queue.
+The depth of the complete state graph search is 4.
+Finished in 01s at (2026-08-02 15:39:52)
+Trace exploration spec path: .\MC_AuthGateV3_TTrace_1785674390.tla
+----- END VERBATIM TLC OUTPUT -----
+
+wall clock (s)   : 2
+process exit code: 12
+STATUS           : COMPLETED - INVARIANT VIOLATED (counterexample above)
+violated         : Invariant ChainEpochWide is violated

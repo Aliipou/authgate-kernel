@@ -25,7 +25,7 @@ let decision = gate.execute(&action, now);
 
 ## Invariant mapping
 
-Every security check in `engine.rs` maps to a formal invariant in `formal/authgate_v3.tla`:
+Every security check in `engine.rs` maps to a formal invariant in `formal/AuthGateV3.tla`:
 
 | Code check | TLA+ invariant | Attack class closed |
 |---|---|---|

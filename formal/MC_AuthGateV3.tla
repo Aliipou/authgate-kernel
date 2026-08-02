@@ -3,16 +3,16 @@
   TLC model checking instance for AuthGateV3.
 
   Instantiates all abstract constants with small finite sets so TLC can
-  enumerate the full reachable state space and verify all 9 invariants
-  (I1-I8 + BigSafety + PermitSoundness).
+  enumerate the reachable state space UP TO A STATED BOUND on Len(audit_log).
+  A TLC result here is a bounded-model result, never a proof for all runs.
 
-  Note: audit_log entries now carry a revoked_at snapshot field (I4 fix).
-
-  Model size (chosen to be feasible on a laptop in ~minutes):
-    Actors       = {a0, a1, a2, a3}     4 actors
-    Resources    = {r1}                  1 resource (reduces state explosion)
-    ProofHashes  = {h1, h2, h3, h4, h5} 5 proof hashes
-    PublicKeys   = {pk0, pk1, pk2, pk3}  4 public keys (pk0 = root)
+  Model size:
+    Actors        = {a0, a1, a2, a3}            4 actors
+    Resources     = {r1, r2}                    2 -- was 1, which made a
+                                                cross-resource attack
+                                                INEXPRESSIBLE
+    ProofHashes   = {h1 .. h12}                 12 -- one per capability
+    PublicKeys    = {pk0, pk1, pk2, pk3}        4 (pk0 = root key)
     MaxChainDepth = 2
     MaxEpoch      = 2
 
@@ -22,21 +22,36 @@
     pk2 -> a2
     pk3 -> a3
 
-  Pre-enumerated capability proofs:
-    RootCap           valid root-issued cap for a1, READ, epoch=1
-    DelegCap          valid delegated cap from a1 to a2, READ, epoch=1
-    StaleCap          root cap for a1 but epoch=0 (triggers I1/I7)
-    BadSigCap         root cap but sig_valid=FALSE (triggers sig check)
-    ImpersonationCap  delegated cap but issuer_pubkey hashes to a3 not a1 (triggers I2)
-    EscalationCap     delegated cap claiming WRITE but parent only has READ (triggers I3)
+  Capability proofs (h# = proof_hash):
+    h1  RootCap              valid root cap for a1, READ, epoch=1
+    h2  DelegCap             valid delegated cap a1 -> a2, READ, epoch=1
+    h3  StaleCap             root cap for a1 but epoch=0        (I1/I7)
+    h4  BadSigCap            root cap, sig_valid=FALSE          (root sig)
+    h5  ImpersonationCap     issuer_pubkey hashes to a3, not a1 (I2)
+    h6  StaleIntermediateCap delegated, epoch=0                 (I7 chain)
+    h7  EscalationCap        claims WRITE, parent grants READ   (I3 / A6)
+    h8  ExpiredCap           expiry=0                           (expiry)
+    h9  WrongResourceCap     valid cap for a1 but on r2         (I6)
+    h10 ForgedRootCap        root cap NOT signed by RootKey     (AT-2)
+    h11 RootCapE2            valid root cap at epoch=2          (epoch spread)
+    h12 OrphanCap            delegated, parent absent from bundle (I8)
 
-  Actions pre-enumerated as named constants to bound TLC's Next quantifier.
-  All actions have binding_valid=TRUE except TamperedAction.
+  h7 h8 h9 h10 h11 h12 were added on branch tlc-remediation. Before them the
+  corresponding checks were UNFALSIFIABLE, not merely unchecked: every cap had
+  rights {"READ"} and expiry 2, every root cap used pk0, and every delegated
+  cap had its parent present -- so deleting those checks changed no decision.
 
-  Running TLC:
-    java -jar tla2tools.jar -tool MC_AuthGateV3
+  Actions are pre-enumerated as named records to bound TLC's Next quantifier,
+  and each is TAGGED WITH A NAME so deny-completeness ("this attack always
+  Denies") is expressible at all.
 
-  Expected result: all 7 invariants hold across all reachable states.
+  Running TLC -- use a per-bound cfg; MCConstraint (<= 3) does not complete:
+    java -XX:+UseParallelGC -jar tla2tools.jar -workers auto \
+         -config MC_AuthGateV3_b1.cfg MC_AuthGateV3.tla
+
+  Results actually obtained are recorded in formal/tlc_runs/ with command
+  lines, jar SHA-256, wall clock and verbatim output. Do not state a result
+  here that is not backed by a log there.
 *)
 
 EXTENDS AuthGateV3
@@ -44,8 +59,17 @@ EXTENDS AuthGateV3
 \* ── Concrete constant instantiations ────────────────────────────────────────
 
 MCActors     == {"a0", "a1", "a2", "a3"}
-MCResources  == {"r1"}
-MCProofHashes == {"h1", "h2", "h3", "h4", "h5"}
+
+\* WIDENED (tlc-remediation TASK C): was {"r1"}. With a single resource, a
+\* cross-resource attack is INEXPRESSIBLE -- resource binding could not be
+\* violated even in principle, so its passing carried no information.
+MCResources  == {"r1", "r2"}
+
+\* WIDENED: was {"h1".."h5"}, which forced ImpersonationCap and
+\* StaleIntermediateCap to share the hash "h5". Every capability now has a
+\* distinct proof hash, which revocation semantics depend on.
+MCProofHashes == {"h1", "h2", "h3", "h4", "h5",
+                  "h6", "h7", "h8", "h9", "h10", "h11", "h12", "h13", "h14"}
 MCPublicKeys  == {"pk0", "pk1", "pk2", "pk3"}
 MCRootKey    == "pk0"
 MCMaxChainDepth == 2
@@ -138,7 +162,7 @@ ImpersonationCap == [
 \* AT-3 Intermediate epoch violation: DelegCap with epoch=0 (stale intermediate).
 
 StaleIntermediateCap == [
-  proof_hash    |-> "h5",   \* reuse h5 slot
+  proof_hash    |-> "h6",   \* was "h5", colliding with ImpersonationCap
   subject_id    |-> "a2",
   resource_hash |-> "r1",
   rights        |-> {"READ"},
@@ -146,6 +170,158 @@ StaleIntermediateCap == [
   epoch         |-> 0,      \* stale — will trigger I7 at chain walk
   issuer        |-> [type |-> "Delegated", parent_hash |-> "h1"],
   issuer_pubkey |-> "pk1",
+  sig_valid     |-> TRUE
+]
+
+\* ════════════════════════════════════════════════════════════════════════════
+\* NEW CAPABILITIES (tlc-remediation TASK C) -- audit root cause (b)
+\* ════════════════════════════════════════════════════════════════════════════
+\*
+\* Every one of the six capabilities above carries rights |-> {"READ"}. They are
+\* IDENTICAL in rights, so no capability can escalate relative to its parent and
+\* attenuation (A6 / I3) is UNFALSIFIABLE: deleting the attenuation check
+\* entirely is not caught, and the invariant's passing carries no information.
+\* Likewise every cap has expiry |-> 2 while now \in 0..2, so the expiry guard is
+\* universally true, and every root cap uses pk0 so the root-key check is never
+\* exercised negatively.
+\*
+\* The capabilities below exist to make those properties FALSIFIABLE.
+
+\* A6 / I3 ATTENUATION -- the capability MC_AuthGateV3.tla:31 has documented
+\* since the file was written and which was NEVER DEFINED. Only the comment
+\* existed. This is the delegated cap claiming WRITE whose parent (RootCap,
+\* h1) grants only READ.
+EscalationCap == [
+  proof_hash    |-> "h7",
+  subject_id    |-> "a2",
+  resource_hash |-> "r1",
+  rights        |-> {"READ", "WRITE"},   \* parent RootCap has only {"READ"}
+  expiry        |-> 2,
+  epoch         |-> 1,
+  issuer        |-> [type |-> "Delegated", parent_hash |-> "h1"],
+  issuer_pubkey |-> "pk1",               \* Hash(pk1) = a1 -- identity binding OK
+  sig_valid     |-> TRUE                 \* signature OK
+]
+\* Note: everything about EscalationCap is valid EXCEPT attenuation. That is
+\* deliberate -- it isolates the attenuation check as the only thing that can
+\* deny it, so the mutation test is unambiguous.
+
+\* EXPIRY -- expiry=0, so it is expired at any now > 0 and valid at now = 0.
+ExpiredCap == [
+  proof_hash    |-> "h8",
+  subject_id    |-> "a1",
+  resource_hash |-> "r1",
+  rights        |-> {"READ"},
+  expiry        |-> 0,
+  epoch         |-> 1,
+  issuer        |-> [type |-> "Root"],
+  issuer_pubkey |-> "pk0",
+  sig_valid     |-> TRUE
+]
+
+\* RESOURCE BINDING -- a perfectly valid root cap for a1, but on r2 rather than
+\* r1. Used two ways: as the justifying cap of a legitimate r2 request, and as
+\* the UNUSED wrong-resource cap inside the mixed bundle below.
+WrongResourceCap == [
+  proof_hash    |-> "h9",
+  subject_id    |-> "a1",
+  resource_hash |-> "r2",
+  rights        |-> {"READ"},
+  expiry        |-> 2,
+  epoch         |-> 1,
+  issuer        |-> [type |-> "Root"],
+  issuer_pubkey |-> "pk0",
+  sig_valid     |-> TRUE
+]
+
+\* AT-2 ROOT AUTHORITY -- a root cap signed by pk2 rather than the root key pk0.
+\* Before this branch RootKey appeared in no executable expression, so this cap
+\* would have validated as a root capability with no identity check at all.
+ForgedRootCap == [
+  proof_hash    |-> "h10",
+  subject_id    |-> "a1",
+  resource_hash |-> "r1",
+  rights        |-> {"READ"},
+  expiry        |-> 2,
+  epoch         |-> 1,
+  issuer        |-> [type |-> "Root"],
+  issuer_pubkey |-> "pk2",   \* NOT MCRootKey ("pk0")
+  sig_valid     |-> TRUE     \* signature itself is "valid" -- just not root's
+]
+
+\* EPOCH VARIATION -- a root cap current at epoch 2, so that verification is
+\* enabled at more than one min_epoch. Without it every Permit in the model
+\* happens at min_epoch = 1 and the epoch dimension is barely exercised.
+RootCapE2 == [
+  proof_hash    |-> "h11",
+  subject_id    |-> "a1",
+  resource_hash |-> "r1",
+  rights        |-> {"READ"},
+  expiry        |-> 2,
+  epoch         |-> 2,
+  issuer        |-> [type |-> "Root"],
+  issuer_pubkey |-> "pk0",
+  sig_valid     |-> TRUE
+]
+
+\* I8 CHAIN COMPLETENESS -- a delegated cap whose parent_hash ("h3") is NOT in
+\* the bundle it travels in. Without this, EVERY delegated cap in the model has
+\* its parent present, so deleting the HasParent check changes no decision at
+\* all: the mutant is semantically inert and the check is UNFALSIFIABLE rather
+\* than merely uncaught. This capability is what gives I8 something to fail on.
+OrphanCap == [
+  proof_hash    |-> "h12",
+  subject_id    |-> "a1",
+  resource_hash |-> "r1",
+  rights        |-> {"READ"},
+  expiry        |-> 2,
+  epoch         |-> 1,
+  issuer        |-> [type |-> "Delegated", parent_hash |-> "h3"],
+  issuer_pubkey |-> "pk0",   \* Hash(pk0) = a0; irrelevant, parent is absent
+  sig_valid     |-> TRUE
+]
+
+\* ════════════════════════════════════════════════════════════════════════════
+\* SECOND ROUND OF TEST DATA -- added after the first mutation matrix run
+\* ════════════════════════════════════════════════════════════════════════════
+\*
+\* The first post-fix mutation run (tlc_runs/mutation_matrix_*.md) showed two
+\* checks still ESCAPING, and in both cases the cause was missing test data,
+\* not a blind invariant. These two capabilities close that gap.
+
+\* INTERMEDIATE SIGNATURE. BadSigCap (h4) is a ROOT cap, so the model contained
+\* NO delegated capability with sig_valid = FALSE. Deleting the intermediate
+\* signature check therefore changed no decision anywhere and the mutant was
+\* semantically inert. This is a delegated cap with a bad signature.
+BadSigDelegCap == [
+  proof_hash    |-> "h13",
+  subject_id    |-> "a2",
+  resource_hash |-> "r1",
+  rights        |-> {"READ"},
+  expiry        |-> 2,
+  epoch         |-> 1,
+  issuer        |-> [type |-> "Delegated", parent_hash |-> "h1"],
+  issuer_pubkey |-> "pk1",   \* identity binding OK -- ONLY the signature is bad
+  sig_valid     |-> FALSE
+]
+
+\* CHAIN EPOCH (AT-3.1). Every stale capability in the model -- StaleCap and
+\* StaleIntermediateCap alike -- is the LEAF of its own request, so it is
+\* rejected by the leaf epoch gate before the chain walk is ever reached.
+\* There was no bundle in which a CURRENT leaf has a STALE ANCESTOR, which is
+\* the actual AT-3.1 attack, so the chain-epoch check was unfalsifiable.
+\*
+\* This leaf is current (epoch 1) but its parent is StaleCap (h3, epoch 0).
+\* Only the recursive chain-epoch check can deny it.
+StaleParentDelegCap == [
+  proof_hash    |-> "h14",
+  subject_id    |-> "a2",
+  resource_hash |-> "r1",
+  rights        |-> {"READ"},
+  expiry        |-> 2,
+  epoch         |-> 1,                \* leaf is CURRENT
+  issuer        |-> [type |-> "Delegated", parent_hash |-> "h3"],  \* StaleCap
+  issuer_pubkey |-> "pk1",            \* Hash(pk1) = a1 = StaleCap.subject_id
   sig_valid     |-> TRUE
 ]
 
@@ -245,6 +421,123 @@ StaleIntermediateAction == [   \* AT-3.1: intermediate chain node epoch stale
   binding_valid   |-> TRUE
 ]
 
+\* ── New actions (tlc-remediation TASK C) ────────────────────────────────────
+
+\* A6 / I3: the attenuation attack. EscalationCap claims WRITE; its parent
+\* grants only READ. Everything else about the cap is valid, so ONLY the
+\* attenuation check can deny this. Must Deny.
+AttenEscalationAction == [
+  actor_id        |-> "a2",
+  resource_hash   |-> "r1",
+  required_rights |-> {"WRITE"},
+  min_epoch       |-> 1,
+  timestamp       |-> 1,
+  cap_bundle      |-> {EscalationCap, RootCap},
+  binding_valid   |-> TRUE
+]
+
+\* AT-2: root cap not signed by the root key. Must Deny.
+ForgedRootAction == [
+  actor_id        |-> "a1",
+  resource_hash   |-> "r1",
+  required_rights |-> {"READ"},
+  min_epoch       |-> 1,
+  timestamp       |-> 1,
+  cap_bundle      |-> {ForgedRootCap},
+  binding_valid   |-> TRUE
+]
+
+\* Expiry: Denies at now > 0, Permits at now = 0. NOT an always-deny action --
+\* see DenyExpiredWhenPast, which states the conditional form precisely.
+ExpiredAction == [
+  actor_id        |-> "a1",
+  resource_hash   |-> "r1",
+  required_rights |-> {"READ"},
+  min_epoch       |-> 1,
+  timestamp       |-> 1,
+  cap_bundle      |-> {ExpiredCap},
+  binding_valid   |-> TRUE
+]
+
+\* A legitimate request against the SECOND resource. Permits. Exercises r2 on
+\* the positive side so resource binding is not only tested by denials.
+ValidR2Action == [
+  actor_id        |-> "a1",
+  resource_hash   |-> "r2",
+  required_rights |-> {"READ"},
+  min_epoch       |-> 1,
+  timestamp       |-> 1,
+  cap_bundle      |-> {WrongResourceCap},
+  binding_valid   |-> TRUE
+]
+
+\* A legitimate request at min_epoch = 2. Permits, at a different epoch from
+\* every other permitting action in the model.
+ValidEpoch2Action == [
+  actor_id        |-> "a1",
+  resource_hash   |-> "r1",
+  required_rights |-> {"READ"},
+  min_epoch       |-> 2,
+  timestamp       |-> 1,
+  cap_bundle      |-> {RootCapE2},
+  binding_valid   |-> TRUE
+]
+
+\* THE MIXED BUNDLE -- exactly the case the TASK C scoping fix protects against.
+\*
+\* A good cap (RootCap) PLUS two unused caps for the same actor: a stale one
+\* (StaleCap, epoch 0) and a wrong-resource one (WrongResourceCap, r2). The
+\* request is for r1 at min_epoch 1, and RootCap justifies it. This must PERMIT:
+\* carrying capabilities you do not need for this request is not an attack.
+\*
+\* Under the UNSCOPED invariants this Permit is a false counterexample --
+\* EpochSafetyWide fails on StaleCap, ResourceBindingWide on WrongResourceCap.
+\* Under the scoped forms it passes, correctly.
+MixedBundleAction == [
+  actor_id        |-> "a1",
+  resource_hash   |-> "r1",
+  required_rights |-> {"READ"},
+  min_epoch       |-> 1,
+  timestamp       |-> 1,
+  cap_bundle      |-> {RootCap, StaleCap, WrongResourceCap},
+  binding_valid   |-> TRUE
+]
+
+\* I8: delegated cap whose parent is absent from the bundle. Must Deny.
+\* The bundle deliberately does NOT contain h3.
+OrphanAction == [
+  actor_id        |-> "a1",
+  resource_hash   |-> "r1",
+  required_rights |-> {"READ"},
+  min_epoch       |-> 1,
+  timestamp       |-> 1,
+  cap_bundle      |-> {OrphanCap},
+  binding_valid   |-> TRUE
+]
+
+\* Delegated cap with an invalid signature. Must Deny.
+BadSigDelegAction == [
+  actor_id        |-> "a2",
+  resource_hash   |-> "r1",
+  required_rights |-> {"READ"},
+  min_epoch       |-> 1,
+  timestamp       |-> 1,
+  cap_bundle      |-> {BadSigDelegCap, RootCap},
+  binding_valid   |-> TRUE
+]
+
+\* AT-3.1: current leaf, STALE ANCESTOR. Only the recursive chain-epoch check
+\* can deny this. Must Deny.
+StaleAncestorAction == [
+  actor_id        |-> "a2",
+  resource_hash   |-> "r1",
+  required_rights |-> {"READ"},
+  min_epoch       |-> 1,
+  timestamp       |-> 1,
+  cap_bundle      |-> {StaleParentDelegCap, StaleCap},
+  binding_valid   |-> TRUE
+]
+
 MCActions == {
   ValidAction,
   DelegatedAction,
@@ -254,7 +547,49 @@ MCActions == {
   WrongActorAction,
   TamperedAction,
   EscalationAction,
-  StaleIntermediateAction
+  StaleIntermediateAction,
+  AttenEscalationAction,
+  ForgedRootAction,
+  ExpiredAction,
+  ValidR2Action,
+  ValidEpoch2Action,
+  MixedBundleAction,
+  OrphanAction,
+  BadSigDelegAction,
+  StaleAncestorAction
+}
+
+\* ── Named actions (tlc-remediation) ─────────────────────────────────────────
+\*
+\* Audit finding 5: seven of the nine actions above ALWAYS Deny, and every
+\* safety invariant is an implication guarded on decision = "Permit". So the
+\* invariant suite said literally nothing about those seven -- they were
+\* decorative. Each one is an attack that is supposed to be blocked, and
+\* nothing checked that it was.
+\*
+\* Tagging each action with a name lets ExecuteVerify record which action
+\* produced each audit entry, which in turn makes the deny-completeness
+\* properties (DenyBadSig, DenyImpersonation, ...) expressible at all.
+MCNamedActions == {
+  [name |-> "Valid",             act |-> ValidAction],
+  [name |-> "Delegated",         act |-> DelegatedAction],
+  [name |-> "StaleEpoch",        act |-> StaleEpochAction],
+  [name |-> "BadSig",            act |-> BadSigAction],
+  [name |-> "Impersonation",     act |-> ImpersonationAction],
+  [name |-> "WrongActor",        act |-> WrongActorAction],
+  [name |-> "Tampered",          act |-> TamperedAction],
+  [name |-> "Escalation",        act |-> EscalationAction],
+  [name |-> "StaleIntermediate", act |-> StaleIntermediateAction],
+  \* tlc-remediation TASK C
+  [name |-> "AttenEscalation",   act |-> AttenEscalationAction],
+  [name |-> "ForgedRoot",        act |-> ForgedRootAction],
+  [name |-> "Expired",           act |-> ExpiredAction],
+  [name |-> "ValidR2",           act |-> ValidR2Action],
+  [name |-> "ValidEpoch2",       act |-> ValidEpoch2Action],
+  [name |-> "MixedBundle",       act |-> MixedBundleAction],
+  [name |-> "Orphan",            act |-> OrphanAction],
+  [name |-> "BadSigDeleg",       act |-> BadSigDelegAction],
+  [name |-> "StaleAncestor",     act |-> StaleAncestorAction]
 }
 
 \* ── MC-bounded transitions ───────────────────────────────────────────────────
@@ -266,14 +601,47 @@ MCAdvanceEpoch == \E e \in 0..MCMaxEpoch : AdvanceEpoch(e)
 
 MCRevoke == \E h \in MCProofHashes : Revoke(h)
 
-MCExecuteVerify == \E a \in MCActions, t \in 0..MCMaxEpoch : ExecuteVerify(a, t)
+MCExecuteVerify ==
+  \E na \in MCNamedActions, t \in 0..MCMaxEpoch :
+    ExecuteVerify(na.act, t, na.name)
 
 MCNext == MCAdvanceEpoch \/ MCRevoke \/ MCExecuteVerify
 
 MCSpec == Init /\ [][MCNext]_vars /\ WF_vars(MCNext)
 
 \* ── State constraint: bound the audit log to prevent infinite growth ──────────
+\*
+\* BOUNDS LADDER (tlc-remediation). The shipped bound below is <= 3. The audit
+\* measured that bound at 26.5M states / 2.3M distinct after 10 minutes on 4
+\* workers with the queue still growing -- roughly 10^9 reachable states. It is
+\* NOT completable, and a run at that bound that is cut off is not a
+\* verification result.
+\*
+\* Separate cfgs select a bound via these operators. See formal/tlc_runs/.
+\* REVOCATION BOUND (tlc-remediation TASK C). revocation_history is ORDERED, so
+\* its state count is the number of permutations of subsets of ProofHashes --
+\* with 11 hashes that is ~10^7 and swamps everything else. Bounding it to 2
+\* revocations brings it to 1 + 11 + 110 = 122.
+\*
+\* This is a MODEL BOUND and is stated as one: sequences of three or more
+\* distinct revocations are NOT explored. Two is enough to exercise the property
+\* that matters (revoke the cap that would otherwise justify a Permit, before
+\* and after the decision), but coverage beyond two revocations is a gap, not a
+\* result. It is listed as such in formal/tlc_runs/.
+MCRevBound == Len(revocation_history) <= 2
 
-MCConstraint == Len(audit_log) <= 3
+\* Mutation-testing bound: one audit entry, one revocation. Deliberately the
+\* CHEAPEST bound at which every mutation in mutation_matrix.sh can still be
+\* detected -- one decision plus one prior revocation is enough for all of them.
+\* Mutation results are therefore reported AT THIS BOUND; a mutant that escapes
+\* here might still be caught at a larger bound, and that caveat is recorded
+\* with the matrix rather than glossed over.
+MCConstraintMut == Len(audit_log) <= 1 /\ Len(revocation_history) <= 1
+
+MCConstraint1 == Len(audit_log) <= 1 /\ MCRevBound
+MCConstraint2 == Len(audit_log) <= 2 /\ MCRevBound
+MCConstraint3 == Len(audit_log) <= 3 /\ MCRevBound
+
+MCConstraint == MCConstraint3
 
 =============================================================================

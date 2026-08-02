@@ -1,0 +1,48 @@
+==============================================================
+TLC RUN LOG
+==============================================================
+label            : bound1_full
+date (local)     : 2026-08-02 16:09:55 +0300
+repo branch      : tlc-remediation
+repo commit      : 2fdbb6819803ef5eb377448cd18444df2678c94e
+git dirty        : YES
+host             : MINGW64_NT-10.0-19045 x86_64
+java             : openjdk version "17.0.10" 2024-01-16 LTS
+tlc version      : TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+jar sha256       : e22f8ffb4bacdea0a871f444dd94fe5fb0d8013b3388ae39e82e26f852c735d5
+jar size (bytes) : 4486015
+config file      : MC_AuthGateV3_b1.cfg
+bound / constraint: CONSTRAINT MCConstraint1
+timeout (s)      : 1800
+command line     : java -XX:+UseParallelGC -jar tla2tools.jar -workers auto -config MC_AuthGateV3_b1.cfg MC_AuthGateV3.tla
+==============================================================
+
+----- VERBATIM TLC OUTPUT (parser noise filtered) -----
+TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+Running breadth-first search Model-Checking with fp 80 and seed -90558907815260764 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 11340] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-02 16:11:21)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-08-02 16:11:26.
+Progress(5) at 2026-08-02 16:11:29: 1,118 states generated (1,118 s/min), 1,005 distinct states found (1,005 ds/min), 970 states left on queue.
+Progress(6) at 2026-08-02 16:12:29: 212,618 states generated (211,500 s/min), 24,200 distinct states found (23,195 ds/min), 19,523 states left on queue.
+Progress(6) at 2026-08-02 16:13:30: 400,872 states generated (188,254 s/min), 27,709 distinct states found (3,509 ds/min), 19,371 states left on queue.
+Progress(6) at 2026-08-02 16:14:30: 427,163 states generated (26,291 s/min), 28,194 distinct states found (485 ds/min), 19,337 states left on queue.
+Progress(6) at 2026-08-02 16:15:30: 451,658 states generated (24,495 s/min), 28,645 distinct states found (451 ds/min), 19,303 states left on queue.
+Progress(6) at 2026-08-02 16:16:31: 587,706 states generated (136,048 s/min), 30,519 distinct states found (1,874 ds/min), 17,030 states left on queue.
+Progress(6) at 2026-08-02 16:17:31: 789,582 states generated (201,876 s/min), 34,233 distinct states found (3,714 ds/min), 16,652 states left on queue.
+Progress(6) at 2026-08-02 16:18:31: 987,181 states generated (197,599 s/min), 37,665 distinct states found (3,432 ds/min), 15,300 states left on queue.
+Progress(6) at 2026-08-02 16:19:32: 1,213,562 states generated (226,381 s/min), 38,325 distinct states found (660 ds/min), 3,813 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 2.6E-9
+  based on the actual fingerprints:  val = 7.4E-11
+1274602 states generated, 38325 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 6.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 31 and the 95th percentile is 11).
+Finished in 08min 35s at (2026-08-02 16:19:48)
+----- END VERBATIM TLC OUTPUT -----
+
+wall clock (s)   : 707
+process exit code: 0
+STATUS           : COMPLETED - state space exhausted, no violation

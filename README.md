@@ -160,7 +160,7 @@ freedom-kernel/src/
   sandbox.rs         SandboxedExecutor — WASM capability-gated tool runner
 
 formal/
-  authgate_v3.tla    TLA+ state machine (9 invariants + PermitSoundness)
+  AuthGateV3.tla    TLA+ state machine (9 invariants + PermitSoundness)
   kani/              Kani harnesses (19 harnesses — all proved)
   lean4/             Lean 4 proofs (7 theorems)
   COVERAGE.md        What is and is not formally verified

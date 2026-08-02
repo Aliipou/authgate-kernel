@@ -1,0 +1,40 @@
+==============================================================
+TLC RUN LOG
+==============================================================
+label            : bound1_full
+date (local)     : 2026-08-02 15:36:26 +0300
+repo branch      : tlc-remediation
+repo commit      : dcc5ed1a87515f2a9b7ae3f57b4f6d4aac09ebeb
+git dirty        : YES
+host             : MINGW64_NT-10.0-19045 x86_64
+java             : openjdk version "17.0.10" 2024-01-16 LTS
+tlc version      : TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+jar sha256       : e22f8ffb4bacdea0a871f444dd94fe5fb0d8013b3388ae39e82e26f852c735d5
+jar size (bytes) : 4486015
+config file      : MC_AuthGateV3_b1.cfg
+bound / constraint: CONSTRAINT MCConstraint1
+timeout (s)      : 1800
+command line     : java -XX:+UseParallelGC -jar tla2tools.jar -workers auto -config MC_AuthGateV3_b1.cfg MC_AuthGateV3.tla
+==============================================================
+
+----- VERBATIM TLC OUTPUT (parser noise filtered) -----
+TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+Running breadth-first search Model-Checking with fp 93 and seed -2835209301955012262 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 8656] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-02 15:36:27)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-08-02 15:36:28.
+Progress(5) at 2026-08-02 15:36:31: 28,547 states generated (28,547 s/min), 10,780 distinct states found (10,780 ds/min), 9,933 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 1.5E-9
+  based on the actual fingerprints:  val = 2.8E-11
+924064 states generated, 30018 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 6.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 31 and the 95th percentile is 10).
+Finished in 01min 03s at (2026-08-02 15:37:30)
+----- END VERBATIM TLC OUTPUT -----
+
+wall clock (s)   : 64
+process exit code: 0
+STATUS           : COMPLETED - state space exhausted, no violation

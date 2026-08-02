@@ -1,7 +1,7 @@
 # TLC Model Checker Setup — authgate-kernel Phase 1.1
 
 This document provides step-by-step setup to run the TLA+ model checker (TLC)
-against `formal/authgate_v3.tla` and `formal/MC_AuthGateV3.tla`.
+against `formal/AuthGateV3.tla` and `formal/MC_AuthGateV3.tla`.
 
 TLC will verify 9 invariants + PermitSoundness exhaustively on the finite
 model (3 actors, 3 resources, 3 epochs). Estimated runtime: <5 minutes on
@@ -103,7 +103,7 @@ unzip /tmp/apalache.zip -d /tmp/
 /tmp/apalache/bin/apalache-mc check \
   --inv=SovereigntyAlwaysBlocks \
   --length=5 \
-  formal/authgate_v3.tla
+  formal/AuthGateV3.tla
 ```
 
 ---
@@ -173,7 +173,7 @@ spec means the state machine is stuck — usually a missing transition.
 
 **TLC has not yet been run** — this is MASTER_PLAN success criterion #1 (pending Java setup).
 
-The spec (`authgate_v3.tla`) and model (`MC_AuthGateV3.tla`, `MC_AuthGateV3.cfg`)
+The spec (`AuthGateV3.tla`) and model (`MC_AuthGateV3.tla`, `MC_AuthGateV3.cfg`)
 are complete and ready. The only requirement is Java installation and tla2tools.jar download.
 
 Estimated time to run: <5 minutes on a laptop once Java is available.

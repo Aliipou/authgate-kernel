@@ -14,7 +14,7 @@ TOTAL TCB (4 files)               ≤ 600 LOC
 ```
 
 Rationale: small TCB is auditable TCB. Every LOC added must be justified
-against a specific invariant in `spec-core/formal/authgate_v3.tla`.
+against a specific invariant in `spec-core/formal/AuthGateV3.tla`.
 
 Current LOC (2026-05-28):
 
@@ -36,7 +36,7 @@ The four TCB files must contain:
 ## C3: Invariant alignment
 
 Every security check in `engine.rs` and `dag.rs` must correspond to a stated
-invariant in `spec-core/formal/authgate_v3.tla`. Mapping:
+invariant in `spec-core/formal/AuthGateV3.tla`. Mapping:
 
 | Code check | TLA+ invariant |
 |---|---|

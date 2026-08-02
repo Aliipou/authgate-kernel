@@ -90,7 +90,7 @@
 - Branch: integration
 
 ### E5: TLC model checker
-- TLA+ spec exists (formal/authgate_v3.tla) but TLC has not been run
+- TLA+ spec exists (formal/AuthGateV3.tla) but TLC has not been run
 - Needs Java + tla2tools.jar
 - Branch: spec-core
 
@@ -102,7 +102,7 @@
 |--------|--------|----------|
 | Kani (Rust) | 19 harnesses proved | freedom-kernel/src/ |
 | Lean 4 | 7 theorems proved | formal/lean/ |
-| TLA+ spec | Written, not model-checked | formal/authgate_v3.tla |
+| TLA+ spec | Written, not model-checked | formal/AuthGateV3.tla |
 | Property tests | 200+ Hypothesis cases | tests/test_*.py |
 
 ---

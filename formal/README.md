@@ -16,7 +16,7 @@ No code here compiles or deploys. Correctness is established by model checking
 
 | File | Purpose |
 |---|---|
-| `authgate_v3.tla` | TLA+ state machine — the canonical formal model |
+| `AuthGateV3.tla` | TLA+ state machine — the canonical formal model |
 | `THREAT_MODEL.md` | Attack taxonomy (AT-1 through AT-7), invariant mapping, open gaps |
 | `COVERAGE.md` | Which invariants have TLC instances / Lean proofs |
 | `INCOMPLETENESS.md` | Known limits of the formal model (Gödel budget) |
@@ -29,7 +29,7 @@ No code here compiles or deploys. Correctness is established by model checking
 
 ---
 
-## TLA+ Spec Overview (`authgate_v3.tla`)
+## TLA+ Spec Overview (`AuthGateV3.tla`)
 
 ### State Variables
 
@@ -106,7 +106,7 @@ CBCT-3: This spec and adversarial-lab are derived independently from main.
 
 ## Adding a New Invariant
 
-1. Define in `authgate_v3.tla` under the `INVARIANTS` section.
+1. Define in `AuthGateV3.tla` under the `INVARIANTS` section.
 2. Add a THEOREM declaration referencing it.
 3. Add a row to the invariant table in `THREAT_MODEL.md`.
 4. Add a TLC configuration entry in `MC_AuthGateV3.tla`.

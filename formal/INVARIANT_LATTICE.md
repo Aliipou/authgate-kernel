@@ -1,6 +1,6 @@
 # Invariant Lattice — authgate-kernel v3
 
-Branch: `spec-core` | Companion spec: `authgate_v3.tla`
+Branch: `spec-core` | Companion spec: `AuthGateV3.tla`
 
 ## What This Is
 

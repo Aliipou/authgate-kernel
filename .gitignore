@@ -29,3 +29,15 @@ extracted_raw.txt
 *.db-wal
 CLAUDE.md
 ANTI_GARBAGE_CHECKLIST.md
+
+# TLA+ toolbox jar (4.4MB binary, downloaded locally)
+formal/tla2tools.jar
+formal/*.jar
+# TLC scratch output
+formal/states/
+
+# TLC generated trace-exploration specs
+formal/MC_AuthGateV3_TTrace_*.tla
+formal/*_TTrace_*.tla
+formal/*_TTrace_*.bin
+formal/states/

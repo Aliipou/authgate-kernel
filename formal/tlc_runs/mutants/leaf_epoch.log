@@ -1,0 +1,20 @@
+MUTANT: leaf_epoch
+sed: 188s|.*|          /\\ TRUE   \\* MUTANT: leaf epoch gate deleted|
+cfg: MC_AuthGateV3_mut.cfg
+verdict: **ESCAPED**
+violated: (none - suite is blind to this check)
+
+TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+Running breadth-first search Model-Checking with fp 108 and seed -7911222669884545622 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 12468] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-02 19:08:35)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-08-02 19:08:36.
+Progress(5) at 2026-08-02 19:08:39: 62,055 states generated (62,055 s/min), 2,541 distinct states found (2,541 ds/min), 1,385 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 1.9E-11
+117604 states generated, 3003 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 5.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 31 and the 95th percentile is 1).
+Finished in 05s at (2026-08-02 19:08:40)

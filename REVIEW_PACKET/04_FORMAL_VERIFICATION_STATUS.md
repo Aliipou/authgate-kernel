@@ -53,7 +53,7 @@ harness, or a reviewer will assume the bound was chosen to make the proof pass.
 
 ## 3. TLA+
 
-Specification: `formal/authgate_v3.tla`, model `formal/MC_AuthGateV3.tla`, config
+Specification: `formal/AuthGateV3.tla`, model `formal/MC_AuthGateV3.tla`, config
 `formal/MC_AuthGateV3.cfg`. The config declares ten invariants:
 
 | Invariant | Model-checked 2026-07-29 |

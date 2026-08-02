@@ -1,0 +1,45 @@
+MUTANT: chain_epoch
+sed: 101s|.*|        ELSE IF FALSE THEN FALSE  \\* MUTANT: chain epoch deleted|
+cfg: MC_AuthGateV3_mut.cfg
+verdict: **CAUGHT**
+violated: ChainEpoch 
+
+TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+Running breadth-first search Model-Checking with fp 87 and seed -8079962175925918992 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 11028] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-02 19:08:41)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-08-02 19:08:42.
+Error: Invariant ChainEpoch is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ revocation_history = <<>>
+/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {}
+/\ global_epoch = 0
+/\ audit_log = <<>>
+
+State 2: <AdvanceEpoch(1) line 645, col 3 to line 648, col 77 of module AuthGateV3>
+/\ revocation_history = <<>>
+/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {}
+/\ global_epoch = 1
+/\ audit_log = <<>>
+
+State 3: <Revoke("h1") line 655, col 3 to line 659, col 58 of module AuthGateV3>
+/\ revocation_history = <<"h1">>
+/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {"h1"}
+/\ global_epoch = 1
+/\ audit_log = <<>>
+
+State 4: <ExecuteVerify([resource_hash |-> "r1", actor_id |-> "a2", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h3", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 0, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h14", subject_id |-> "a2", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Delegated", parent_hash |-> "h3"], issuer_pubkey |-> "pk1", sig_valid |-> TRUE]}, binding_valid |-> TRUE],0,"StaleAncestor") line 678, col 3 to line 696, col 64 of module AuthGateV3>
+/\ revocation_history = <<"h1">>
+/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {"READ"}, a3 |-> {}]
+/\ revoked_set = {"h1"}
+/\ global_epoch = 1
+/\ audit_log = <<[action |-> [resource_hash |-> "r1", actor_id |-> "a2", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h3", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 0, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h14", subject_id |-> "a2", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Delegated", parent_hash |-> "h3"], issuer_pubkey |-> "pk1", sig_valid |-> TRUE]}, binding_valid |-> TRUE], now |-> 0, rev_len |-> 1, decision |-> "Permit", revoked_at |-> {"h1"}, witness |-> {[proof_hash |-> "h14", subject_id |-> "a2", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Delegated", parent_hash |-> "h3"], issuer_pubkey |-> "pk1", sig_valid |-> TRUE]}, action_name |-> "StaleAncestor"]>>
+
+158 states generated, 115 distinct states found, 105 states left on queue.
+The depth of the complete state graph search is 4.
+Finished in 01s at (2026-08-02 19:08:42)
+Trace exploration spec path: .\MC_AuthGateV3_TTrace_1785686921.tla

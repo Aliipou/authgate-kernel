@@ -1,7 +1,7 @@
 # Threat Model — authgate-kernel v3
 
 **Branch:** spec-core  
-**Status:** Working draft — maps to authgate_v3.tla invariants
+**Status:** Working draft — maps to AuthGateV3.tla invariants
 
 ---
 
@@ -167,4 +167,4 @@ The following conditions, if proven in TLA+ (TLC model-check + TLAPS), would for
 4. `THEOREM Spec => []RevocationSafety` — revoked proofs never Permit
 5. `THEOREM Spec => []ResourceBinding` — cross-resource reuse impossible
 
-These are stated in `authgate_v3.tla`. TLC model-checking on a small instance (|Actors|=3, |Resources|=2, MaxChainDepth=3, MaxEpoch=5) is the next step.
+These are stated in `AuthGateV3.tla`. TLC model-checking on a small instance (|Actors|=3, |Resources|=2, MaxChainDepth=3, MaxEpoch=5) is the next step.

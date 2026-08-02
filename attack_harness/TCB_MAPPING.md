@@ -160,7 +160,7 @@ Status: design complete, implementation pending (v3 release gate).
 1. Identify which attack sub-class it closes
 2. Add a row to the mapping table
 3. Add a simulation scenario to `ATTACK_MATRIX.md`
-4. Add a TLA+ invariant to `authgate_v3.tla` if the class has no formal coverage
+4. Add a TLA+ invariant to `AuthGateV3.tla` if the class has no formal coverage
 5. Update `COVERAGE.md` with the new invariant's status
 
 **When auditing an existing check:**
