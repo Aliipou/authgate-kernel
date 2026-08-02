@@ -9,6 +9,73 @@ pub type Bytes16 = [u8; 16];
 pub type Bytes32 = [u8; 32];
 pub type Bytes64 = [u8; 64];
 
+// ── Domain separation ───────────────────────────────────────────────────────
+//
+// Every signed or hashed payload in this protocol begins with a preamble that
+// binds THREE things under the signature: a context string naming the message
+// type, the signature algorithm, and the schema version.
+//
+// WHY THIS EXISTS. Before v2, `CapabilityProof::signing_message()` and
+// `RevocationProof::signing_message()` were both signed by the root key and
+// neither carried a type tag. They could not actually be confused, but only
+// because a revocation message is exactly 40 bytes and a capability message is
+// at least 121 — an accident of current field sizes, not an enforced property.
+// Any future field change could have made a signature over one valid as a
+// signature over the other. The preamble makes cross-type confusion
+// structurally impossible instead of accidentally impossible.
+//
+// Binding the ALGORITHM matters for the same reason JWT's `alg` confusion
+// matters: when a second scheme is added (post-quantum migration is a *when*),
+// a verifier that accepts two schemes must be able to tell which one a
+// signature was produced under. That is only sound if the algorithm is inside
+// the signed bytes.
+//
+// Binding the VERSION is what makes the doc comment on `signing_message()`
+// true. It previously claimed "any change is a protocol version bump" while the
+// version appeared nowhere in the signed bytes, so old signatures stayed valid
+// under a new field order.
+//
+// The context is LENGTH-PREFIXED. Without that, one context string being a
+// prefix of another would reintroduce the ambiguity the preamble removes.
+
+/// Signature algorithm identifier, bound under every signature.
+/// Add a new constant per scheme; never reuse a value.
+pub const ALG_ED25519: u8 = 0x01;
+
+/// Protocol schema version, bound under every signature and every canonical
+/// hash. Bumped from v1 (which had no preamble at all) to v2.
+/// A v1 signature cannot verify against a v2 payload: the signed bytes differ.
+pub const SCHEMA_VERSION: u8 = 0x02;
+
+/// Context: one node of a delegation chain, signed by its issuer.
+pub const CTX_CHAIN_LINK: &[u8] = b"authgate/v2/chain-link";
+/// Context: a root-signed revocation notice.
+pub const CTX_REVOCATION: &[u8] = b"authgate/v2/revocation";
+/// Context: the canonical action binding hash (Layer 1 gate).
+pub const CTX_ACTION_BINDING: &[u8] = b"authgate/v2/action-binding";
+/// Context: capability proof bytes as hashed into `proof_hash`.
+pub const CTX_CAP_CANONICAL: &[u8] = b"authgate/v2/cap-canonical";
+/// Context: revocation proof bytes as hashed into the action binding.
+pub const CTX_REV_CANONICAL: &[u8] = b"authgate/v2/rev-canonical";
+/// Context: a signed verification result / audit log entry.
+pub const CTX_AUDIT_ENTRY: &[u8] = b"authgate/v2/audit-entry";
+
+/// The preamble prefixed to every signed or hashed payload:
+/// `len(ctx) ‖ ctx ‖ alg_id ‖ schema_version`.
+///
+/// Callers must never construct this by hand — a payload built without it is
+/// exactly the pre-v2 format this function exists to retire.
+#[inline]
+pub fn domain_preamble(ctx: &[u8]) -> Vec<u8> {
+    debug_assert!(ctx.len() <= u8::MAX as usize, "context string too long");
+    let mut b = Vec::with_capacity(ctx.len() + 3);
+    b.push(ctx.len() as u8);
+    b.extend_from_slice(ctx);
+    b.push(ALG_ED25519);
+    b.push(SCHEMA_VERSION);
+    b
+}
+
 /// Rights bitmask. Extend by adding constants — do not reuse bit positions.
 pub type Rights = u64;
 pub const RIGHT_READ: Rights           = 1 << 0;
@@ -59,9 +126,14 @@ pub struct CapabilityProof {
 
 impl CapabilityProof {
     /// Canonical bytes over which `signature` is computed.
-    /// Field order is fixed — any change is a protocol version bump.
+    ///
+    /// Field order is fixed. The preamble binds the message type, the signature
+    /// algorithm and the schema version under the signature, so a change of
+    /// field order or of algorithm is a real version bump: pre-v2 signatures
+    /// cannot verify against these bytes.
     pub fn signing_message(&self) -> Vec<u8> {
-        let mut msg = Vec::with_capacity(128);
+        let mut msg = domain_preamble(CTX_CHAIN_LINK);
+        msg.reserve(128);
         msg.extend_from_slice(&self.subject_id);
         msg.extend_from_slice(&self.resource_hash);
         msg.extend_from_slice(&self.rights.to_be_bytes());
@@ -78,9 +150,12 @@ impl CapabilityProof {
         msg
     }
 
-    /// Canonical bytes for inclusion in `CanonicalAction::compute_hash()`.
+    /// Canonical bytes for inclusion in `CanonicalAction::compute_hash()`,
+    /// and the preimage of `proof_hash`. Carries its own context so these bytes
+    /// can never be reinterpreted as a signing message.
     pub fn to_canonical_bytes(&self) -> Vec<u8> {
-        let mut b = Vec::with_capacity(196);
+        let mut b = domain_preamble(CTX_CAP_CANONICAL);
+        b.reserve(196);
         b.extend_from_slice(&self.proof_hash);
         b.extend_from_slice(&self.subject_id);
         b.extend_from_slice(&self.resource_hash);
@@ -110,15 +185,23 @@ pub struct RevocationProof {
 
 impl RevocationProof {
     pub fn to_canonical_bytes(&self) -> Vec<u8> {
-        let mut b = Vec::with_capacity(104);
+        let mut b = domain_preamble(CTX_REV_CANONICAL);
+        b.reserve(104);
         b.extend_from_slice(&self.target_proof_hash);
         b.extend_from_slice(&self.revoked_at.to_be_bytes());
         b.extend_from_slice(&self.signature);
         b
     }
 
+    /// Root-signed revocation notice.
+    ///
+    /// Pre-v2 this was exactly `target_proof_hash ‖ revoked_at` — 40 bytes with
+    /// no type tag, signed by the same root key that signs chain links. It was
+    /// safe only because a chain-link message is never 40 bytes long. The
+    /// context prefix replaces that accident with a guarantee.
     pub fn signing_message(&self) -> Vec<u8> {
-        let mut msg = Vec::with_capacity(40);
+        let mut msg = domain_preamble(CTX_REVOCATION);
+        msg.reserve(40);
         msg.extend_from_slice(&self.target_proof_hash);
         msg.extend_from_slice(&self.revoked_at.to_be_bytes());
         msg
@@ -162,6 +245,7 @@ impl CanonicalAction {
     /// Length-prefixes on lists prevent extension attacks.
     pub fn compute_hash(&self) -> Bytes32 {
         let mut h = Sha256::new();
+        h.update(domain_preamble(CTX_ACTION_BINDING));
         h.update(self.actor_id);
         h.update(self.resource_hash);
         h.update(self.required_rights.to_be_bytes());

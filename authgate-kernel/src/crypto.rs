@@ -43,7 +43,13 @@ fn keypair() -> &'static KeyPair {
 
 /// Build canonical bytes for signing — deterministic, whitespace-independent.
 ///
-/// Format: length-prefixed UTF-8 strings (little-endian u32 length), sorted violations.
+/// Format: domain preamble, then length-prefixed UTF-8 strings (little-endian
+/// u32 length), sorted violations.
+///
+/// The preamble binds the message type, algorithm and schema version under the
+/// signature. Without it a signed verification result and a signed capability
+/// were distinguishable only by their field layouts, never by anything an
+/// attacker could not choose.
 pub fn canonical_bytes(
     action_id: &str,
     permitted: bool,
@@ -51,7 +57,8 @@ pub fn canonical_bytes(
     timestamp: u64,
     nonce: &[u8; 16],
 ) -> Vec<u8> {
-    let mut buf = Vec::with_capacity(256);
+    let mut buf = crate::tcb::types::domain_preamble(crate::tcb::types::CTX_AUDIT_ENTRY);
+    buf.reserve(256);
     write_str(&mut buf, action_id);
     buf.push(u8::from(permitted));
     buf.extend_from_slice(&timestamp.to_le_bytes());
