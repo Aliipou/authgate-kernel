@@ -80,7 +80,7 @@ A violation of CBCT-2 is a **known gap** — documented explicitly in
 | Branch | Last commit | Status |
 |---|---|---|
 | `main` | bf23248 | v2 TCB, AT-5.1 + AT-3.1 closed |
-| `spec-core` | 965ac3f | authgate_v3.tla + THREAT_MODEL.md |
+| `spec-core` | 965ac3f | AuthGateV3.tla + THREAT_MODEL.md |
 | `tcb-core` | 740e374 | TCB_CONSTRAINTS.md, LOC gate defined |
 | `adversarial-lab` | current | 231 scenarios, 0 violations |
 | `integration` | b0244c8 | Python mirror, BRANCHES.md |
@@ -111,7 +111,7 @@ The only branch that deploys. Must satisfy:
 
 ### `spec-core` — Mathematical Truth
 
-What to find here: `formal/authgate_v3.tla`, `formal/THREAT_MODEL.md`,
+What to find here: `formal/AuthGateV3.tla`, `formal/THREAT_MODEL.md`,
 `formal/COVERAGE.md`, `formal/INCOMPLETENESS.md`
 
 Work here is **never** compiled or deployed. It is the authoritative reference
@@ -119,7 +119,7 @@ for what properties tcb-core must satisfy. Correctness is established by:
 - TLC model checking (state enumeration)
 - TLAPS / Lean4 proof discharge
 
-To add a new invariant: define it in `authgate_v3.tla`, add it to the
+To add a new invariant: define it in `AuthGateV3.tla`, add it to the
 invariant table in `THREAT_MODEL.md`, write a TLC configuration entry.
 
 ### `tcb-core` — Execution Truth (Rust kernel)

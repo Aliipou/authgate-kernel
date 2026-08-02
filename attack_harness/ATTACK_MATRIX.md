@@ -15,7 +15,7 @@ TCB CODE (what enforces it, in the Rust kernel)
 ```
 
 For each attack class, this document answers three questions:
-1. **Is the attack formally captured by authgate_v3.tla?** (TLA+ coverage)
+1. **Is the attack formally captured by AuthGateV3.tla?** (TLA+ coverage)
 2. **Does the Rust TCB implement the invariant?** (code closure)
 3. **Where does the formal model end and a real gap begin?** (blind spots)
 
@@ -43,7 +43,7 @@ An attack that spans two classes is a composition — modeled in `simulation/` a
 
 **Definition:** Attacker modifies one or more fields of a `CanonicalAction` after it has been sealed (binding_hash computed), without recomputing the hash.
 
-**Formal invariant target:** `binding_valid` in `authgate_v3.tla`
+**Formal invariant target:** `binding_valid` in `AuthGateV3.tla`
 ```tla
 Verify(action, ...) ==
   IF ~action.binding_valid THEN "Deny"
@@ -256,7 +256,7 @@ engine.rs: check_cap() — cap.resource_hash != action.resource_hash → Deny
 
 **Definition:** Attacks at the boundary between the untrusted adapter layer and the TCB, including bypassing `verify()` entirely or exploiting the adapter's construction of `CanonicalAction`.
 
-**Formal invariant target:** No invariant in `authgate_v3.tla` models this class. The spec assumes `verify()` is called — it cannot model the absence of a call.
+**Formal invariant target:** No invariant in `AuthGateV3.tla` models this class. The spec assumes `verify()` is called — it cannot model the absence of a call.
 
 **TLA+ coverage:** NONE. This is a **structural blind spot** in the formal model by design. The spec models what `verify()` does when called; it cannot model a system that doesn't call it.
 

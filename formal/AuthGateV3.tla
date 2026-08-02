@@ -178,20 +178,39 @@ EpochSafety ==
       IN \A c \in actor_caps : c.epoch >= a.min_epoch
 
 \* I2: Identity Binding — every Delegated cap in any Permit has issuer binding.
+\*
+\* HasParent GUARD (added on branch tlc-remediation): FindParent is a CHOOSE
+\* (see the definition above). Evaluating CHOOSE over an empty candidate set is
+\* a TLC RUNTIME ABORT, not an invariant violation — the model checker dies
+\* instead of reporting anything. The HasParent conjunct converts that abort
+\* into a well-defined check.
+\*
+\* THIS LOSES NO STRENGTH. ChainComplete (below) separately and unconditionally
+\* asserts that every Delegated cap in a Permit's bundle HAS its parent in that
+\* bundle. So the missing-parent case is not silently excused by this guard --
+\* it is caught by ChainComplete instead. Both are checked in the cfg, and their
+\* conjunction is exactly the unguarded meaning:
+\*   ChainComplete /\ IdentityBinding(guarded)  ==  IdentityBinding(unguarded)
+\* The guard changes only WHICH invariant reports the failure, never whether one does.
 IdentityBinding ==
   \A i \in 1..Len(audit_log) :
     audit_log[i].decision = "Permit" =>
       \A c \in audit_log[i].action.cap_bundle :
-        c.issuer.type = "Delegated" =>
+        (/\ c.issuer.type = "Delegated"
+         /\ HasParent(c, audit_log[i].action.cap_bundle)) =>
           LET parent == FindParent(c, audit_log[i].action.cap_bundle)
           IN Hash(c.issuer_pubkey) = parent.subject_id
 
 \* I3: Attenuation — child.rights ⊆ parent.rights for every Delegated cap in any Permit.
+\* Same HasParent guard, same justification as IdentityBinding above: ChainComplete
+\* independently asserts the parent IS present, so guarding the CHOOSE here removes
+\* a runtime abort without weakening the property.
 Attenuation ==
   \A i \in 1..Len(audit_log) :
     audit_log[i].decision = "Permit" =>
       \A c \in audit_log[i].action.cap_bundle :
-        c.issuer.type = "Delegated" =>
+        (/\ c.issuer.type = "Delegated"
+         /\ HasParent(c, audit_log[i].action.cap_bundle)) =>
           LET parent == FindParent(c, audit_log[i].action.cap_bundle)
           IN c.rights \subseteq parent.rights
 
