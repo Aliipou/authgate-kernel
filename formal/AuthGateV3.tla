@@ -586,6 +586,12 @@ DenyAttenEscalation == DeniedAlways("AttenEscalation")
 \* AT-2. A root cap whose issuer_pubkey is not RootKey must never permit.
 DenyForgedRoot == DeniedAlways("ForgedRoot")
 
+\* I8. A delegated cap whose parent is absent from the bundle must never permit.
+\* Without OrphanCap in the model this check is UNFALSIFIABLE rather than merely
+\* uncaught: every other delegated cap has its parent present, so deleting the
+\* HasParent check changes no decision at all.
+DenyOrphan == DeniedAlways("Orphan")
+
 \* Expiry is TIME-DEPENDENT, so an unconditional deny property would be FALSE:
 \* ExpiredCap has expiry = 0 and is legitimately valid at now = 0. Stating it
 \* unconditionally would be an incorrect property, so it is stated conditionally
@@ -770,6 +776,7 @@ BigSafety ==
   \* ── TASK C adversarial actions ──
   /\ DenyAttenEscalation
   /\ DenyForgedRoot
+  /\ DenyOrphan
   /\ DenyExpiredWhenPast
 
 \* PermitSoundness: the primary safety claim of the authgate TCB kernel --

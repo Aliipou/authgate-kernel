@@ -3,16 +3,16 @@
   TLC model checking instance for AuthGateV3.
 
   Instantiates all abstract constants with small finite sets so TLC can
-  enumerate the full reachable state space and verify all 9 invariants
-  (I1-I8 + BigSafety + PermitSoundness).
+  enumerate the reachable state space UP TO A STATED BOUND on Len(audit_log).
+  A TLC result here is a bounded-model result, never a proof for all runs.
 
-  Note: audit_log entries now carry a revoked_at snapshot field (I4 fix).
-
-  Model size (chosen to be feasible on a laptop in ~minutes):
-    Actors       = {a0, a1, a2, a3}     4 actors
-    Resources    = {r1}                  1 resource (reduces state explosion)
-    ProofHashes  = {h1, h2, h3, h4, h5} 5 proof hashes
-    PublicKeys   = {pk0, pk1, pk2, pk3}  4 public keys (pk0 = root)
+  Model size:
+    Actors        = {a0, a1, a2, a3}            4 actors
+    Resources     = {r1, r2}                    2 -- was 1, which made a
+                                                cross-resource attack
+                                                INEXPRESSIBLE
+    ProofHashes   = {h1 .. h12}                 12 -- one per capability
+    PublicKeys    = {pk0, pk1, pk2, pk3}        4 (pk0 = root key)
     MaxChainDepth = 2
     MaxEpoch      = 2
 
@@ -22,21 +22,36 @@
     pk2 -> a2
     pk3 -> a3
 
-  Pre-enumerated capability proofs:
-    RootCap           valid root-issued cap for a1, READ, epoch=1
-    DelegCap          valid delegated cap from a1 to a2, READ, epoch=1
-    StaleCap          root cap for a1 but epoch=0 (triggers I1/I7)
-    BadSigCap         root cap but sig_valid=FALSE (triggers sig check)
-    ImpersonationCap  delegated cap but issuer_pubkey hashes to a3 not a1 (triggers I2)
-    EscalationCap     delegated cap claiming WRITE but parent only has READ (triggers I3)
+  Capability proofs (h# = proof_hash):
+    h1  RootCap              valid root cap for a1, READ, epoch=1
+    h2  DelegCap             valid delegated cap a1 -> a2, READ, epoch=1
+    h3  StaleCap             root cap for a1 but epoch=0        (I1/I7)
+    h4  BadSigCap            root cap, sig_valid=FALSE          (root sig)
+    h5  ImpersonationCap     issuer_pubkey hashes to a3, not a1 (I2)
+    h6  StaleIntermediateCap delegated, epoch=0                 (I7 chain)
+    h7  EscalationCap        claims WRITE, parent grants READ   (I3 / A6)
+    h8  ExpiredCap           expiry=0                           (expiry)
+    h9  WrongResourceCap     valid cap for a1 but on r2         (I6)
+    h10 ForgedRootCap        root cap NOT signed by RootKey     (AT-2)
+    h11 RootCapE2            valid root cap at epoch=2          (epoch spread)
+    h12 OrphanCap            delegated, parent absent from bundle (I8)
 
-  Actions pre-enumerated as named constants to bound TLC's Next quantifier.
-  All actions have binding_valid=TRUE except TamperedAction.
+  h7 h8 h9 h10 h11 h12 were added on branch tlc-remediation. Before them the
+  corresponding checks were UNFALSIFIABLE, not merely unchecked: every cap had
+  rights {"READ"} and expiry 2, every root cap used pk0, and every delegated
+  cap had its parent present -- so deleting those checks changed no decision.
 
-  Running TLC:
-    java -jar tla2tools.jar -tool MC_AuthGateV3
+  Actions are pre-enumerated as named records to bound TLC's Next quantifier,
+  and each is TAGGED WITH A NAME so deny-completeness ("this attack always
+  Denies") is expressible at all.
 
-  Expected result: all 7 invariants hold across all reachable states.
+  Running TLC -- use a per-bound cfg; MCConstraint (<= 3) does not complete:
+    java -XX:+UseParallelGC -jar tla2tools.jar -workers auto \
+         -config MC_AuthGateV3_b1.cfg MC_AuthGateV3.tla
+
+  Results actually obtained are recorded in formal/tlc_runs/ with command
+  lines, jar SHA-256, wall clock and verbatim output. Do not state a result
+  here that is not backed by a log there.
 *)
 
 EXTENDS AuthGateV3
@@ -54,7 +69,7 @@ MCResources  == {"r1", "r2"}
 \* StaleIntermediateCap to share the hash "h5". Every capability now has a
 \* distinct proof hash, which revocation semantics depend on.
 MCProofHashes == {"h1", "h2", "h3", "h4", "h5",
-                  "h6", "h7", "h8", "h9", "h10", "h11"}
+                  "h6", "h7", "h8", "h9", "h10", "h11", "h12"}
 MCPublicKeys  == {"pk0", "pk1", "pk2", "pk3"}
 MCRootKey    == "pk0"
 MCMaxChainDepth == 2
@@ -249,6 +264,23 @@ RootCapE2 == [
   sig_valid     |-> TRUE
 ]
 
+\* I8 CHAIN COMPLETENESS -- a delegated cap whose parent_hash ("h3") is NOT in
+\* the bundle it travels in. Without this, EVERY delegated cap in the model has
+\* its parent present, so deleting the HasParent check changes no decision at
+\* all: the mutant is semantically inert and the check is UNFALSIFIABLE rather
+\* than merely uncaught. This capability is what gives I8 something to fail on.
+OrphanCap == [
+  proof_hash    |-> "h12",
+  subject_id    |-> "a1",
+  resource_hash |-> "r1",
+  rights        |-> {"READ"},
+  expiry        |-> 2,
+  epoch         |-> 1,
+  issuer        |-> [type |-> "Delegated", parent_hash |-> "h3"],
+  issuer_pubkey |-> "pk0",   \* Hash(pk0) = a0; irrelevant, parent is absent
+  sig_valid     |-> TRUE
+]
+
 \* ── Pre-enumerated actions ───────────────────────────────────────────────────
 \*
 \* Each action is a concrete record. TLC's MCNext quantifies over MCActions
@@ -427,6 +459,18 @@ MixedBundleAction == [
   binding_valid   |-> TRUE
 ]
 
+\* I8: delegated cap whose parent is absent from the bundle. Must Deny.
+\* The bundle deliberately does NOT contain h3.
+OrphanAction == [
+  actor_id        |-> "a1",
+  resource_hash   |-> "r1",
+  required_rights |-> {"READ"},
+  min_epoch       |-> 1,
+  timestamp       |-> 1,
+  cap_bundle      |-> {OrphanCap},
+  binding_valid   |-> TRUE
+]
+
 MCActions == {
   ValidAction,
   DelegatedAction,
@@ -442,7 +486,8 @@ MCActions == {
   ExpiredAction,
   ValidR2Action,
   ValidEpoch2Action,
-  MixedBundleAction
+  MixedBundleAction,
+  OrphanAction
 }
 
 \* ── Named actions (tlc-remediation) ─────────────────────────────────────────
@@ -472,7 +517,8 @@ MCNamedActions == {
   [name |-> "Expired",           act |-> ExpiredAction],
   [name |-> "ValidR2",           act |-> ValidR2Action],
   [name |-> "ValidEpoch2",       act |-> ValidEpoch2Action],
-  [name |-> "MixedBundle",       act |-> MixedBundleAction]
+  [name |-> "MixedBundle",       act |-> MixedBundleAction],
+  [name |-> "Orphan",            act |-> OrphanAction]
 }
 
 \* ── MC-bounded transitions ───────────────────────────────────────────────────
