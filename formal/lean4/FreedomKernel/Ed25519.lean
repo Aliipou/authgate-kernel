@@ -23,8 +23,23 @@
 --   authgate-kernel/src/tcb/engine.rs:110  (revocation signature)
 -- Feature set: default + rand_core. `batch` OFF, `legacy_compatibility` OFF.
 -- Neither ed25519-dalek nor curve25519-dalek carries a machine-checked proof of
--- correctness or of constant-time execution. There is no HACL*/Fiat/EverCrypt
--- code anywhere in the dependency graph.
+-- correctness or of constant-time execution AS BUILT.
+--
+-- CORRECTED 2026-08-02: this comment previously read "There is no
+-- HACL*/Fiat/EverCrypt code anywhere in the dependency graph." That is false.
+-- `fiat-crypto 0.2.9` is pinned at Cargo.lock:634, and curve25519-dalek 4.1.3
+-- depends on it unconditionally (Cargo.lock:477-489). Fiat-Crypto's verified
+-- field arithmetic is therefore COMPILED BUT NOT SELECTED: the arithmetic
+-- backend is chosen at build time and, with no `curve25519_dalek_backend` cfg
+-- set, defaults to simd/serial rather than `fiat`. The verified code ships in
+-- the dependency tree and is never called.
+--
+-- Selecting it is one build flag:
+--   RUSTFLAGS='--cfg curve25519_dalek_backend="fiat"' cargo build
+-- That would cover field arithmetic only — NOT point decompression, NOT
+-- small-order handling (see `SmallOrder` below), NOT scalar range checks, and
+-- NOT unforgeability. It shrinks this axiom's surface; it does not discharge
+-- it. See formal/CRYPTO_VERIFICATION_PLAN.md §3.
 --
 -- ── Scope ──────────────────────────────────────────────────────────────────
 -- This axiom constrains `authgate-kernel/src/tcb/dag.rs` and
@@ -83,6 +98,15 @@ private key actually signed exactly the byte string `m`.
 The conclusion is `Signed pk m` — a real proposition, not `True`. Removing this
 axiom must break any proof that depends on it; if it does not, the proof never
 depended on signatures.
+
+**THIS AXIOM CONFLATES TWO SEPARABLE CLAIMS AND SHOULD BE SPLIT.** It asserts
+EUF-CMA, which bundles (a) *implementation correctness* — that `Verify` computes
+the RFC 8032 verification predicate — with (b) *cryptographic hardness* — that
+the predicate is unforgeable without the private key. Only (a) is dischargeable
+by a verified implementation; (b) is a computational assumption established by
+reduction, and no amount of HACL*/Fiat work will ever touch it. Keeping them
+fused invites a future status table to mark this "verified" on the strength of a
+library swap that only addressed (a). See formal/CRYPTO_VERIFICATION_PLAN.md §6.
 
 The two hypotheses are not decoration. They are exactly the two guarantees the
 code does NOT establish for itself:
