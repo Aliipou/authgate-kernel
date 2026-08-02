@@ -100,7 +100,14 @@ ValidChain(leaf, bundle, min_epoch_val) ==
         IF depth > MaxChainDepth THEN FALSE          \* depth limit exceeded
         ELSE IF current.epoch < mep THEN FALSE       \* I7: chain epoch check
         ELSE CASE current.issuer.type = "Root" ->
-                   current.sig_valid                 \* root sig against RootKey
+                   \* root sig
+                   /\ current.sig_valid
+                   \* AT-2 FIX (tlc-remediation): RootKey previously appeared in
+                   \* NO executable expression anywhere in this spec. It was
+                   \* declared (CONSTANTS) and ASSUMEd, and that was all -- so ANY
+                   \* issuer_pubkey with sig_valid=TRUE validated a root capability.
+                   \* A root cap must actually be signed by the root key.
+                   /\ current.issuer_pubkey = RootKey
                [] current.issuer.type = "Delegated" ->
                    /\ current.sig_valid              \* intermediate sig
                    /\ HasParent(current, bundle)     \* I8: parent in bundle
@@ -112,6 +119,34 @@ ValidChain(leaf, bundle, min_epoch_val) ==
                       \* recurse
                       /\ WalkChain(parent, depth + 1, mep)
   IN WalkChain(leaf, 0, min_epoch_val)
+
+\* ── Structural chain traversal (tlc-remediation) ────────────────────────────
+\*
+\* ChainNodes collects the set of capabilities on the chain from `leaf` toward
+\* the root. It performs NO validity checks whatsoever -- it only follows
+\* parent_hash links and stops at a root, a missing parent, or the depth limit.
+\*
+\* WHY THIS EXISTS. The audit's root cause (a) was SELF-REFERENCE: the old
+\* ChainEpoch and PermitSoundness re-invoked ValidChain, the very predicate that
+\* computed the decision. Delete a check from ValidChain and the invariant
+\* weakens in lockstep, so no mutation can ever be caught.
+\*
+\* ChainNodes breaks that loop. It is purely structural, so deleting an
+\* enforcement check from ValidChain does NOT change which nodes it returns.
+\* Invariants below quantify over ChainNodes and state each required property
+\* LITERALLY, in their own text. A deleted check therefore shows up as a real
+\* invariant violation with a counterexample, which is the entire point.
+\*
+\* Every invariant written against ChainNodes is an independent statement.
+\* Nothing below this line may call ValidChain or Verify.
+ChainNodes(leaf, bundle) ==
+  LET RECURSIVE Walk(_, _)
+      Walk(cur, depth) ==
+        IF depth > MaxChainDepth THEN {cur}
+        ELSE IF cur.issuer.type = "Root" THEN {cur}
+        ELSE IF ~HasParent(cur, bundle) THEN {cur}
+        ELSE {cur} \cup Walk(FindParent(cur, bundle), depth + 1)
+  IN Walk(leaf, 0)
 
 \* ── Kernel verify() modeled as a pure function ──────────────────────────────
 \*
@@ -128,18 +163,35 @@ ValidChain(leaf, bundle, min_epoch_val) ==
 \* This is the positive form: Permit = ∃ valid cap. Deny = ¬∃ valid cap.
 \* Mirrors the Rust engine.rs semantics exactly.
 
-Verify(action, revoked_set_var, now) ==
-  IF ~action.binding_valid THEN "Deny"   \* L1: canonical gate
+\* Witnesses: the set of capabilities that JUSTIFY a Permit -- i.e. the caps
+\* that passed every enforcement check. Factored out of Verify so that
+\* ExecuteVerify can record it into the audit log as DATA.
+\*
+\* Recording the witness is what makes scoped, non-vacuous invariants possible.
+\* The old invariants had to quantify over every actor-matching cap in the
+\* bundle because they had no idea which cap actually justified the decision;
+\* that is what made EpochSafety / ResourceBinding / ChainEpoch over-strong
+\* (audit finding 7). With the witness recorded, invariants can talk about the
+\* cap the kernel actually relied on.
+\*
+\* This is NOT self-reference. The invariants below never call Witnesses or
+\* Verify; they read the recorded set and assert properties of it spelled out
+\* in their own text. Deleting an enforcement check here lets a bad cap into
+\* the witness, and the independent invariants then fire on it.
+Witnesses(action, revoked_set_var, now) ==
+  IF ~action.binding_valid THEN {}   \* L1: canonical gate
   ELSE
     LET actor_caps == {c \in action.cap_bundle : c.subject_id = action.actor_id}
-        valid_caps == {c \in actor_caps :
+    IN {c \in actor_caps :
           /\ c.resource_hash = action.resource_hash     \* I6
           /\ c.expiry >= now                            \* expiry
           /\ c.epoch >= action.min_epoch                \* I1 leaf epoch
           /\ ValidChain(c, action.cap_bundle, action.min_epoch) \* I2 I3 I7 I8
           /\ action.required_rights \subseteq c.rights  \* rights coverage
-          /\ c.proof_hash \notin revoked_set_var}        \* I4 revocation
-    IN IF valid_caps = {} THEN "Deny" ELSE "Permit"
+          /\ c.proof_hash \notin revoked_set_var}       \* I4 revocation
+
+Verify(action, revoked_set_var, now) ==
+  IF Witnesses(action, revoked_set_var, now) = {} THEN "Deny" ELSE "Permit"
 
 \* ── State variables ─────────────────────────────────────────────────────────
 \*
@@ -153,19 +205,40 @@ VARIABLES
   global_epoch,       \* Nat — current minimum epoch; only advances
   revoked_set,        \* SUBSET ProofHashes — explicitly revoked proof hashes
   session_rights,     \* [Actors -> SUBSET AllRights] — accumulated session rights
-  audit_log           \* Seq of [action, decision, revoked_at] records
-                      \* revoked_at: snapshot of revoked_set AT decision time
+  revocation_history, \* Seq of ProofHashes — ORDERED revocation record (see below)
+  audit_log           \* Seq of audit records; fields documented at ExecuteVerify
 
-vars == <<global_epoch, revoked_set, session_rights, audit_log>>
+\* revocation_history (tlc-remediation, audit root cause (a)):
+\* An ordered, append-only log written ONLY by Revoke and read by NO enforcement
+\* path -- Verify/Witnesses never consult it. That independence is the whole
+\* point: the old RevocationSafety re-checked `c.proof_hash \notin revoked_at`,
+\* the exact predicate Witnesses had already filtered on, against the exact same
+\* snapshot. It was a tautology and could not fail. RevocationSafety is now
+\* stated against this variable instead, so deleting the revocation filter from
+\* Witnesses lets a revoked cap into the witness set and the invariant fires.
+\*
+\* Revoke is guarded by `\notin revoked_set` so the sequence cannot grow without
+\* bound; it is a permutation of a subset of ProofHashes.
+
+vars == <<global_epoch, revoked_set, session_rights, revocation_history, audit_log>>
+
+\* Was proof hash `h` already revoked at the point audit entry `i` was decided?
+\* Reads the ordered history prefix captured at decision time.
+RevokedBefore(h, i) ==
+  \E j \in 1..audit_log[i].rev_len : revocation_history[j] = h
 
 TypeInvariant ==
   /\ global_epoch \in Nat
   /\ revoked_set \subseteq ProofHashes
   /\ session_rights \in [Actors -> SUBSET AllRights]
+  /\ \A j \in 1..Len(revocation_history) : revocation_history[j] \in ProofHashes
   /\ \A i \in 1..Len(audit_log) :
        /\ audit_log[i].action \in CanonicalAction
        /\ audit_log[i].decision \in Decision
        /\ audit_log[i].revoked_at \subseteq ProofHashes
+       /\ audit_log[i].witness \subseteq audit_log[i].action.cap_bundle
+       /\ audit_log[i].now \in Nat
+       /\ audit_log[i].rev_len \in 0..Len(revocation_history)
 
 \* ── Safety invariants ───────────────────────────────────────────────────────
 
@@ -217,17 +290,28 @@ Attenuation ==
 \* I4: Revocation Safety — at the time a Permit was issued, no contributing cap
 \* was in the revoked set at that moment.
 \*
-\* BUG NOTE: The naive formulation `c.proof_hash \notin revoked_set` (current state)
+\* BUG NOTE: The naive formulation `c.proof_hash \notin revoked_set` (live state)
 \* is WRONG — it would be violated by any subsequent Revoke(h) call on a proof hash
 \* that was legitimately permitted before the revocation. Revocation is prospective,
-\* not retroactive. The fix: record revoked_set as a snapshot (revoked_at field)
-\* at decision time. This invariant checks the snapshot, not the live state.
+\* not retroactive.
+\*
+\* DE-TAUTOLOGIZED (tlc-remediation). The previous formulation checked
+\* `c.proof_hash \notin audit_log[i].revoked_at` — literally the same predicate
+\* on the same snapshot that Witnesses had already filtered on. It restated the
+\* enforcement rather than constraining it, and could not fail by construction.
+\*
+\* This version is an INDEPENDENT statement over `revocation_history`, a variable
+\* that no enforcement path reads: for every cap that justified a Permit, that
+\* cap's hash does not appear anywhere in the prefix of the revocation history
+\* that had already occurred when the decision was taken.
+\*
+\* Prospectivity is preserved: only the prefix (1..rev_len) is examined, so a
+\* revocation issued AFTER the decision cannot retroactively violate it.
 RevocationSafety ==
   \A i \in 1..Len(audit_log) :
     audit_log[i].decision = "Permit" =>
-      \A c \in audit_log[i].action.cap_bundle :
-        c.subject_id = audit_log[i].action.actor_id =>
-          c.proof_hash \notin audit_log[i].revoked_at
+      \A w \in audit_log[i].witness :
+        ~RevokedBefore(w.proof_hash, i)
 
 \* I5: Composition Monotonicity — session_rights never decreases for any actor.
 CompositionMono ==
@@ -256,12 +340,177 @@ ChainEpoch ==
         ValidChain(c, audit_log[i].action.cap_bundle,
                    audit_log[i].action.min_epoch)
 
+\* ════════════════════════════════════════════════════════════════════════════
+\* INDEPENDENT INVARIANTS (added on branch tlc-remediation)
+\* ════════════════════════════════════════════════════════════════════════════
+\*
+\* The audit found nine of thirteen enforcement checks were NOT CAUGHT by the
+\* original ten invariants: delete the check, run the unmodified cfg, still
+\* green. Two root causes:
+\*
+\*   (a) SELF-REFERENCE. ChainEpoch and PermitSoundness re-invoked ValidChain /
+\*       Verify -- the very definitions that computed the decision. Weakening
+\*       enforcement weakened the invariant in lockstep, so nothing could fire.
+\*
+\*   (b) MISSING TEST DATA. All six model caps carried rights |-> {"READ"}, so
+\*       no cap could escalate relative to its parent. (Addressed in the MC
+\*       module, not here.)
+\*
+\* Every invariant in this section is written against RECORDED DATA -- the
+\* witness set, action_name, now, rev_len -- and states its property LITERALLY
+\* in its own text. None of them calls Verify, Witnesses, or ValidChain.
+\* ChainNodes is used for chain traversal because it is purely structural and
+\* is unaffected by deleting an enforcement check.
+\*
+\* This is what makes them falsifiable: delete a check from Witnesses/ValidChain,
+\* a bad cap enters the witness set, and the corresponding invariant below fires
+\* with a concrete counterexample.
+
+\* Every cap on the chain of every justifying cap of every Permit.
+\* (Scoped to the WITNESS, not to all caps in the bundle -- see audit finding 7.)
+PermitChainNodes(i) ==
+  UNION {ChainNodes(w, audit_log[i].action.cap_bundle) : w \in audit_log[i].witness}
+
+\* ── A1 / AT-1: the canonical binding gate ───────────────────────────────────
+\* The audit validated this exact form: passes on baseline, CATCHES the mutant
+\* that deletes the `IF ~action.binding_valid THEN Deny` gate.
+NoPermitOnTamperedBinding ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" => audit_log[i].action.binding_valid
+
+\* ── AT-2: root capabilities must be signed BY THE ROOT KEY ──────────────────
+\* Before this branch, RootKey appeared in no executable expression at all, so
+\* any issuer_pubkey with sig_valid=TRUE validated a root cap. ValidChain now
+\* enforces `issuer_pubkey = RootKey`; this invariant is what can SEE it.
+RootKeyAuthority ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A n \in PermitChainNodes(i) :
+        n.issuer.type = "Root" => n.issuer_pubkey = RootKey
+
+\* ── Signature checks (root and intermediate, stated separately) ─────────────
+RootSignatureValid ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A n \in PermitChainNodes(i) :
+        n.issuer.type = "Root" => n.sig_valid
+
+IntermediateSignatureValid ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A n \in PermitChainNodes(i) :
+        n.issuer.type = "Delegated" => n.sig_valid
+
+\* ── Leaf epoch gate (I1, stated over the justifying cap) ────────────────────
+WitnessLeafEpoch ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A w \in audit_log[i].witness :
+        w.epoch >= audit_log[i].action.min_epoch
+
+\* ── Chain epoch (I7), stated structurally rather than via ValidChain ────────
+WitnessChainEpoch ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A n \in PermitChainNodes(i) :
+        n.epoch >= audit_log[i].action.min_epoch
+
+\* ── Expiry ──────────────────────────────────────────────────────────────────
+\* Previously UNSTATABLE: `now` was never recorded in the audit log, so there was
+\* nothing to compare expiry against, and PermitSoundness deliberately omitted
+\* the expiry conjunct. `now` is now recorded, so this is expressible.
+WitnessNotExpired ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A w \in audit_log[i].witness :
+        w.expiry >= audit_log[i].now
+
+\* ── Attenuation (A6 / I3), stated over the witness chain ────────────────────
+\* Falsifiable only once the model actually contains a cap whose rights exceed
+\* its parent's -- see EscalationCap in MC_AuthGateV3.tla.
+WitnessAttenuation ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A n \in PermitChainNodes(i) :
+        (/\ n.issuer.type = "Delegated"
+         /\ HasParent(n, audit_log[i].action.cap_bundle)) =>
+          n.rights \subseteq FindParent(n, audit_log[i].action.cap_bundle).rights
+
+\* ── Identity binding (I2), stated over the witness chain ────────────────────
+WitnessIdentityBinding ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A n \in PermitChainNodes(i) :
+        (/\ n.issuer.type = "Delegated"
+         /\ HasParent(n, audit_log[i].action.cap_bundle)) =>
+          Hash(n.issuer_pubkey)
+            = FindParent(n, audit_log[i].action.cap_bundle).subject_id
+
+\* ── Chain completeness (I8), stated over the witness chain ──────────────────
+WitnessChainComplete ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A n \in PermitChainNodes(i) :
+        n.issuer.type = "Delegated" =>
+          HasParent(n, audit_log[i].action.cap_bundle)
+
+\* ── Actor / resource / rights binding of the justifying cap ─────────────────
+WitnessActorMatch ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A w \in audit_log[i].witness :
+        w.subject_id = audit_log[i].action.actor_id
+
+WitnessResourceBinding ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A w \in audit_log[i].witness :
+        w.resource_hash = audit_log[i].action.resource_hash
+
+WitnessRightsCoverage ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" =>
+      \A w \in audit_log[i].witness :
+        audit_log[i].action.required_rights \subseteq w.rights
+
+\* ── A Permit must actually have a witness ───────────────────────────────────
+PermitHasWitness ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].decision = "Permit" => audit_log[i].witness # {}
+
+\* ── DENY-COMPLETENESS ───────────────────────────────────────────────────────
+\*
+\* The audit's finding 5: all eight safety invariants are implications guarded
+\* on decision = "Permit", and seven of nine modelled actions ALWAYS Deny. So
+\* the invariants said nothing whatsoever about those seven actions -- they were
+\* decorative. Every one of them is an attack that is supposed to be blocked,
+\* and nothing checked that it was.
+\*
+\* These properties convert each adversarial action into a CHECKED one: every
+\* audit entry produced by that action must be a Deny. This is expressible only
+\* because ExecuteVerify now tags entries with action_name.
+\*
+\* Unlike the Permit-guarded invariants, these are NOT vacuous -- they have real
+\* content on exactly the states the old suite ignored.
+DeniedAlways(aname) ==
+  \A i \in 1..Len(audit_log) :
+    audit_log[i].action_name = aname => audit_log[i].decision = "Deny"
+
+DenyBadSig            == DeniedAlways("BadSig")
+DenyImpersonation     == DeniedAlways("Impersonation")
+DenyWrongActor        == DeniedAlways("WrongActor")
+DenyTampered          == DeniedAlways("Tampered")
+DenyEscalation        == DeniedAlways("Escalation")
+DenyStaleEpoch        == DeniedAlways("StaleEpoch")
+DenyStaleIntermediate == DeniedAlways("StaleIntermediate")
+
 \* ── State transitions ───────────────────────────────────────────────────────
 
 Init ==
   /\ global_epoch = 0
   /\ revoked_set = {}
   /\ session_rights = [a \in Actors |-> {}]
+  /\ revocation_history = <<>>
   /\ audit_log = <<>>
 
 \* Advance the global epoch. Strictly monotone — never decreases.
@@ -270,37 +519,60 @@ AdvanceEpoch(new_epoch) ==
   /\ new_epoch > global_epoch
   /\ new_epoch <= MaxEpoch
   /\ global_epoch' = new_epoch
-  /\ UNCHANGED <<revoked_set, session_rights, audit_log>>
+  /\ UNCHANGED <<revoked_set, session_rights, revocation_history, audit_log>>
 
 \* Root-signed emergency revocation of a single proof.
+\* Guarded by `\notin revoked_set` so revocation_history stays bounded (it is a
+\* permutation of a subset of ProofHashes rather than an unbounded sequence).
+\* Re-revoking an already-revoked hash is a no-op in the real kernel anyway.
 Revoke(proof_hash) ==
   /\ proof_hash \in ProofHashes
+  /\ proof_hash \notin revoked_set
   /\ revoked_set' = revoked_set \cup {proof_hash}
+  /\ revocation_history' = Append(revocation_history, proof_hash)
   /\ UNCHANGED <<global_epoch, session_rights, audit_log>>
 
 \* Execute a verify() call. Records result in audit_log.
-\* Captures revoked_set snapshot at decision time (fixes I4 / RevocationSafety).
-\* On Permit: updates session_rights for the actor (composition tracking).
-ExecuteVerify(action, now) ==
+\*
+\* Audit record fields:
+\*   action      — the canonical action presented to the kernel
+\*   action_name — WHICH modelled action produced this entry. Required for the
+\*                 deny-completeness properties: without it the seven adversarial
+\*                 actions are indistinguishable in the log and "this attack is
+\*                 always denied" is not expressible.
+\*   decision    — "Permit" | "Deny"
+\*   witness     — the caps that JUSTIFIED a Permit ({} on Deny). Recorded as
+\*                 data so invariants can be scoped to the justifying cap.
+\*   now         — the timestamp the decision was taken at. Previously NOT
+\*                 recorded, which is why expiry was unstatable as an invariant.
+\*   revoked_at  — snapshot of revoked_set (retained; used by Witnesses)
+\*   rev_len     — length of revocation_history at decision time, i.e. the
+\*                 prefix of revocations that had already happened
+ExecuteVerify(action, now, aname) ==
   /\ action \in CanonicalAction
   /\ action.min_epoch = global_epoch   \* caller must use the current epoch
-  /\ LET d == Verify(action, revoked_set, now)
+  /\ LET w == Witnesses(action, revoked_set, now)
+         d == IF w = {} THEN "Deny" ELSE "Permit"
      IN /\ audit_log' = Append(audit_log,
-                               [action     |-> action,
-                                decision   |-> d,
-                                revoked_at |-> revoked_set])  \* snapshot
+                               [action      |-> action,
+                                action_name |-> aname,
+                                decision    |-> d,
+                                witness     |-> w,
+                                now         |-> now,
+                                revoked_at  |-> revoked_set,
+                                rev_len     |-> Len(revocation_history)])
         /\ IF d = "Permit"
            THEN session_rights' =
                   [session_rights EXCEPT
                      ![action.actor_id] =
                        session_rights[action.actor_id] \cup action.required_rights]
            ELSE UNCHANGED session_rights
-  /\ UNCHANGED <<global_epoch, revoked_set>>
+  /\ UNCHANGED <<global_epoch, revoked_set, revocation_history>>
 
 Next ==
   \/ \E e \in Nat : AdvanceEpoch(e)
   \/ \E h \in ProofHashes : Revoke(h)
-  \/ \E a \in CanonicalAction, t \in Nat : ExecuteVerify(a, t)
+  \/ \E a \in CanonicalAction, t \in Nat : ExecuteVerify(a, t, "Generic")
 
 Spec ==
   /\ Init
@@ -337,8 +609,12 @@ ChainComplete ==
 \*
 \* ValidChain(leaf, bundle, mep) ≡ (I2 ∧ I3 ∧ I7 ∧ I8) applied recursively to the chain.
 
-\* BigSafety: the system-level safety invariant — conjunction of all 8 invariants.
+\* BigSafety: the system-level safety invariant.
+\* Now the conjunction of the original eight AND the independent invariants
+\* added on tlc-remediation. The original eight are retained unchanged in
+\* meaning; nothing was weakened or removed.
 BigSafety ==
+  \* ── original eight ──
   /\ TypeInvariant
   /\ EpochSafety
   /\ IdentityBinding
@@ -348,24 +624,83 @@ BigSafety ==
   /\ ResourceBinding
   /\ ChainEpoch
   /\ ChainComplete
+  \* ── independent invariants (tlc-remediation) ──
+  /\ NoPermitOnTamperedBinding
+  /\ RootKeyAuthority
+  /\ RootSignatureValid
+  /\ IntermediateSignatureValid
+  /\ WitnessLeafEpoch
+  /\ WitnessChainEpoch
+  /\ WitnessNotExpired
+  /\ WitnessAttenuation
+  /\ WitnessIdentityBinding
+  /\ WitnessChainComplete
+  /\ WitnessActorMatch
+  /\ WitnessResourceBinding
+  /\ WitnessRightsCoverage
+  /\ PermitHasWitness
+  \* ── deny-completeness for the seven adversarial actions ──
+  /\ DenyBadSig
+  /\ DenyImpersonation
+  /\ DenyWrongActor
+  /\ DenyTampered
+  /\ DenyEscalation
+  /\ DenyStaleEpoch
+  /\ DenyStaleIntermediate
 
-\* PermitSoundness: every Permit in the log corresponds to an action that would
-\* be verified correctly against the revoked_set at the time of the decision.
-\* This is the primary safety claim of the authgate TCB kernel.
+\* PermitSoundness: the primary safety claim of the authgate TCB kernel --
+\* an INDEPENDENT statement of what a Permit means.
+\*
+\* DE-TAUTOLOGIZED (tlc-remediation). The previous version rebuilt `valid_caps`
+\* by re-invoking ValidChain -- the same predicate that produced the decision --
+\* and asserted it was non-empty. That is a re-execution of Verify, not a
+\* specification of it: delete any check from ValidChain and this invariant
+\* weakened identically, so it could never fail. It also silently omitted the
+\* expiry conjunct that Verify had, so an expired-cap Permit violated nothing.
+\*
+\* This version spells out every condition literally in its own text. It calls
+\* neither Verify, nor Witnesses, nor ValidChain. Chain traversal goes through
+\* ChainNodes, which is purely structural. Expiry is included, against the now
+\* recorded `now`. Revocation is checked against revocation_history.
+\*
+\* Read it as: "if the kernel said Permit, then there really was a capability
+\* that (i) belongs to this actor, (ii) covers this resource and these rights,
+\* (iii) had not expired or gone stale, (iv) had not been revoked, and (v) whose
+\* entire chain up to a root key is well-signed, epoch-current, identity-bound,
+\* and attenuating."
 PermitSoundness ==
   \A i \in 1..Len(audit_log) :
     audit_log[i].decision = "Permit" =>
       LET a == audit_log[i].action
-          actor_caps == {c \in a.cap_bundle : c.subject_id = a.actor_id}
-          valid_caps == {c \in actor_caps :
-            /\ c.resource_hash = a.resource_hash
-            /\ c.epoch >= a.min_epoch
-            /\ ValidChain(c, a.cap_bundle, a.min_epoch)
-            /\ a.required_rights \subseteq c.rights
-            /\ c.proof_hash \notin audit_log[i].revoked_at}
-      IN valid_caps # {}
+          b == a.cap_bundle
+      IN /\ a.binding_valid                       \* L1 canonical gate
+         /\ audit_log[i].witness # {}             \* a Permit needs a justifying cap
+         /\ \A w \in audit_log[i].witness :
+              /\ w \in b                          \* the witness came from the bundle
+              /\ w.subject_id = a.actor_id        \* actor binding
+              /\ w.resource_hash = a.resource_hash            \* I6
+              /\ w.expiry >= audit_log[i].now                 \* expiry
+              /\ w.epoch >= a.min_epoch                       \* I1 leaf epoch
+              /\ a.required_rights \subseteq w.rights         \* rights coverage
+              /\ ~RevokedBefore(w.proof_hash, i)              \* I4
+              /\ \A n \in ChainNodes(w, b) :
+                   /\ n.sig_valid                             \* signature, every node
+                   /\ n.epoch >= a.min_epoch                  \* I7 chain epoch
+                   /\ (n.issuer.type = "Root" =>
+                        n.issuer_pubkey = RootKey)            \* AT-2 root authority
+                   /\ (n.issuer.type = "Delegated" =>
+                        /\ HasParent(n, b)                    \* I8
+                        /\ Hash(n.issuer_pubkey)
+                             = FindParent(n, b).subject_id    \* I2
+                        /\ n.rights \subseteq FindParent(n, b).rights)  \* I3
 
 \* ── Theorems (to be verified by TLC / TLAPS) ────────────────────────────────
+
+\* NOTE ON STATUS (tlc-remediation). A `THEOREM` line in this file is a CLAIM,
+\* not a proof. None of these has a TLAPS proof. What has actually been checked
+\* is recorded in formal/tlc_runs/ with the exact command line, bound, and
+\* verbatim TLC output. TLC results are bounded-model results at a stated
+\* Len(audit_log) bound -- never a proof for all executions.
 
 \* Individual invariants
 THEOREM Spec => []TypeInvariant
@@ -377,6 +712,22 @@ THEOREM Spec => []ResourceBinding
 THEOREM Spec => []ChainEpoch
 THEOREM Spec => []ChainComplete
 THEOREM Spec => []PermitSoundness
+
+\* Independent invariants (tlc-remediation)
+THEOREM Spec => []NoPermitOnTamperedBinding
+THEOREM Spec => []RootKeyAuthority
+THEOREM Spec => []RootSignatureValid
+THEOREM Spec => []IntermediateSignatureValid
+THEOREM Spec => []WitnessLeafEpoch
+THEOREM Spec => []WitnessChainEpoch
+THEOREM Spec => []WitnessNotExpired
+THEOREM Spec => []WitnessAttenuation
+THEOREM Spec => []WitnessIdentityBinding
+THEOREM Spec => []WitnessChainComplete
+THEOREM Spec => []WitnessActorMatch
+THEOREM Spec => []WitnessResourceBinding
+THEOREM Spec => []WitnessRightsCoverage
+THEOREM Spec => []PermitHasWitness
 
 \* Lattice theorem T1: I7 implies I1.
 \* Proof sketch: ValidChain(leaf, bundle, mep) starts by checking leaf.epoch >= mep.

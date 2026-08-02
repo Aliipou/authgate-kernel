@@ -257,6 +257,29 @@ MCActions == {
   StaleIntermediateAction
 }
 
+\* ── Named actions (tlc-remediation) ─────────────────────────────────────────
+\*
+\* Audit finding 5: seven of the nine actions above ALWAYS Deny, and every
+\* safety invariant is an implication guarded on decision = "Permit". So the
+\* invariant suite said literally nothing about those seven -- they were
+\* decorative. Each one is an attack that is supposed to be blocked, and
+\* nothing checked that it was.
+\*
+\* Tagging each action with a name lets ExecuteVerify record which action
+\* produced each audit entry, which in turn makes the deny-completeness
+\* properties (DenyBadSig, DenyImpersonation, ...) expressible at all.
+MCNamedActions == {
+  [name |-> "Valid",             act |-> ValidAction],
+  [name |-> "Delegated",         act |-> DelegatedAction],
+  [name |-> "StaleEpoch",        act |-> StaleEpochAction],
+  [name |-> "BadSig",            act |-> BadSigAction],
+  [name |-> "Impersonation",     act |-> ImpersonationAction],
+  [name |-> "WrongActor",        act |-> WrongActorAction],
+  [name |-> "Tampered",          act |-> TamperedAction],
+  [name |-> "Escalation",        act |-> EscalationAction],
+  [name |-> "StaleIntermediate", act |-> StaleIntermediateAction]
+}
+
 \* ── MC-bounded transitions ───────────────────────────────────────────────────
 \*
 \* Replace the abstract Next (which uses \E e \in Nat, \E a \in CanonicalAction)
@@ -266,14 +289,27 @@ MCAdvanceEpoch == \E e \in 0..MCMaxEpoch : AdvanceEpoch(e)
 
 MCRevoke == \E h \in MCProofHashes : Revoke(h)
 
-MCExecuteVerify == \E a \in MCActions, t \in 0..MCMaxEpoch : ExecuteVerify(a, t)
+MCExecuteVerify ==
+  \E na \in MCNamedActions, t \in 0..MCMaxEpoch :
+    ExecuteVerify(na.act, t, na.name)
 
 MCNext == MCAdvanceEpoch \/ MCRevoke \/ MCExecuteVerify
 
 MCSpec == Init /\ [][MCNext]_vars /\ WF_vars(MCNext)
 
 \* ── State constraint: bound the audit log to prevent infinite growth ──────────
+\*
+\* BOUNDS LADDER (tlc-remediation). The shipped bound below is <= 3. The audit
+\* measured that bound at 26.5M states / 2.3M distinct after 10 minutes on 4
+\* workers with the queue still growing -- roughly 10^9 reachable states. It is
+\* NOT completable, and a run at that bound that is cut off is not a
+\* verification result.
+\*
+\* Separate cfgs select a bound via these operators. See formal/tlc_runs/.
+MCConstraint1 == Len(audit_log) <= 1
+MCConstraint2 == Len(audit_log) <= 2
+MCConstraint3 == Len(audit_log) <= 3
 
-MCConstraint == Len(audit_log) <= 3
+MCConstraint == MCConstraint3
 
 =============================================================================
