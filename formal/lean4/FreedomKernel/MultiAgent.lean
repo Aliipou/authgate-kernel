@@ -13,7 +13,10 @@ structure Permission where
   canDelegate: Bool
   deriving DecidableEq, Repr
 
-def Authority := List Permission
+-- `abbrev`, not `def`. As an irreducible `def`, `Authority` blocked instance
+-- synthesis for the `∈` in `authorityAttenuated` below ("failed to synthesize
+-- Membership ?m Authority"), so this file never compiled. The type is unchanged.
+abbrev Authority := List Permission
 
 -- ── Attenuation ───────────────────────────────────────────────────────────────
 
@@ -49,5 +52,13 @@ def MAX_DELEGATION_DEPTH : Nat := 16
 
 theorem delegation_depth_bounded (depth : Nat) (h : depth ≤ MAX_DELEGATION_DEPTH) :
     depth ≤ MAX_DELEGATION_DEPTH := h
+
+-- ── Machine-checked axiom audit ──────────────────────────────────────────────
+-- ⚠ Both declarations below are TAUTOLOGIES: each returns its own hypothesis
+-- (`:= h`), so the conclusion is syntactically identical to an assumption.
+-- They are `id` with a type ascription. A clean axiom list here is not
+-- evidence of a security property. See formal/PROOF_STATUS.md.
+#print axioms attenuation_cannot_escalate
+#print axioms delegation_depth_bounded
 
 end FreedomKernel.MultiAgent

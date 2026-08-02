@@ -1,0 +1,48 @@
+# lake build — authgate-kernel FreedomKernel library
+# Date: 2026-08-02
+# Host: Windows 10 Pro 10.0.19045, x86_64
+# Toolchain: Lean (version 4.32.2, x86_64-w64-windows-gnu, commit f3b06c705e6c85f5314019d5d3baab0fec5b580c, Release)
+# Lake: Lake version 5.0.0-src+f3b06c7 (Lean version 4.32.2)
+# Command: cd formal/lean4 && lake clean && lake build
+#
+ℹ [2/8] Built FreedomKernel.Ed25519 (15s)
+info: FreedomKernel/Ed25519.lean:118:0: 'FreedomKernel.Ed25519.accepted_signature_has_an_honest_signer' depends on axioms: [ed25519_euf_cma]
+✔ [3/8] Built FreedomKernel.Incompleteness (16s)
+ℹ [4/8] Built FreedomKernel.MultiAgent (15s)
+info: FreedomKernel/MultiAgent.lean:61:0: 'FreedomKernel.MultiAgent.attenuation_cannot_escalate' does not depend on any axioms
+info: FreedomKernel/MultiAgent.lean:62:0: 'FreedomKernel.MultiAgent.delegation_depth_bounded' does not depend on any axioms
+ℹ [5/8] Built FreedomKernel.Scope (15s)
+info: FreedomKernel/Scope.lean:289:0: 'FreedomKernel.Scope.scope_contains_reflexive' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: FreedomKernel/Scope.lean:290:0: 'FreedomKernel.Scope.scope_contains_root_universal' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: FreedomKernel/Scope.lean:291:0: 'FreedomKernel.Scope.traversal_in_parent_always_false' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: FreedomKernel/Scope.lean:292:0: 'FreedomKernel.Scope.traversal_in_child_always_false' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: FreedomKernel/Scope.lean:293:0: 'FreedomKernel.Scope.prefix_implies_containment' depends on axioms: [propext, Classical.choice, Quot.sound]
+info: FreedomKernel/Scope.lean:294:0: 'FreedomKernel.Scope.scope_contains_antisymmetric' depends on axioms: [propext, Classical.choice, Quot.sound]
+⚠ [6/8] Built FreedomKernel.TCB (14s)
+warning: FreedomKernel/TCB.lean:129:18: Variable name `h` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+warning: FreedomKernel/TCB.lean:130:5: Variable name `hno` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+info: FreedomKernel/TCB.lean:152:0: 'FreedomKernel.forbidden_flags_always_block' depends on axioms: [propext]
+info: FreedomKernel/TCB.lean:153:0: 'FreedomKernel.sovereignty_flag_blocks' depends on axioms: [propext]
+info: FreedomKernel/TCB.lean:154:0: 'FreedomKernel.coercion_flag_blocks' depends on axioms: [propext]
+info: FreedomKernel/TCB.lean:155:0: 'FreedomKernel.deception_flag_blocks' depends on axioms: [propext]
+info: FreedomKernel/TCB.lean:156:0: 'FreedomKernel.verify_deterministic' does not depend on any axioms
+info: FreedomKernel/TCB.lean:157:0: 'FreedomKernel.permitted_implies_no_forbidden_flag' depends on axioms: [propext]
+info: FreedomKernel/TCB.lean:158:0: 'FreedomKernel.ownerless_machine_must_have_owner' does not depend on any axioms
+info: FreedomKernel/TCB.lean:159:0: 'FreedomKernel.machine_cannot_govern_human' does not depend on any axioms
+⚠ [7/8] Built FreedomKernel.Temporal (14s)
+warning: FreedomKernel/Temporal.lean:44:5: Variable name `h` is not explicitly referenced.
+
+The binding can be removed (if unused) or named `_` (if used implicitly).
+
+Note: This linter can be disabled with `set_option linter.unusedVariables false`
+info: FreedomKernel/Temporal.lean:52:0: 'FreedomKernel.Temporal.taint_monotone' does not depend on any axioms
+info: FreedomKernel/Temporal.lean:53:0: 'FreedomKernel.Temporal.no_downward_write' does not depend on any axioms
+Build completed successfully (8 jobs).

@@ -29,3 +29,6 @@ extracted_raw.txt
 *.db-wal
 CLAUDE.md
 ANTI_GARBAGE_CHECKLIST.md
+
+# Lean build artifacts
+formal/lean4/.lake/
