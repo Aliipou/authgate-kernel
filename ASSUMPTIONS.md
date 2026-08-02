@@ -67,6 +67,26 @@ repository was not modified by the audit.
 `.github/workflows/` for `lean|lake|kani|tlc|tla2tools` returns zero matches.
 Nothing in this repository's formal layer is gated on anything.
 
+### 1A. Re-run 2026-08-02, after remediation
+
+The table above is the audit snapshot of **2026-08-01** and is kept as the
+record of what was found. Three branches have since landed
+(`tlc-remediation`, `proof-toolchain`, `crypto-axiom-connection`). Re-running
+the same tools against the merged tree:
+
+| Tool | Result 2026-08-01 | Result 2026-08-02 (merged tree) | Artifact in this tree |
+|---|---|---|---|
+| Lean 4 | 5 of 6 files fail to compile | **`lake build` completes: "Build completed successfully (8 jobs)", zero `sorryAx` in the log.** Scope: the build target globs `FreedomKernel/` submodules only | `formal/lean4/build_logs/lake_build_merge3_20260802.log` |
+| TLC | Spec does not parse; ran only at a reduced bound | **Parses and runs.** `MC_AuthGateV3_b1.cfg`: no error, 2,263,930 states generated, 59,241 distinct | `formal/tlc_runs/20260802-190523_baseline_mut_newdata.log` (mut cfg baseline) |
+| Mutation matrix | 9 of 13 checks deletable with nothing firing | **13 of 14 caught, 1 redundant, 0 blind** (§2A) | `formal/tlc_runs/mutation_matrix_20260802-190824.md`, per-mutant logs in `formal/tlc_runs/mutants/` |
+| Kani | Not installed, 0 of 32 harnesses ever run | **Unchanged — still not installed, still never run** | — |
+
+**Three things did not change and must not be read as improved.**
+`formal/lean4/{Core,Invariants,Proofs}.lean` sit **outside** the build target,
+so every theorem cited from them below is still unbuilt and still `BROKEN`.
+Kani is still absent. And there is still **no CI**: all three results above were
+produced by hand and nothing prevents them from rotting tomorrow.
+
 ---
 
 ## 2A. TLA+ / TLC — first execution, and what it showed
@@ -129,6 +149,9 @@ interaction — no revoke-then-use, no epoch-advance-then-replay — is reachabl
 all. It is weaker than the bound the project itself chose to ship.
 
 ### Mutation testing: the suite is blind to A1 and to signature checking
+*(as of 2026-08-01. Both blindnesses are closed in the merged tree — see
+"SUPERSEDED 2026-08-02" below. The finding is kept because the fix is only
+meaningful against it.)*
 
 A suite that constrains an axiom must fail when that axiom's enforcement is
 deleted. Deleting the A1 canonical gate — `AuthGateV3.tla:132`,
@@ -177,6 +200,59 @@ causes below, but were not individually re-run.
 | rights coverage | A7 | CAUGHT (`PermitSoundness`) | — |
 | revocation | I4 | CAUGHT (`RevocationSafety`) | — |
 | actor match | A7 | CAUGHT (`EpochSafety`) | — |
+
+#### SUPERSEDED 2026-08-02 — the table above is the audit finding, not current status
+
+The table above records what was true on 2026-08-01 and is kept because the
+remediation only means something against it. The `tlc-remediation` branch has
+since rewritten the invariants to be independent of `Verify`/`ValidChain`, added
+the adversarial capabilities the model was missing, and re-run every mutation.
+Current result, from `formal/tlc_runs/mutation_matrix_20260802-190824.md`
+(per-mutant TLC output in `formal/tlc_runs/mutants/`):
+
+| Enforcement check deleted | Was | Now | Invariant that fired | Mutant log |
+|---|---|---|---|---|
+| `binding_valid` canonical gate (A1) | NOT CAUGHT | **CAUGHT** | `PermitSoundness` | `mutants/A1_binding_valid_gate.log` |
+| root signature (A5a) | NOT CAUGHT | **CAUGHT** | `PermitSoundness` | `mutants/root_signature.log` |
+| intermediate signature (A5a) | NOT CAUGHT | **CAUGHT** | `PermitSoundness` | `mutants/intermediate_signature.log` |
+| **attenuation (A6)** | NOT CAUGHT | **CAUGHT** | `Attenuation` | `mutants/attenuation_A6.log` |
+| expiry (A5b) | NOT CAUGHT | **CAUGHT** | `PermitSoundness` | `mutants/expiry.log` |
+| chain epoch (A5c) | NOT CAUGHT | **CAUGHT** | `ChainEpoch` | `mutants/chain_epoch.log` |
+| `HasParent` completeness (I8) | RUNTIME ERROR | **CAUGHT** | `ChainComplete` | `mutants/HasParent_completeness.log` |
+| resource binding (A6/I6) | NOT CAUGHT | **CAUGHT** | `ResourceBinding` | `mutants/resource_binding.log` |
+| identity binding (A3) | CAUGHT | **CAUGHT** | `IdentityBinding` | `mutants/identity_binding.log` |
+| rights coverage (A7) | CAUGHT | **CAUGHT** | `PermitSoundness` | `mutants/rights_coverage.log` |
+| revocation (I4) | CAUGHT | **CAUGHT** | `RevocationSafety` | `mutants/revocation.log` |
+| actor match (A7) | CAUGHT | **CAUGHT** | `PermitSoundness` | `mutants/actor_match.log` |
+| root key authority (AT-2) | did not exist | **CAUGHT** | `PermitSoundness` | `mutants/root_key_authority_AT2.log` |
+| **leaf epoch (A5c)** | NOT CAUGHT | **ESCAPED — redundant, not blind** | none | `mutants/leaf_epoch.log` |
+
+**Totals: 13 caught, 1 redundant, 0 blind.** Read the last row carefully, because
+it is the one place where a green matrix could still mislead.
+
+`leaf_epoch` cannot be caught, and no test data will ever fix it. The gate at
+`AuthGateV3.tla:188` (`c.epoch >= action.min_epoch`) is followed on the next line
+by `ValidChain(c, ..., action.min_epoch)`, whose walk applies the *same* test to
+the *same* capability at depth 0. Line 188 is implied by line 189 for every
+input, so deleting it cannot change a decision. Deleting **both** epoch checks
+together *is* caught — `EpochSafety` fires on the `StaleEpoch` action — which is
+what shows the suite is not blind here. The Rust kernel carries the identical
+redundancy (`engine.rs:68`, then `dag.rs:52` via a walk starting at the leaf),
+so the model is faithful to the code rather than diverging from it. Full
+argument and the two-check experiment: `formal/MUTATION_NOTES.md`.
+
+That file also states the limit of the method, which belongs in any honest
+reading of this table: an ESCAPE means the invariants are blind, **or** the
+inputs cannot reach the case, **or** the check is redundant at this granularity
+— and the matrix alone cannot distinguish them. The three were separated by
+hand here. Report this as "13 caught, 1 redundant, 0 blind", never as a bare
+escape count.
+
+**What this does and does not buy.** Every enforcement check in the model is now
+falsifiable at `CONSTRAINT MCConstraintMut` — one audit entry, one prior
+revocation. That is a statement about **this finite model at this bound**, not a
+proof for arbitrary N, and the invariants it validates are still the model's,
+not the Rust code's. Nothing below about the model-to-code gap is repaired by it.
 
 **Two distinct root causes, needing different fixes:**
 
@@ -231,6 +307,47 @@ Build infrastructure gaps: no `lean-toolchain`, no `lake-manifest.json`, no
 Mathlib dependency declared anywhere, and the sole lakefile
 (`formal/lean4/FreedomKernel/lakefile.lean`) has `roots := #[\`FreedomKernel\`]`,
 which **excludes `Core.lean`, `Invariants.lean` and `Proofs.lean` entirely.**
+
+#### SUPERSEDED 2026-08-02 — compile status in the merged tree
+
+`proof-toolchain` has landed. `lake build` now completes:
+**"Build completed successfully (8 jobs)"**, with **zero `sorryAx`** anywhere in
+the log (`formal/lean4/build_logs/lake_build_merge3_20260802.log`). The build
+infrastructure gaps above are closed: `formal/lean4/lakefile.lean` sits at the
+package root with `@[default_target]` and
+`globs := #[.submodules \`FreedomKernel]`, `lean-toolchain` pins
+`leanprover/lean4:v4.32.2`, and `lake-manifest.json` exists.
+
+| File | Was | Now | Note |
+|---|---|---|---|
+| `formal/lean4/FreedomKernel/Ed25519.lean` | YES | **BUILDS** | axioms split into `ed25519_verify_matches_rfc8032` and `rfc8032_euf_cma` |
+| `formal/lean4/FreedomKernel/Incompleteness.lean` | YES | **BUILDS** | comments + one axiom |
+| `formal/lean4/FreedomKernel/TCB.lean` | NO | **BUILDS** | `Bool.eq_false_iff_ne_true` replaced |
+| `formal/lean4/FreedomKernel/MultiAgent.lean` | NO | **BUILDS** | `Authority` membership fixed |
+| `formal/lean4/FreedomKernel/Temporal.lean` | NO | **BUILDS** | Mathlib-only `split_ifs` removed |
+| `formal/lean4/FreedomKernel/Scope.lean` | NO | **BUILDS** | re-encoded over `List Char`; see caveat |
+| `formal/lean4/{Core,Invariants,Proofs}.lean` | unbuildable | **STILL OUTSIDE THE BUILD** | the glob covers `FreedomKernel/` submodules only |
+| `formal/FreedomKernel.lean` | NO | **STILL OUTSIDE THE BUILD** | not under `formal/lean4/` at all |
+
+**Two cautions, both of which survive the green build.**
+
+1. **A green `lake build` is not "the theorems are proved."** It says the files
+   elaborate and no `sorryAx` is reachable. Every judgement in *Per-theorem
+   verdicts* below about **what a theorem is about** — `verifyFlags` being a
+   2-line model, `Authority` transitivity being `:= h`, clause 2 of A6 being
+   `: True := trivial` — is untouched by compilation and still stands.
+2. **The unbuilt files are still unbuilt.** Every verdict below citing
+   `Proofs.lean`, `Core.lean`, `Invariants.lean` or `formal/FreedomKernel.lean`
+   — including `rights_sufficiency_correct`, `epoch_gate_total`,
+   `stale_epoch_implies_deny`, `sovereignty_always_blocks` and
+   `ownerless_machine_blocked` — remains **BROKEN or unverified**. Those rows
+   are deliberately left as they were.
+
+`Scope.lean` carries one caveat worth stating in a status table: it was
+re-encoded from `String.splitOn`/`String.dropRight` onto `List Char`. That is a
+re-encoding rather than a weakening — Lean core proves the two agree for a
+single-character separator — but the theorems now range over the `List Char`
+model, and nothing links that model to the Rust scope matcher.
 
 ### Per-theorem verdicts
 
@@ -453,18 +570,34 @@ observes it can impersonate. Documented at `src/authgate/kernel/entities.py:105-
 
 | Axiom | Status | One-line reason |
 |---|---|---|
-| A1 Action integrity | **`NONE`** | **Demonstrated by mutation testing:** delete the gate, all ten invariants still pass with identical state counts (§2A) |
-| A2 Sovereignty flags | **`PARTIAL`** | Real proof, but about a 2-line model of the check; the theorem over the full gate is broken |
-| A3 Identity binding | **`CHECKED-BOUNDED`** | `IdentityBinding` holds exhaustively — but at an audit log of ≤1 entry; hash injectivity is assumed, not modelled; root caps are never identity-checked |
-| A4 No ownerless machine | **`PARTIAL`** | Genuinely proved over a composite gate model — the strongest result here — but its file does not compile and nothing links the model to code |
-| A5 Signed + time-bounded | **`ASSUMED` / `NONE` / `CHECKED-BOUNDED`** | Signature explicitly assumed (§5) and the TLA+ suite is provably blind to deleting it; expiry is **unstatable** in this spec, not merely unchecked; epoch holds at ≤1 log entry |
-| A6 Attenuation + no dominion | **`PARTIAL` / `NONE`** | Only real Lean content is transitivity of `⊆`; the cited theorem is `:= h`; clause 2's entire Lean content is `: True := trivial`. The TLA+ `Attenuation` invariant passes but is **unfalsifiable** — no model capability can escalate (§2A) |
-| A7 No ambient authority | **`CHECKED-BOUNDED`** | `PermitSoundness` holds at ≤1 log entry, but it restates the decision procedure; no Lean theorem states the axiom's direction |
+| A1 Action integrity | **`CHECKED-BOUNDED`** *(was `NONE`)* | Deleting the canonical gate is now **CAUGHT** by `PermitSoundness` (`formal/tlc_runs/mutants/A1_binding_valid_gate.log`). The invariant is falsifiable and holds at `MCConstraintMut`. Still nothing about the Rust gate |
+| A2 Sovereignty flags | **`PARTIAL`** | Real proof, but about a 2-line model of the check; the theorem over the full gate is in an unbuilt file |
+| A3 Identity binding | **`CHECKED-BOUNDED`** | `IdentityBinding` holds exhaustively — but at an audit log of ≤1 entry; hash injectivity is assumed, not modelled; root caps are now key-checked via the AT-2 fix (`mutants/root_key_authority_AT2.log`) |
+| A4 No ownerless machine | **`PARTIAL`** | Genuinely proved over a composite gate model — the strongest result here — but it lives in `formal/FreedomKernel.lean`, which is **still outside the build**, and nothing links the model to code |
+| A5 Signed + time-bounded | **`ASSUMED` / `CHECKED-BOUNDED`** *(was `ASSUMED`/`NONE`/…)* | Signature still **explicitly assumed** (§5) — unchanged, and unchangeable by model checking. What changed: the suite is no longer blind to deleting it. Root sig, intermediate sig, expiry and chain epoch are all now CAUGHT (`mutants/{root_signature,intermediate_signature,expiry,chain_epoch}.log`). The leaf epoch gate is **redundant, not unchecked** (§2A) |
+| A6 Attenuation + no dominion | **`PARTIAL` / `CHECKED-BOUNDED`** *(TLA+ leg was `NONE`)* | Lean side unchanged: the only real content is transitivity of `⊆`, the cited theorem is `:= h`, clause 2 is `: True := trivial`. TLA+ side repaired: `Attenuation` is now **falsifiable and fires** when the check is deleted (`mutants/attenuation_A6.log`) |
+| A7 No ambient authority | **`CHECKED-BOUNDED`** | `PermitSoundness` no longer restates the decision procedure — it is written against `ChainNodes`, independently of `Verify`, and catches actor-match and rights-coverage deletion. Still no Lean theorem states the axiom's direction |
 
-**Zero axioms are `PROVEN`. Zero formal artifacts in this repository are executed
-by CI. Kani has never been installed. TLC had never been run before this audit;
-it now has, and the result is a real but very small one (§2A) plus proof that the
-invariant suite is blind to two of the axioms it is supposed to constrain.**
+**Zero axioms are `PROVEN`.** Kani has never been installed. Zero formal
+artifacts are executed by CI — every result in this document was produced by
+hand on 2026-08-02 and nothing prevents it from rotting.
+
+**What changed on 2026-08-02, stated narrowly.** The TLA+ suite went from
+*unfalsifiable* to *falsifiable*: 13 of 14 enforcement checks now produce an
+invariant violation when deleted, and the 14th is provably redundant rather than
+unwatched (§2A). The Lean development went from *never built* to a green
+`lake build` with zero `sorryAx` (§2).
+
+**What did NOT change, and is the reason none of this is `PROVEN`: the
+model-to-code gap is untouched.** Both artifacts are hand-written *models*.
+Nothing in this repository connects `AuthGateV3.tla` or the `FreedomKernel` Lean
+library to `authgate-kernel/src/tcb/*.rs` — no refinement proof, no extraction,
+no differential testing against the model, not even a checked correspondence of
+field names. A falsifiable invariant over the model constrains **the model**. If
+the Rust code diverges from the model, every result in this document remains
+green and says nothing at all. Closing that gap is what A2/A3 of the two-track
+plan (contextual refinement, Aeneas/Iris) exists to do, and none of it has
+started.
 
 ---
 
@@ -630,6 +763,13 @@ In cost order. Note that the top three are hours, not months.
    record `now` in the audit log so expiry becomes statable at all. An invariant
    suite that cannot fail is not evidence, and this one demonstrably cannot fail
    for A1 or A5(a).
+   *(DONE on `tlc-remediation`, 2026-08-02. The invariants were rewritten
+   against `ChainNodes`, independently of `Verify`/`ValidChain`; the witness set
+   is recorded in the audit log; the missing adversarial capabilities were
+   added. 13 of 14 checks are now CAUGHT and the 14th is provably redundant —
+   `formal/tlc_runs/mutation_matrix_20260802-190824.md`. Note this makes the
+   suite falsifiable **at `MCConstraintMut`**; it says nothing about the Rust
+   code.)*
 3. **Pick a checkable bound.** `Len(audit_log) <= 3` does not terminate;
    `<= 1` runs in 3s but admits no multi-decision interaction. `<= 2` is untried
    and is the obvious next experiment.
@@ -638,6 +778,14 @@ In cost order. Note that the top three are hours, not months.
    vacuous `: True` theorems and the 2 tautologies. Then add `lake build` to CI so
    this cannot regress. Until this is done, **no Lean claim in this repo is
    reproducible by a reviewer.**
+   *(PARTIALLY DONE on `proof-toolchain`, 2026-08-02. Done: `lean-toolchain`
+   pinned to v4.32.2, a root lakefile with `@[default_target]`, and a green
+   `lake build` with zero `sorryAx` —
+   `formal/lean4/build_logs/lake_build_merge3_20260802.log`. **Still open:** the
+   lakefile does NOT cover all files — `formal/lean4/{Core,Invariants,Proofs}.lean`
+   and `formal/FreedomKernel.lean` remain outside the build; the vacuous
+   `: True` theorems and the tautologies were NOT repaired; and there is still
+   no CI. A reviewer can now reproduce the `FreedomKernel` library only.)*
 5. **Install Kani and run the harnesses.** They have never been compiled. Two
    mutually inconsistent Kani APIs are in use (`kani::assert!` macro form in
    `kani_proofs.rs` vs `kani::assert(cond, msg)` function form in `formal/kani/`),
