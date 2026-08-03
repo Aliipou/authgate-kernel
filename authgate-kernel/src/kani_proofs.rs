@@ -90,8 +90,8 @@ mod proofs {
                 let mut action = base_action();
                 action.$field = true;
                 let result = engine::verify(&registry, &action);
-                kani::assert!(!result.permitted, stringify!($field must always block));
-                kani::assert!(
+                assert!(!result.permitted, "{} must always block", stringify!($field));
+                assert!(
                     result.violations.iter().any(|v| v.contains("FORBIDDEN")),
                     "violation list must contain FORBIDDEN"
                 );
@@ -120,8 +120,8 @@ mod proofs {
         };
         let action = ActionWire { action_id: "no_owner".to_string(), actor: machine("orphan"), ..base_action() };
         let result = engine::verify(&registry, &action);
-        kani::assert!(!result.permitted, "Ownerless machine must be blocked (A4)");
-        kani::assert!(result.violations.iter().any(|v| v.contains("A4")));
+        assert!(!result.permitted, "Ownerless machine must be blocked (A4)");
+        assert!(result.violations.iter().any(|v| v.contains("A4")));
     }
 
     // ── Property: A machine governing a human is always blocked ───────────────
@@ -132,8 +132,8 @@ mod proofs {
         let mut action = base_action();
         action.governs_humans = vec![human("bob")];
         let result = engine::verify(&registry, &action);
-        kani::assert!(!result.permitted, "Machine governing human must be blocked (A6)");
-        kani::assert!(result.violations.iter().any(|v| v.contains("A6")));
+        assert!(!result.permitted, "Machine governing human must be blocked (A6)");
+        assert!(result.violations.iter().any(|v| v.contains("A6")));
     }
 
     // ── Property: Public resource read always permitted ───────────────────────
@@ -151,7 +151,7 @@ mod proofs {
         let mut action = base_action();
         action.resources_read = vec![public_res];
         let result = engine::verify(&registry, &action);
-        kani::assert!(result.permitted, "Public resource reads must always be permitted");
+        assert!(result.permitted, "Public resource reads must always be permitted");
     }
 
     // ── Property: Write denied without write claim ────────────────────────────
@@ -169,8 +169,8 @@ mod proofs {
         let mut action = base_action();
         action.resources_write = vec![res];
         let result = engine::verify(&registry, &action);
-        kani::assert!(!result.permitted, "Write without write claim must be denied");
-        kani::assert!(result.violations.iter().any(|v| v.contains("WRITE DENIED")));
+        assert!(!result.permitted, "Write without write claim must be denied");
+        assert!(result.violations.iter().any(|v| v.contains("WRITE DENIED")));
     }
 
     // ── Property: Read denied without read claim (A7) ─────────────────────────
@@ -188,8 +188,8 @@ mod proofs {
         let mut action = base_action();
         action.resources_read = vec![res];
         let result = engine::verify(&registry, &action);
-        kani::assert!(!result.permitted, "Read without any claim must be denied (A7)");
-        kani::assert!(result.violations.iter().any(|v| v.contains("READ DENIED")));
+        assert!(!result.permitted, "Read without any claim must be denied (A7)");
+        assert!(result.violations.iter().any(|v| v.contains("READ DENIED")));
     }
 
     // ── Property: Delegation denied without can_delegate (A7) ─────────────────
@@ -207,8 +207,8 @@ mod proofs {
         let mut action = base_action();
         action.resources_delegate = vec![res];
         let result = engine::verify(&registry, &action);
-        kani::assert!(!result.permitted, "Delegation without can_delegate must be denied (A7)");
-        kani::assert!(result.violations.iter().any(|v| v.contains("DELEGATION DENIED")));
+        assert!(!result.permitted, "Delegation without can_delegate must be denied (A7)");
+        assert!(result.violations.iter().any(|v| v.contains("DELEGATION DENIED")));
     }
 
     // ── Property: verify is deterministic (pure function) ─────────────────────
@@ -219,7 +219,7 @@ mod proofs {
         let action = base_action();
         let r1 = engine::verify(&registry, &action);
         let r2 = engine::verify(&registry, &action);
-        kani::assert!(
+        assert!(
             r1.permitted == r2.permitted,
             "verify must be deterministic: same inputs yield same permitted result"
         );
@@ -233,7 +233,7 @@ mod proofs {
         let action = base_action();
         let result = engine::verify(&registry, &action);
         if result.permitted {
-            kani::assert!(result.violations.is_empty(), "permitted result must have no violations");
+            assert!(result.violations.is_empty(), "permitted result must have no violations");
         }
     }
 
@@ -245,8 +245,8 @@ mod proofs {
         let mut action = base_action();
         action.increases_machine_sovereignty = true;
         let result = engine::verify(&registry, &action);
-        kani::assert!(!result.permitted, "forbidden flag must block");
-        kani::assert!(!result.violations.is_empty(), "blocked result must list violations");
+        assert!(!result.permitted, "forbidden flag must block");
+        assert!(!result.violations.is_empty(), "blocked result must list violations");
     }
 
     // ── Property: plan with forbidden flag is always blocked (Stage 2A) ───────
@@ -266,16 +266,16 @@ mod proofs {
 
         // A plan where the second action has a forbidden flag must not be all_permitted
         let plan_result = planner::verify_plan(&registry, &[ok.clone(), bad.clone()]);
-        kani::assert!(!plan_result.all_permitted,
+        assert!(!plan_result.all_permitted,
             "plan containing a forbidden-flag action must not be all_permitted");
-        kani::assert_eq!(plan_result.blocked_at, Some(1),
+        assert_eq!(plan_result.blocked_at, Some(1),
             "should be blocked at index 1 (the sovereignty action)");
 
         // A plan with only safe actions must be all_permitted (no resource claims needed here)
         let safe_result = planner::verify_plan(&registry, &[ok.clone()]);
         // Note: this may block if registry requires claims — the property is structural
         if safe_result.all_permitted {
-            kani::assert!(!ok.increases_machine_sovereignty,
+            assert!(!ok.increases_machine_sovereignty,
                 "if permitted, no sovereignty flag was set");
         }
     }
