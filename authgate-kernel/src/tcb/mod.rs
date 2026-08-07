@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// TCB — Trusted Computing Base.
 ///
 /// Everything in this module is subject to formal verification (Kani + Lean 4).
@@ -35,3 +36,11 @@ pub(crate) mod engine;
 mod tests;
 #[cfg(test)]
 mod hardening_tests;
+// Kani model-checking harnesses. cfg(kani)-gated so the shipping TCB is byte-for-byte
+// unaffected: these declarations contribute zero items to a normal or test build.
+// Both files were moved here from formal/kani/ by the domain-separation commit but the
+// mod declarations were never added, so nothing was compiling them.
+#[cfg(kani)]
+mod kani_chain;
+#[cfg(kani)]
+mod kani_confinement;

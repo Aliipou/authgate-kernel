@@ -9,17 +9,18 @@ mod proofs {
     use crate::engine;
     use crate::planner;
     use crate::wire::{
-        ActionWire, ClaimWire, EntityWire, MachineOwnerWire, OwnershipRegistryWire, ResourceWire,
+        ActionWire, ClaimWire, EntityKind, EntityWire, MachineOwnerWire, OwnershipRegistryWire,
+        ResourceWire,
     };
 
     // ── helpers ───────────────────────────────────────────────────────────────
 
     fn human(name: &str) -> EntityWire {
-        EntityWire { name: name.to_string(), kind: "HUMAN".to_string() }
+        EntityWire { name: name.to_string(), kind: EntityKind::Human }
     }
 
     fn machine(name: &str) -> EntityWire {
-        EntityWire { name: name.to_string(), kind: "MACHINE".to_string() }
+        EntityWire { name: name.to_string(), kind: EntityKind::Machine }
     }
 
     fn file_resource(name: &str) -> ResourceWire {
@@ -29,6 +30,12 @@ mod proofs {
             scope: String::new(),
             is_public: false,
             ifc_label: String::new(),
+            // trust_domain = None: every harness using this helper is about the CLAIM
+            // rule (read/write/delegate denied without a claim). engine::verify's
+            // trust-domain rule only fires when the action AND the resource both carry
+            // Some(domain); keeping this None makes the denial attributable to the
+            // claim rule alone rather than being masked by a domain violation.
+            trust_domain: None,
         }
     }
 
@@ -41,6 +48,16 @@ mod proofs {
             can_delegate: can_write,
             confidence: 1.0,
             expires_at: None,
+            // trust_domain = None: same reason as file_resource() — these harnesses
+            // isolate the claim rule, not domain separation.
+            trust_domain: None,
+            // delegation_depth is NONDETERMINISTIC on purpose. engine::verify never
+            // reads it (checked: no delegation_depth reference anywhere in
+            // src/engine.rs), so any concrete constant would silently pin the harness
+            // to one arbitrary point of a field the branch just introduced. kani::any()
+            // proves the claim-rule properties hold for ALL depths, which is strictly
+            // stronger and costs nothing symbolically.
+            delegation_depth: kani::any(),
         }
     }
 
@@ -51,6 +68,11 @@ mod proofs {
                 machine: machine("bot"),
                 owner: human("alice"),
             }],
+            // trust_domains = empty: this registry declares no cross-domain grants.
+            // Combined with base_action()'s trust_domain = None the domain rule is
+            // inert, which is what these harnesses want — they predate domain
+            // separation and assert flag/claim properties only.
+            trust_domains: vec![],
         }
     }
 
@@ -74,6 +96,19 @@ mod proofs {
             deceives: false,
             self_modification_weakens_verifier: false,
             machine_coalition_reduces_freedom: false,
+            // trust_domain = None is REQUIRED, not merely convenient.
+            // engine::verify only applies the cross-domain rule when the action
+            // carries Some(domain). base_action() is shared by the one POSITIVE
+            // harness (prop_public_resource_read_permitted, which asserts permitted
+            // == true); a symbolic or non-None domain there would let the engine
+            // raise a TRUST DOMAIN violation and falsify that harness. None keeps
+            // every harness testing the property it was written for. Domain
+            // separation needs its own harness — see the note on that harness.
+            trust_domain: None,
+            // delegation_depth: nondeterministic, same rationale as in claim() —
+            // engine::verify ignores the field, so pinning it to 0 would be an
+            // arbitrary and unjustified restriction of the proved state space.
+            delegation_depth: kani::any(),
         }
     }
 
@@ -117,6 +152,9 @@ mod proofs {
         let registry = OwnershipRegistryWire {
             claims: vec![],
             machine_owners: vec![], // no owner registered
+            // No trust domains: the A4 ownerless-machine rule must block on its own,
+            // without any cross-domain grant being present to help or hinder it.
+            trust_domains: vec![],
         };
         let action = ActionWire { action_id: "no_owner".to_string(), actor: machine("orphan"), ..base_action() };
         let result = engine::verify(&registry, &action);
@@ -146,6 +184,14 @@ mod proofs {
             scope: String::new(),
             is_public: true,
             ifc_label: String::new(),
+            // trust_domain = None is LOAD-BEARING here. is_public short-circuits the
+            // claim check but NOT the trust-domain check: if this resource carried
+            // Some(domain) and the action carried a different Some(domain) with no
+            // grant, verify() would emit a TRUST DOMAIN violation and this harness
+            // would be FALSE. So "public reads are always permitted" is only true for
+            // unlabelled resources on this branch. Narrowing to None preserves the
+            // harness's original intent; the wider claim now needs its own harness.
+            trust_domain: None,
         };
         let registry = minimal_registry_with_owner();
         let mut action = base_action();
@@ -165,6 +211,9 @@ mod proofs {
                 machine: machine("bot"),
                 owner: human("alice"),
             }],
+            // No trust domains: WRITE DENIED must follow from the missing write claim
+            // alone. An empty grant table also means no grant could mask the denial.
+            trust_domains: vec![],
         };
         let mut action = base_action();
         action.resources_write = vec![res];
@@ -184,6 +233,9 @@ mod proofs {
                 machine: machine("bot"),
                 owner: human("alice"),
             }],
+            // No trust domains: READ DENIED (A7) must follow from the absent read
+            // claim alone, not from a domain boundary.
+            trust_domains: vec![],
         };
         let mut action = base_action();
         action.resources_read = vec![res];
@@ -203,6 +255,9 @@ mod proofs {
                 machine: machine("bot"),
                 owner: human("alice"),
             }],
+            // No trust domains: DELEGATION DENIED (A7) must follow from
+            // can_delegate=false alone.
+            trust_domains: vec![],
         };
         let mut action = base_action();
         action.resources_delegate = vec![res];

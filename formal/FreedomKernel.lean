@@ -106,7 +106,9 @@ def Registry.bestConfidence
         | "write"    => c.canWrite
         | "delegate" => c.canDelegate
         | _          => false)
-  matching.foldl (fun best c => Float.max best c.confidence) 0.0
+  -- `Float.max` was removed from Lean core; the `Max Float` instance provides
+  -- the identical operation, so this is a rename, not a semantic change.
+  matching.foldl (fun best c => max best c.confidence) 0.0
 
 def Registry.canAct
     (r : Registry) (holder : Entity) (res : Resource) (op : String) : Bool :=
@@ -144,8 +146,7 @@ theorem sovereignty_always_blocks
     (reg : Registry) (a : KernelAction)
     (h : a.flags.anySet = true) :
     permitted reg a = false := by
-  simp [permitted, SovereigntyFlags.anySet] at *
-  simp [h]
+  simp [permitted, h]
 
 -- ── Lemma 2: Permitted is decidable (computable for finite inputs) ──────────
 -- Already holds by construction: `permitted` is a `Bool` function.

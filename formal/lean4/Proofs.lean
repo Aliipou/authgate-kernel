@@ -38,7 +38,11 @@ theorem rights_sufficiency_correct
 theorem epoch_gate_total
     (cap_epoch min_epoch : Epoch)
     : cap_epoch < min_epoch ∨ min_epoch ≤ cap_epoch := by
-  exact Nat.lt_or_ge cap_epoch min_epoch |>.symm.imp id id
+  -- Was `Nat.lt_or_ge cap_epoch min_epoch |>.symm.imp id id`, which produced
+  -- `cap_epoch ≥ min_epoch ∨ cap_epoch < min_epoch` — the disjuncts in the
+  -- wrong order, so the term did not match the goal. `Nat.lt_or_ge` already
+  -- has exactly the stated shape (`≥` is notation for the flipped `≤`).
+  exact Nat.lt_or_ge cap_epoch min_epoch
 
 -- ─── Lemma: Epoch gate subsumes revocation list for epoch-bounded proofs ─────
 -- A proof from epoch e < min_epoch is denied without consulting any revocation list.
@@ -48,7 +52,10 @@ theorem stale_epoch_implies_deny
     (h : cap.epoch < a.minEpoch)
     : ¬ FreshEpoch a cap := by
   simp [FreshEpoch]
-  exact Nat.not_le.mpr h
+  -- `simp [FreshEpoch]` already rewrites `¬ (a.minEpoch ≤ cap.epoch)` to
+  -- `cap.epoch < a.minEpoch`, so the goal is `h` itself; the previous
+  -- `Nat.not_le.mpr h` re-applied a rewrite simp had already performed.
+  exact h
 
 -- ─── Lemma: Subject binding is a strict equality check ───────────────────────
 -- If actor ≠ subject, the proof does not satisfy SubjectBinding.

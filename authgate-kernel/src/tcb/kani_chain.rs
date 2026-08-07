@@ -14,8 +14,8 @@
 ///   No chain can be valid if its root node uses a different key.
 #[cfg(kani)]
 mod chain_proofs {
-    use authgate_kernel::tcb::types::*;
-    use authgate_kernel::tcb::dag::validate_chain;
+    use crate::tcb::types::*;
+    use crate::tcb::dag::validate_chain;
     use ed25519_dalek::{SigningKey, VerifyingKey};
     use sha2::{Digest, Sha256};
 

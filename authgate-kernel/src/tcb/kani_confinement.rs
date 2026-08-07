@@ -21,7 +21,7 @@
 ///   verify(A, K, now) = Deny regardless of proof content.
 #[cfg(kani)]
 mod confinement_proofs {
-    use authgate_kernel::tcb::types::*;
+    use crate::tcb::types::*;
 
     /// P-CONF-2/3: Subject and resource binding are total checks.
     /// Any mismatch between action fields and proof fields must produce Deny.

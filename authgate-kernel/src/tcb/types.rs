@@ -1,3 +1,4 @@
+#![forbid(unsafe_code)]
 /// v2 TCB types — stateless, proof-chain-based authority model.
 ///
 /// No registry. All authority lives in signed capability proofs.

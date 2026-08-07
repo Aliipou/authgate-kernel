@@ -10,3 +10,14 @@ package «authgate-kernel» where
 @[default_target]
 lean_lib «FreedomKernel» where
   globs := #[.submodules `FreedomKernel]
+
+/-- `formal/FreedomKernel.lean` is a standalone root module living one directory
+    above this package, so the glob above cannot see it. It was therefore never
+    compiled by `lake build`, even though it carries the strongest results in the
+    development (`ownerless_machine_blocked`, `public_read_permitted`,
+    `sovereignty_always_blocks`). A second library rooted at it puts those
+    theorems under the build instead of leaving them unverified. -/
+@[default_target]
+lean_lib «FreedomKernelRoot» where
+  srcDir := ".."
+  roots := #[`FreedomKernel]
