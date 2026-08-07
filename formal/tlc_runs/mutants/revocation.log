@@ -5,10 +5,10 @@ verdict: **CAUGHT**
 violated: RevocationSafety 
 
 TLC2 Version 2026.07.31.184830 (rev: 30cc360)
-Running breadth-first search Model-Checking with fp 111 and seed 2532181264133720492 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 4996] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
-Starting... (2026-08-02 19:08:51)
+Running breadth-first search Model-Checking with fp 67 and seed 5680876121669295770 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 14244] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-06 22:19:45)
 Computing initial states...
-Finished computing initial states: 1 distinct state generated at 2026-08-02 19:08:51.
+Finished computing initial states: 1 distinct state generated at 2026-08-06 22:19:46.
 Error: Invariant RevocationSafety is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
@@ -25,21 +25,21 @@ State 2: <AdvanceEpoch(1) line 645, col 3 to line 648, col 77 of module AuthGate
 /\ global_epoch = 1
 /\ audit_log = <<>>
 
-State 3: <Revoke("h1") line 655, col 3 to line 659, col 58 of module AuthGateV3>
-/\ revocation_history = <<"h1">>
+State 3: <Revoke("h2") line 655, col 3 to line 659, col 58 of module AuthGateV3>
+/\ revocation_history = <<"h2">>
 /\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {}, a3 |-> {}]
-/\ revoked_set = {"h1"}
+/\ revoked_set = {"h2"}
 /\ global_epoch = 1
 /\ audit_log = <<>>
 
-State 4: <ExecuteVerify([resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h1", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h3", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 0, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h9", subject_id |-> "a1", resource_hash |-> "r2", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, binding_valid |-> TRUE],0,"MixedBundle") line 678, col 3 to line 696, col 64 of module AuthGateV3>
-/\ revocation_history = <<"h1">>
-/\ session_rights = [a0 |-> {}, a1 |-> {"READ"}, a2 |-> {}, a3 |-> {}]
-/\ revoked_set = {"h1"}
+State 4: <ExecuteVerify([resource_hash |-> "r1", actor_id |-> "a2", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h1", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h2", subject_id |-> "a2", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Delegated", parent_hash |-> "h1"], issuer_pubkey |-> "pk1", sig_valid |-> TRUE]}, binding_valid |-> TRUE],0,"Delegated") line 678, col 3 to line 696, col 64 of module AuthGateV3>
+/\ revocation_history = <<"h2">>
+/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {"READ"}, a3 |-> {}]
+/\ revoked_set = {"h2"}
 /\ global_epoch = 1
-/\ audit_log = <<[action |-> [resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h1", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h3", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 0, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h9", subject_id |-> "a1", resource_hash |-> "r2", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, binding_valid |-> TRUE], now |-> 0, rev_len |-> 1, decision |-> "Permit", revoked_at |-> {"h1"}, witness |-> {[proof_hash |-> "h1", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, action_name |-> "MixedBundle"]>>
+/\ audit_log = <<[action |-> [resource_hash |-> "r1", actor_id |-> "a2", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h1", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h2", subject_id |-> "a2", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Delegated", parent_hash |-> "h1"], issuer_pubkey |-> "pk1", sig_valid |-> TRUE]}, binding_valid |-> TRUE], now |-> 0, rev_len |-> 1, decision |-> "Permit", revoked_at |-> {"h2"}, witness |-> {[proof_hash |-> "h2", subject_id |-> "a2", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Delegated", parent_hash |-> "h1"], issuer_pubkey |-> "pk1", sig_valid |-> TRUE]}, action_name |-> "Delegated"]>>
 
-222 states generated, 166 distinct states found, 157 states left on queue.
-The depth of the complete state graph search is 5.
-Finished in 01s at (2026-08-02 19:08:52)
-Trace exploration spec path: .\MC_AuthGateV3_TTrace_1785686930.tla
+599 states generated, 304 distinct states found, 279 states left on queue.
+The depth of the complete state graph search is 4.
+Finished in 03s at (2026-08-06 22:19:47)
+Trace exploration spec path: .\MC_AuthGateV3_TTrace_1786043983.tla

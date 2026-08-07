@@ -1,0 +1,41 @@
+==============================================================
+TLC RUN LOG
+==============================================================
+label            : fresh_verify_b1
+date (local)     : 2026-08-06 22:08:19 +0300
+repo branch      : protocol/domain-separation
+repo commit      : 2465562791a918f82445ac474af5888a479299f9
+git dirty        : YES
+host             : MINGW64_NT-10.0-19045 x86_64
+java             : openjdk version "17.0.10" 2024-01-16 LTS
+tlc version      : TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+jar sha256       : e22f8ffb4bacdea0a871f444dd94fe5fb0d8013b3388ae39e82e26f852c735d5
+jar size (bytes) : 4486015
+config file      : MC_AuthGateV3_b1.cfg
+bound / constraint: CONSTRAINT MCConstraint1
+timeout (s)      : 1500
+command line     : java -XX:+UseParallelGC -jar tla2tools.jar -workers auto -config MC_AuthGateV3_b1.cfg MC_AuthGateV3.tla
+==============================================================
+
+----- VERBATIM TLC OUTPUT (parser noise filtered) -----
+TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+Running breadth-first search Model-Checking with fp 106 and seed 7993168596775719532 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 18000] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-06 22:08:20)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-08-06 22:08:21.
+Progress(5) at 2026-08-06 22:08:24: 28,552 states generated (28,552 s/min), 10,663 distinct states found (10,663 ds/min), 9,873 states left on queue.
+Progress(6) at 2026-08-06 22:09:24: 1,352,045 states generated (1,323,493 s/min), 52,325 distinct states found (41,662 ds/min), 26,872 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 7.1E-9
+  based on the actual fingerprints:  val = 3.8E-10
+2263930 states generated, 59241 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 6.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 31 and the 95th percentile is 13).
+Finished in 01min 52s at (2026-08-06 22:10:12)
+----- END VERBATIM TLC OUTPUT -----
+
+wall clock (s)   : 113
+process exit code: 0
+STATUS           : COMPLETED - state space exhausted, no violation

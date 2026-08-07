@@ -5,10 +5,10 @@ verdict: **CAUGHT**
 violated: Attenuation 
 
 TLC2 Version 2026.07.31.184830 (rev: 30cc360)
-Running breadth-first search Model-Checking with fp 99 and seed -3574264552834471525 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 13264] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
-Starting... (2026-08-02 19:08:32)
+Running breadth-first search Model-Checking with fp 53 and seed -6685415034085671921 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 5844] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-06 22:18:36)
 Computing initial states...
-Finished computing initial states: 1 distinct state generated at 2026-08-02 19:08:32.
+Finished computing initial states: 1 distinct state generated at 2026-08-06 22:18:37.
 Error: Invariant Attenuation is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
@@ -32,7 +32,7 @@ State 3: <ExecuteVerify([resource_hash |-> "r1", actor_id |-> "a2", required_rig
 /\ global_epoch = 1
 /\ audit_log = <<[action |-> [resource_hash |-> "r1", actor_id |-> "a2", required_rights |-> {"WRITE"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h1", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE], [proof_hash |-> "h7", subject_id |-> "a2", resource_hash |-> "r1", rights |-> {"READ", "WRITE"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Delegated", parent_hash |-> "h1"], issuer_pubkey |-> "pk1", sig_valid |-> TRUE]}, binding_valid |-> TRUE], now |-> 0, rev_len |-> 0, decision |-> "Permit", revoked_at |-> {}, witness |-> {[proof_hash |-> "h7", subject_id |-> "a2", resource_hash |-> "r1", rights |-> {"READ", "WRITE"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Delegated", parent_hash |-> "h1"], issuer_pubkey |-> "pk1", sig_valid |-> TRUE]}, action_name |-> "AttenEscalation"]>>
 
-199 states generated, 105 distinct states found, 92 states left on queue.
-The depth of the complete state graph search is 5.
-Finished in 01s at (2026-08-02 19:08:32)
-Trace exploration spec path: .\MC_AuthGateV3_TTrace_1785686911.tla
+40 states generated, 39 distinct states found, 36 states left on queue.
+The depth of the complete state graph search is 3.
+Finished in 03s at (2026-08-06 22:18:37)
+Trace exploration spec path: .\MC_AuthGateV3_TTrace_1786043914.tla

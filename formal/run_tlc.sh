@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # TLC run harness for authgate-kernel (branch tlc-remediation).
 #
-# Usage: ./run_tlc.sh <cfg-basename> <label> [timeout-seconds]
+# Usage: ./run_tlc.sh <cfg-basename> <label> [timeout-seconds] [module.tla]
+#
+# The module defaults to MC_AuthGateV3.tla. Pass MC_FreedomKernel.tla to run the
+# FreedomKernel harness, which got its first cfg on 2026-08-06.
 #
 # Writes a dated, self-describing log to tlc_runs/ containing:
 #   exact command line, jar version + SHA-256, the bound, wall-clock,
@@ -15,6 +18,7 @@ set -u
 CFG="${1:?usage: run_tlc.sh <cfg-basename> <label> [timeout-seconds]}"
 LABEL="${2:?missing label}"
 TIMEOUT="${3:-1800}"
+MODULE="${4:-MC_AuthGateV3.tla}"
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 cd "$HERE" || exit 1
@@ -27,7 +31,7 @@ JAR_SHA="$(certutil -hashfile tla2tools.jar SHA256 2>/dev/null | sed -n 2p | tr 
 JAR_SIZE="$(stat -c %s tla2tools.jar 2>/dev/null || echo unknown)"
 TLC_VER="$(java -jar tla2tools.jar -version 2>&1 | head -1)"
 BOUND="$(grep -E '^CONSTRAINT' "${CFG}.cfg" | head -1)"
-CMD="java -XX:+UseParallelGC -jar tla2tools.jar -workers auto -config ${CFG}.cfg MC_AuthGateV3.tla"
+CMD="java -XX:+UseParallelGC -jar tla2tools.jar -workers auto -config ${CFG}.cfg ${MODULE}"
 
 {
   echo "=============================================================="
@@ -43,6 +47,7 @@ CMD="java -XX:+UseParallelGC -jar tla2tools.jar -workers auto -config ${CFG}.cfg
   echo "tlc version      : ${TLC_VER}"
   echo "jar sha256       : ${JAR_SHA}"
   echo "jar size (bytes) : ${JAR_SIZE}"
+  echo "module           : ${MODULE}"
   echo "config file      : ${CFG}.cfg"
   echo "bound / constraint: ${BOUND}"
   echo "timeout (s)      : ${TIMEOUT}"
@@ -78,6 +83,6 @@ ELAPSED=$((END - START))
   fi
 } >> "$OUT"
 
-rm -f MC_AuthGateV3_TTrace_*.tla
+rm -f MC_AuthGateV3_TTrace_*.tla MC_FreedomKernel_TTrace_*.tla
 echo "wrote $OUT (exit $RC, ${ELAPSED}s)"
 grep -E "^STATUS|^violated|^wall clock" "$OUT"

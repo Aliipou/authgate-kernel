@@ -1,0 +1,40 @@
+==============================================================
+TLC RUN LOG
+==============================================================
+label            : freedomkernel_without_refuted_theorem
+date (local)     : 2026-08-06 23:18:22 +0300
+repo branch      : protocol/domain-separation
+repo commit      : 2465562791a918f82445ac474af5888a479299f9
+git dirty        : YES
+host             : MINGW64_NT-10.0-19045 x86_64
+java             : openjdk version "17.0.10" 2024-01-16 LTS
+tlc version      : TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+jar sha256       : e22f8ffb4bacdea0a871f444dd94fe5fb0d8013b3388ae39e82e26f852c735d5
+jar size (bytes) : 4486015
+module           : MC_FreedomKernel.tla
+config file      : MC_FreedomKernel_noatten.cfg
+bound / constraint: CONSTRAINT MCConstraint
+timeout (s)      : 900
+command line     : java -XX:+UseParallelGC -jar tla2tools.jar -workers auto -config MC_FreedomKernel_noatten.cfg MC_FreedomKernel.tla
+==============================================================
+
+----- VERBATIM TLC OUTPUT (parser noise filtered) -----
+TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+Running breadth-first search Model-Checking with fp 125 and seed -8296742364065130127 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 15384] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-06 23:19:16)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-08-06 23:19:19.
+Progress(5) at 2026-08-06 23:19:23: 31,446 states generated (31,446 s/min), 3,731 distinct states found (3,731 ds/min), 2,880 states left on queue.
+Model checking completed. No error has been found.
+  Estimates of the probability that TLC did not check all reachable states
+  because two distinct states had the same fingerprint:
+  calculated (optimistic):  val = 8.3E-11
+240612 states generated, 6503 distinct states found, 0 states left on queue.
+The depth of the complete state graph search is 5.
+The average outdegree of the complete state graph is 1 (minimum is 0, the maximum 31 and the 95th percentile is 5).
+Finished in 17s at (2026-08-06 23:19:29)
+----- END VERBATIM TLC OUTPUT -----
+
+wall clock (s)   : 30
+process exit code: 0
+STATUS           : COMPLETED - state space exhausted, no violation

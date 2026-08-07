@@ -1,0 +1,53 @@
+==============================================================
+TLC RUN LOG
+==============================================================
+label            : freedomkernel_first_ever_run
+date (local)     : 2026-08-06 23:10:02 +0300
+repo branch      : protocol/domain-separation
+repo commit      : 2465562791a918f82445ac474af5888a479299f9
+git dirty        : YES
+host             : MINGW64_NT-10.0-19045 x86_64
+java             : openjdk version "17.0.10" 2024-01-16 LTS
+tlc version      : TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+jar sha256       : e22f8ffb4bacdea0a871f444dd94fe5fb0d8013b3388ae39e82e26f852c735d5
+jar size (bytes) : 4486015
+module           : MC_FreedomKernel.tla
+config file      : MC_FreedomKernel.cfg
+bound / constraint: CONSTRAINT MCConstraint
+timeout (s)      : 900
+command line     : java -XX:+UseParallelGC -jar tla2tools.jar -workers auto -config MC_FreedomKernel.cfg MC_FreedomKernel.tla
+==============================================================
+
+----- VERBATIM TLC OUTPUT (parser noise filtered) -----
+TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+Running breadth-first search Model-Checking with fp 33 and seed -6400461945526938515 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 16056] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-06 23:11:10)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-08-06 23:11:14.
+Error: Invariant AttenuationHolds is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ machine_owners = <<>>
+/\ audit_log = <<>>
+/\ claims = {}
+
+State 2: <AddClaim([holder |-> "h1", resource |-> "r1", can_read |-> FALSE, can_write |-> FALSE, can_delegate |-> FALSE, confidence |-> 60]) line 212, col 5 to line 214, col 46 of module FreedomKernel>
+/\ machine_owners = <<>>
+/\ audit_log = <<>>
+/\ claims = {[holder |-> "h1", resource |-> "r1", can_read |-> FALSE, can_write |-> FALSE, can_delegate |-> FALSE, confidence |-> 60]}
+
+State 3: <AddClaim([holder |-> "m1", resource |-> "r1", can_read |-> FALSE, can_write |-> FALSE, can_delegate |-> TRUE, confidence |-> 30]) line 212, col 5 to line 214, col 46 of module FreedomKernel>
+/\ machine_owners = <<>>
+/\ audit_log = <<>>
+/\ claims = {[holder |-> "h1", resource |-> "r1", can_read |-> FALSE, can_write |-> FALSE, can_delegate |-> FALSE, confidence |-> 60], [holder |-> "m1", resource |-> "r1", can_read |-> FALSE, can_write |-> FALSE, can_delegate |-> TRUE, confidence |-> 30]}
+
+94 states generated, 91 distinct states found, 87 states left on queue.
+The depth of the complete state graph search is 3.
+Finished in 12s at (2026-08-06 23:11:16)
+Trace exploration spec path: .\MC_FreedomKernel_TTrace_1786047064.tla
+----- END VERBATIM TLC OUTPUT -----
+
+wall clock (s)   : 29
+process exit code: 12
+STATUS           : COMPLETED - INVARIANT VIOLATED (counterexample above)
+violated         : Invariant AttenuationHolds is violated

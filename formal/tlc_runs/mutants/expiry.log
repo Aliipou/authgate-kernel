@@ -5,10 +5,10 @@ verdict: **CAUGHT**
 violated: PermitSoundness 
 
 TLC2 Version 2026.07.31.184830 (rev: 30cc360)
-Running breadth-first search Model-Checking with fp 5 and seed -3107082100707891884 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 4612] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
-Starting... (2026-08-02 19:08:33)
+Running breadth-first search Model-Checking with fp 64 and seed 4454251252490300566 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 17752] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-06 22:18:44)
 Computing initial states...
-Finished computing initial states: 1 distinct state generated at 2026-08-02 19:08:34.
+Finished computing initial states: 1 distinct state generated at 2026-08-06 22:18:45.
 Error: Invariant PermitSoundness is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
@@ -25,21 +25,14 @@ State 2: <AdvanceEpoch(1) line 645, col 3 to line 648, col 77 of module AuthGate
 /\ global_epoch = 1
 /\ audit_log = <<>>
 
-State 3: <Revoke("h2") line 655, col 3 to line 659, col 58 of module AuthGateV3>
-/\ revocation_history = <<"h2">>
-/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {}, a3 |-> {}]
-/\ revoked_set = {"h2"}
-/\ global_epoch = 1
-/\ audit_log = <<>>
-
-State 4: <ExecuteVerify([resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h8", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 0, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, binding_valid |-> TRUE],1,"Expired") line 678, col 3 to line 696, col 64 of module AuthGateV3>
-/\ revocation_history = <<"h2">>
+State 3: <ExecuteVerify([resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h8", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 0, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, binding_valid |-> TRUE],1,"Expired") line 678, col 3 to line 696, col 64 of module AuthGateV3>
+/\ revocation_history = <<>>
 /\ session_rights = [a0 |-> {}, a1 |-> {"READ"}, a2 |-> {}, a3 |-> {}]
-/\ revoked_set = {"h2"}
+/\ revoked_set = {}
 /\ global_epoch = 1
-/\ audit_log = <<[action |-> [resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h8", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 0, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, binding_valid |-> TRUE], now |-> 1, rev_len |-> 1, decision |-> "Permit", revoked_at |-> {"h2"}, witness |-> {[proof_hash |-> "h8", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 0, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, action_name |-> "Expired"]>>
+/\ audit_log = <<[action |-> [resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h8", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 0, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, binding_valid |-> TRUE], now |-> 1, rev_len |-> 0, decision |-> "Permit", revoked_at |-> {}, witness |-> {[proof_hash |-> "h8", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 0, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, action_name |-> "Expired"]>>
 
-202 states generated, 159 distinct states found, 149 states left on queue.
+412 states generated, 159 distinct states found, 135 states left on queue.
 The depth of the complete state graph search is 4.
-Finished in 01s at (2026-08-02 19:08:34)
-Trace exploration spec path: .\MC_AuthGateV3_TTrace_1785686913.tla
+Finished in 03s at (2026-08-06 22:18:46)
+Trace exploration spec path: .\MC_AuthGateV3_TTrace_1786043922.tla

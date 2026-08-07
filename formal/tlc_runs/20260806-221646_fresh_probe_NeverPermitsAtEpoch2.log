@@ -1,0 +1,58 @@
+==============================================================
+TLC RUN LOG
+==============================================================
+label            : fresh_probe_NeverPermitsAtEpoch2
+date (local)     : 2026-08-06 22:16:50 +0300
+repo branch      : protocol/domain-separation
+repo commit      : 2465562791a918f82445ac474af5888a479299f9
+git dirty        : YES
+host             : MINGW64_NT-10.0-19045 x86_64
+java             : openjdk version "17.0.10" 2024-01-16 LTS
+tlc version      : TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+jar sha256       : e22f8ffb4bacdea0a871f444dd94fe5fb0d8013b3388ae39e82e26f852c735d5
+jar size (bytes) : 4486015
+config file      : MC_probe_NeverPermitsAtEpoch2.cfg
+bound / constraint: CONSTRAINT MCConstraint1
+timeout (s)      : 600
+command line     : java -XX:+UseParallelGC -jar tla2tools.jar -workers auto -config MC_probe_NeverPermitsAtEpoch2.cfg MC_AuthGateV3.tla
+==============================================================
+
+----- VERBATIM TLC OUTPUT (parser noise filtered) -----
+TLC2 Version 2026.07.31.184830 (rev: 30cc360)
+Running breadth-first search Model-Checking with fp 19 and seed 6014270102800916587 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 15620] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-06 22:16:57)
+Computing initial states...
+Finished computing initial states: 1 distinct state generated at 2026-08-06 22:16:58.
+Error: Invariant NeverPermitsAtEpoch2 is violated.
+Error: The behavior up to this point is:
+State 1: <Initial predicate>
+/\ revocation_history = <<>>
+/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {}
+/\ global_epoch = 0
+/\ audit_log = <<>>
+
+State 2: <AdvanceEpoch(2) line 645, col 3 to line 648, col 77 of module AuthGateV3>
+/\ revocation_history = <<>>
+/\ session_rights = [a0 |-> {}, a1 |-> {}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {}
+/\ global_epoch = 2
+/\ audit_log = <<>>
+
+State 3: <ExecuteVerify([resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 2, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h11", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 2, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, binding_valid |-> TRUE],0,"ValidEpoch2") line 678, col 3 to line 696, col 64 of module AuthGateV3>
+/\ revocation_history = <<>>
+/\ session_rights = [a0 |-> {}, a1 |-> {"READ"}, a2 |-> {}, a3 |-> {}]
+/\ revoked_set = {}
+/\ global_epoch = 2
+/\ audit_log = <<[action |-> [resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 2, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h11", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 2, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, binding_valid |-> TRUE], now |-> 0, rev_len |-> 0, decision |-> "Permit", revoked_at |-> {}, witness |-> {[proof_hash |-> "h11", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 2, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk0", sig_valid |-> TRUE]}, action_name |-> "ValidEpoch2"]>>
+
+678 states generated, 643 distinct states found, 619 states left on queue.
+The depth of the complete state graph search is 4.
+Finished in 03s at (2026-08-06 22:16:58)
+Trace exploration spec path: .\MC_AuthGateV3_TTrace_1786043815.tla
+----- END VERBATIM TLC OUTPUT -----
+
+wall clock (s)   : 5
+process exit code: 12
+STATUS           : COMPLETED - INVARIANT VIOLATED (counterexample above)
+violated         : Invariant NeverPermitsAtEpoch2 is violated

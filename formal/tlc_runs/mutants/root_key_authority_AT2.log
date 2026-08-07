@@ -5,10 +5,10 @@ verdict: **CAUGHT**
 violated: PermitSoundness 
 
 TLC2 Version 2026.07.31.184830 (rev: 30cc360)
-Running breadth-first search Model-Checking with fp 121 and seed -8352026053305730008 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 1052] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
-Starting... (2026-08-02 19:08:55)
+Running breadth-first search Model-Checking with fp 25 and seed 4911530872598092009 with 4 workers on 4 cores with 1803MB heap and 64MB offheap memory [pid: 16924] (Windows 10 10.0 amd64, Microsoft 17.0.10 64bit, MSBDiskFPSet, DiskStateQueue).
+Starting... (2026-08-06 22:20:02)
 Computing initial states...
-Finished computing initial states: 1 distinct state generated at 2026-08-02 19:08:55.
+Finished computing initial states: 1 distinct state generated at 2026-08-06 22:20:03.
 Error: Invariant PermitSoundness is violated.
 Error: The behavior up to this point is:
 State 1: <Initial predicate>
@@ -32,7 +32,7 @@ State 3: <ExecuteVerify([resource_hash |-> "r1", actor_id |-> "a1", required_rig
 /\ global_epoch = 1
 /\ audit_log = <<[action |-> [resource_hash |-> "r1", actor_id |-> "a1", required_rights |-> {"READ"}, min_epoch |-> 1, timestamp |-> 1, cap_bundle |-> {[proof_hash |-> "h10", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk2", sig_valid |-> TRUE]}, binding_valid |-> TRUE], now |-> 0, rev_len |-> 0, decision |-> "Permit", revoked_at |-> {}, witness |-> {[proof_hash |-> "h10", subject_id |-> "a1", resource_hash |-> "r1", rights |-> {"READ"}, expiry |-> 2, epoch |-> 1, issuer |-> [type |-> "Root"], issuer_pubkey |-> "pk2", sig_valid |-> TRUE]}, action_name |-> "ForgedRoot"]>>
 
-130 states generated, 87 distinct states found, 77 states left on queue.
+340 states generated, 87 distinct states found, 63 states left on queue.
 The depth of the complete state graph search is 4.
-Finished in 01s at (2026-08-02 19:08:56)
-Trace exploration spec path: .\MC_AuthGateV3_TTrace_1785686934.tla
+Finished in 03s at (2026-08-06 22:20:03)
+Trace exploration spec path: .\MC_AuthGateV3_TTrace_1786044000.tla

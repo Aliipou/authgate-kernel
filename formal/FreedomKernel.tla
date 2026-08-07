@@ -120,7 +120,11 @@ TypeInvariant ==
     /\ claims \subseteq Claim
     /\ machine_owners \in [DOMAIN machine_owners -> Humans]
     /\ DOMAIN machine_owners \subseteq Machines
-    /\ IsSeq(audit_log)
+    \* Was `IsSeq(audit_log)`, which is not an operator in this module's EXTENDS
+    \* (Naturals, FiniteSets, Sequences, TLC) nor defined anywhere else, so the
+    \* module did not typecheck and could never be model-checked. Replaced with
+    \* the faithful type: exactly the record ExecuteAction appends.
+    /\ audit_log \in Seq([action : ActionIR, permitted : BOOLEAN])
 
 (* ── Helper predicates ─────────────────────────────────────────────────────── *)
 
@@ -235,6 +239,34 @@ Spec ==
 THEOREM Spec => []TypeInvariant
 THEOREM Spec => []SovereigntyAlwaysBlocks
 THEOREM Spec => []OwnerlessMachineBlocked
-THEOREM Spec => []AttenuationHolds
+\* REFUTED 2026-08-06. This was asserted as a THEOREM from the day the module
+\* was written and was never checked by anything, because the module did not
+\* parse and had no .cfg. On its first ever TLC run it failed in 58 seconds
+\* with a three-state counterexample:
+\*
+\*   State 2: AddClaim(holder |-> "h1", resource |-> "r1", can_delegate |-> FALSE, confidence |-> 60)
+\*   State 3: AddClaim(holder |-> "m1", resource |-> "r1", can_delegate |-> TRUE,  confidence |-> 30)
+\*
+\* AttenuationHolds requires delegated.confidence <= delegator.confidence for
+\* EVERY pair of claims with different holders on the same resource where the
+\* second holds can_delegate -- it requires no delegation relation between the
+\* two claims at all. So h1's unrelated claim at confidence 60 must be <= m1's
+\* at 30. The property is also self-contradictory whenever two such claims both
+\* carry can_delegate with different confidences, since it then demands the
+\* ordering in both directions at once.
+\*
+\* This is a defect in the PROPERTY, not in the kernel: real attenuation is
+\* about a delegation edge, and this definition quantifies over its absence.
+\* Attenuation as the kernel actually enforces it is checked in AuthGateV3.tla
+\* by the `Attenuation` invariant, which is green at bound 1 and CAUGHT by the
+\* mutation matrix.
+\*
+\* Left commented rather than deleted or repaired: deleting it would erase the
+\* fact that the repository asserted a false theorem for months, and repairing
+\* it means choosing a new definition of attenuation for this model, which is
+\* an authoring decision and not a maintenance one. Evidence:
+\* formal/tlc_runs/20260806-230924_freedomkernel_first_ever_run.log
+\*
+\* THEOREM Spec => []AttenuationHolds
 
 =============================================================================
