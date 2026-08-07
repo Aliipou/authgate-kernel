@@ -33,7 +33,7 @@ pip install -e ".[dev]"
 
 # Verify installation
 authgate-cli --help
-pytest                      # 273 tests must pass
+pytest                      # count in VERIFICATION_STATUS.md; the suite is not currently green
 ```
 
 **Python requirement:** 3.11+. No native extensions required for the Python runtime. The Rust TCB (`freedom-kernel/`) requires a Rust toolchain only if you compile the kernel binary.
@@ -43,7 +43,7 @@ pytest                      # 273 tests must pass
 cd freedom-kernel
 cargo build --release
 cargo build --features sandbox   # include WASM executor
-cargo test --lib                 # 141 tests
+cargo test --lib                 # 213 tests (count generated into VERIFICATION_STATUS.md)
 ```
 
 ---

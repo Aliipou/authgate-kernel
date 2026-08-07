@@ -77,9 +77,31 @@ the same tools against the merged tree:
 | Tool | Result 2026-08-01 | Result 2026-08-02 (merged tree) | Artifact in this tree |
 |---|---|---|---|
 | Lean 4 | 5 of 6 files fail to compile | **`lake build` completes: "Build completed successfully (8 jobs)", zero `sorryAx` in the log.** Scope: the build target globs `FreedomKernel/` submodules only | `formal/lean4/build_logs/lake_build_merge3_20260802.log` |
-| TLC | Spec does not parse; ran only at a reduced bound | **Parses and runs.** `MC_AuthGateV3_b1.cfg`: no error, 2,263,930 states generated, 59,241 distinct | `formal/tlc_runs/20260802-190523_baseline_mut_newdata.log` (mut cfg baseline) |
+| TLC | Spec does not parse; ran only at a reduced bound | **Parses and runs.** `MC_AuthGateV3_b1.cfg`: no error, 2,263,930 states generated, 59,241 distinct, depth 6, 113s | `formal/tlc_runs/20260806-220818_fresh_verify_b1.log` (see citation correction below) |
 | Mutation matrix | 9 of 13 checks deletable with nothing firing | **13 of 14 caught, 1 redundant, 0 blind** (§2A) | `formal/tlc_runs/mutation_matrix_20260802-190824.md`, per-mutant logs in `formal/tlc_runs/mutants/` |
 | Kani | Not installed, 0 of 32 harnesses ever run | **Unchanged — still not installed, still never run** | — |
+
+> **Citation corrected 2026-08-06.** Until today this row cited
+> `formal/tlc_runs/20260802-190523_baseline_mut_newdata.log`, which is the
+> *mut*-cfg baseline and reports 117,604 states / 3,003 distinct — not the
+> numbers quoted in the row. No committed log contained 2,263,930 / 59,241: the
+> two committed bound-1 logs report 924,064 / 30,018 (at commit `dcc5ed1`) and
+> 1,274,602 / 38,325 (at `2fdbb68`), both from before the model gained the `h13`
+> and `h14` test data. The quoted figures were real but came from a run whose log
+> was never committed, so for four days this document's most load-bearing row
+> pointed at evidence that did not support it.
+>
+> The numbers are now confirmed rather than merely repaired: an independent fresh
+> run at HEAD (`2465562`) on 2026-08-06 produced **2,263,930 states generated,
+> 59,241 distinct, 0 left on queue, depth 6** — exact agreement to the state — and
+> that log is committed and is what the row now cites. The mutation matrix was
+> re-run at the same commit and reproduced 13 caught / 1 redundant / 0 blind, and
+> the `leaf_epoch` redundancy argument was independently checked by deleting both
+> epoch gates at once, which `EpochSafety` catches in 2s / 53 states.
+>
+> Recorded rather than silently fixed, because a wrong citation in the one
+> document that claims to be correct is exactly the failure this file exists to
+> prevent.
 
 **Three things did not change and must not be read as improved.**
 `formal/lean4/{Core,Invariants,Proofs}.lean` sit **outside** the build target,

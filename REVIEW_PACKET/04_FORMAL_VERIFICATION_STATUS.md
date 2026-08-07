@@ -71,8 +71,66 @@ harness, or a reviewer will assume the bound was chosen to make the proof pass.
 
 ## 3. TLA+
 
-Specification: `formal/AuthGateV3.tla`, model `formal/MC_AuthGateV3.tla`, config
-`formal/MC_AuthGateV3.cfg`. The config declares ten invariants:
+Specification: `formal/AuthGateV3.tla`, model `formal/MC_AuthGateV3.tla`.
+
+### Update 2026-08-06 — this section is superseded, in the repo's favour
+
+The table below is preserved as written on 2026-07-29, when it said NOT RUN
+eleven times. It was still saying NOT RUN four days after TLC had in fact been
+run, which is the same defect as over-claiming and is recorded here rather than
+edited away.
+
+**Established 2026-08-06 by an independent fresh run at HEAD** (`protocol/domain-separation`,
+commit `2465562`, TLC2 2026.07.31.184830, jar sha256 `e22f8ffb…c735d5`, Java 17.0.10):
+
+| Item | Result | Evidence |
+|---|---|---|
+| Bound 1 (`MC_AuthGateV3_b1.cfg`, `Len(audit_log) <= 1`) | **COMPLETED, no violation.** 2,263,930 states generated / 59,241 distinct / 0 left on queue, depth 6, 113s | `formal/tlc_runs/20260806-220818_fresh_verify_b1.log` |
+| Invariants checked at that bound | **36**, all green, including `PermitSoundness` and `BigSafety` — not the ten listed below | `formal/MC_AuthGateV3_b1.cfg:22-63` |
+| Non-vacuity | 4 of 4 reachability probes VIOLATE as designed, i.e. Permits are reachable at max epoch, on a second resource, and with mixed bundles | `formal/tlc_runs/20260806-2216*_fresh_probe_*.log` |
+| Mutation matrix | **13 caught / 1 redundant / 0 blind** (was 4 caught / 9 escaped at audit) | `formal/tlc_runs/mutation_matrix_20260806-221804.md` |
+| Bound 3 (the shipped `MC_AuthGateV3.cfg`) | **DOES NOT COMPLETE** (~10^9 states). No result may be cited at this bound | `formal/TLC_SETUP.md:130` |
+
+The bound is not a formality. A completing TLC run is an exhaustive check of a
+**finite** model — here `MCMaxChainDepth = 2`, `MCMaxEpoch = 2`,
+`MCResources = {"r1"}`, `Len(audit_log) <= 1`, search depth 6. It is not a proof
+for arbitrary N, and the word "verified" is not licensed by it. State the bound
+in the same sentence as the result, every time.
+
+**Three invariants were narrowed to get here, and a reviewer should know that
+before finding it.** `EpochSafety`, `ResourceBinding` and `ChainEpoch` are now
+scoped to the decision witness rather than the whole capability bundle
+(`AuthGateV3.tla:265-284`). The wide forms additionally asserted that no *unused*
+capability in a permitted bundle is stale or for another resource — bundle
+hygiene, which was never an authorisation property of this kernel and is claimed
+nowhere in `SEMANTICS.md` or the Rust engine. The wide forms are retained
+verbatim as `EpochSafetyWide` / `ResourceBindingWide` / `ChainEpochWide` and
+their counterexamples are committed, so the narrowing is checkable rather than
+asserted. Attack it anyway if you disagree.
+
+**The second spec, `FreedomKernel.tla`, was model-checked for the first time on
+2026-08-06, and one of its four theorems is false.** It previously did not parse
+(filename/module mismatch, then `Unknown operator: 'IsSeq'` at line 123) and had
+no `.cfg`, so its `THEOREM` lines had never been checked by anything. Both
+defects are fixed and it now has a harness. Result:
+`THEOREM Spec => []AttenuationHolds` is **refuted** by a three-state
+counterexample found in 58 seconds — it quantifies over pairs of claims with no
+delegation relation between them and demands they be confidence-ordered, in both
+directions at once. It is commented out with the counterexample recorded inline.
+`TypeInvariant` and `OwnerlessMachineBlocked` hold at the harness bound;
+`SovereigntyAlwaysBlocks` is **vacuous** under that harness because the flags
+that would trigger it are pinned `FALSE`, and no green result for it should be
+cited. Evidence: `formal/tlc_runs/20260806-2309*` and `*-231747_*`.
+
+This is disclosed here rather than fixed quietly because a repository that
+asserts a false theorem for months is exactly what this packet asks reviewers to
+look for. None of it bears on the kernel: attenuation as the kernel enforces it
+is `Attenuation` in `AuthGateV3.tla`, green at bound 1 and caught by the
+mutation matrix.
+
+### Preserved 2026-07-29 snapshot
+
+The config declares ten invariants:
 
 | Invariant | Model-checked 2026-07-29 |
 |---|---|
@@ -132,13 +190,15 @@ cargo kani --harness prop_permitted_implies_no_violations
 cd formal/lean4 && lake build
 
 # TLA+. Java 17 IS installed here; the earlier "Java unverified" note was wrong.
-# NOTE: as committed this fails immediately with
-#   "Cannot find source file for module AuthGateV3 imported in module MC_AuthGateV3"
-# because MC_AuthGateV3.tla:42 extends module AuthGateV3 while the file is
-# named authgate_v3.tla. Rename the file to AuthGateV3.tla first.
-# The shipped bound Len(audit_log) <= 3 does not complete (~10^9 states);
-# use a smaller bound and state which bound you used.
-java -cp tla2tools.jar tlc2.TLC -config formal/MC_AuthGateV3.cfg formal/MC_AuthGateV3.tla
+# The filename/module mismatch that made this unparseable was fixed on
+# tlc-remediation (authgate_v3.tla -> AuthGateV3.tla). This now runs.
+# Use the bound-1 cfg: the shipped Len(audit_log) <= 3 does not complete (~10^9 states).
+# run_tlc.sh records the command line, jar hash, bound and verbatim output, and
+# refuses to report a timeout as a result.
+cd formal && ./run_tlc.sh MC_AuthGateV3_b1 my_repro
+
+# Mutation matrix: delete each enforcement check in turn, confirm an invariant fires.
+cd formal && ./mutation_matrix.sh MC_AuthGateV3_mut
 ```
 
 ## 6. What this table is for
@@ -152,10 +212,28 @@ here is exactly how to attack them".
 
 Corrected 2026-08-02: the phrase "ten model-checked invariants" above was wrong —
 they are ten *declared* invariants, and none had been model-checked when this
-packet was written. Worse, and more useful to a reviewer: mutation testing shows
-that **deleting 9 of 13 enforcement checks in the model leaves all ten declared
-invariants green.** Several of them cannot distinguish a correct implementation
-from a broken one, because they re-invoke the same `Verify`/`ValidChain`
-definitions that produced the decision under test. If you attack one thing in
-this repository, attack that. See `ASSUMPTIONS.md` for the full mutation matrix
-and `attack_harness/ATTACK_MATRIX.md` for the re-adjudicated per-class verdicts.
+packet was written. Worse, and more useful to a reviewer: mutation testing showed
+that **deleting 9 of 13 enforcement checks in the model left all ten declared
+invariants green.** Several of them could not distinguish a correct
+implementation from a broken one, because they re-invoked the same
+`Verify`/`ValidChain` definitions that produced the decision under test.
+
+Re-corrected 2026-08-06, and this is the current state: that gap was the point of
+the `tlc-remediation` work and it has been closed. The invariant suite was
+rewritten — 36 invariants now, including thirteen independent witness/signature
+invariants that do not re-invoke `Verify`, and eleven deny-completeness
+invariants — and the matrix re-run at HEAD gives **13 caught, 1 redundant, 0
+blind**. The one non-catch, `leaf_epoch`, is redundancy rather than blindness:
+`AuthGateV3.tla:188` is implied by `AuthGateV3.tla:101` for every input, and
+deleting **both** epoch checks together is caught by `EpochSafety` in two
+seconds. That double-mutation was reproduced independently on 2026-08-06.
+
+So the invitation stands, just aimed one level deeper. If you attack one thing in
+this repository, attack the **bound** — every green result above is exhaustive
+over a finite model with `MaxChainDepth = 2`, `MaxEpoch = 2`, one resource, and
+an audit log of length 1, and nothing here proves anything about the Rust code
+that actually runs. There is no refinement proof from the TLA+ model to the
+implementation. That gap is real, it is not on a roadmap, and it is the honest
+ceiling of this artifact. See `ASSUMPTIONS.md` for the full mutation matrix,
+`formal/MUTATION_NOTES.md` for what a mutation matrix cannot measure, and
+`attack_harness/ATTACK_MATRIX.md` for the re-adjudicated per-class verdicts.

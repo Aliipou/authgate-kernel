@@ -1,0 +1,104 @@
+==============================================================
+KANI RUN LOG
+==============================================================
+label            : kani_install_attempt
+date (local)     : 2026-08-06 23:10 +0300
+repo branch      : protocol/domain-separation
+repo commit      : 2465562791a918f82445ac474af5888a479299f9
+git dirty        : YES (formal/COVERAGE.md + formal/tlc_runs/* modified;
+                   formal/kani/prop_chain.rs -> authgate-kernel/src/tcb/kani_chain.rs and
+                   formal/kani/prop_confinement.rs -> authgate-kernel/src/tcb/kani_confinement.rs
+                   staged as renames)
+host             : MINGW64_NT-10.0-19045 x86_64 / Windows 10 Pro 10.0.19045.6466
+cargo            : cargo 1.96.0 (30a34c682 2026-05-25)
+rustc            : rustc 1.96.0 (ac68faa20 2026-05-25)
+kani version     : NOT INSTALLED (install failed, see below)
+CARGO_TARGET_DIR : C:/Users/admin/AppData/Local/Temp/claude/kanitgt
+RESULT           : KANI CANNOT RUN ON THIS MACHINE
+==============================================================
+
+--- step 0: baseline, kani absent -----------------------------
+command line     : cargo kani --version
+VERBATIM:
+error: no such command: `kani`
+
+help: a command with a similar name exists: `yank`
+
+help: view all installed commands with `cargo --list`
+
+--- step 1: native Windows install ----------------------------
+command line     : export CARGO_TARGET_DIR=C:/Users/admin/AppData/Local/Temp/claude/kanitgt
+                   cargo install --locked kani-verifier
+package resolved : kani-verifier v0.67.0
+exit code        : non-zero (compile failure)
+VERBATIM (tail):
+error[E0433]: cannot find `unix` in `os`
+   --> C:\Users\admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\kani-verifier-0.67.0\src\setup.rs:244:14
+    |
+244 |     std::os::unix::fs::symlink(toolchain, path)?;
+    |              ^^^^ could not find `unix` in `os`
+    |
+note: found an item that was configured out
+   --> /rustc/ac68faa20c58cbccd01ee7208bf3b6e93a7d7f96/library\std\src\os\mod.rs:29:4
+    |
+    = note: the item is gated here
+
+error[E0599]: no method named `arg0` found for mutable reference `&mut Command` in the current scope
+   --> C:\Users\admin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\kani-verifier-0.67.0\src\lib.rs:155:86
+    |
+155 |     cmd.args(env::args_os().skip(1)).env("PYTHONPATH", pythonpath).env("PATH", path).arg0(bin);
+    |                                                                                      ^^^^
+    |
+help: there is a method `arg` with a similar name
+
+Some errors have detailed explanations: E0433, E0599.
+For more information about an error, try `rustc --explain E0433`.
+error: could not compile `kani-verifier` (lib) due to 3 previous errors
+warning: build failed, waiting for other jobs to finish...
+error: failed to compile `kani-verifier v0.67.0`, intermediate artifacts can be found at `C:/Users/admin/AppData/Local/Temp/claude/kanitgt`.
+
+ANALYSIS: kani-verifier's own installer source is Unix-only (std::os::unix::fs::symlink,
+CommandExt::arg0). It does not compile on a windows-msvc/gnu host. `cargo kani setup` was
+therefore never reachable. This is upstream platform support, not a repo defect.
+
+--- step 2: WSL fallback --------------------------------------
+command line     : wsl -l -v
+VERBATIM:
+  NAME      STATE           VERSION
+* Ubuntu    Stopped         2
+
+command line     : wsl --version
+VERBATIM:
+WSL version: 2.7.11.0
+Kernel version: 6.18.33.2-2
+Windows version: 10.0.19045.6466
+
+Four boot attempts were made (120 s, 180 s, 420 s, 600 s), one after an explicit
+`wsl --shutdown`. Every attempt returned, verbatim:
+
+This operation returned because the timeout period expired.
+Error code: Wsl/Service/CreateInstance/CreateVm/0x800705b4
+
+Service state at the time:
+  hvhost       Running   Manual
+  vmcompute    Running   Manual
+  LxssManager  Stopped   Manual
+  Win32_ComputerSystem.HypervisorPresent = True
+
+Attempt to start the WSL service (unelevated shell):
+START FAILED: Service 'LxssManager (LxssManager)' cannot be started due to the
+following error: Cannot open LxssManager service on computer '.'.
+
+ANALYSIS: the WSL2 utility VM will not start on this host and the service cannot be
+started without elevation. No Linux environment is reachable from this session.
+
+--- CONCLUSION -----------------------------------------------
+Kani cannot run on this machine.
+Blocker 1: kani-verifier 0.67.0 does not build on Windows (Unix-only std APIs).
+Blocker 2: WSL2 VM creation times out (Wsl/Service/CreateInstance/CreateVm/0x800705b4)
+           and LxssManager cannot be started without administrator rights.
+
+EVERY HARNESS IN THIS REPOSITORY IS THEREFORE **NOT RUN**.
+No harness verdict in this directory is a proof result. See
+20260806-2312_cfg_kani_compile.log for what was established without Kani.
+==============================================================

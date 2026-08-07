@@ -1,0 +1,136 @@
+==============================================================
+KANI RUN LOG (surrogate compile check)
+==============================================================
+label            : cfg_kani_compile
+date (local)     : 2026-08-06 23:12 +0300
+repo branch      : protocol/domain-separation
+repo commit      : 2465562791a918f82445ac474af5888a479299f9
+git dirty        : YES
+host             : MINGW64_NT-10.0-19045 x86_64
+cargo            : cargo 1.96.0 (30a34c682 2026-05-25)
+rustc            : rustc 1.96.0 (ac68faa20 2026-05-25)
+kani version     : NOT INSTALLED
+CARGO_TARGET_DIR : C:/Users/admin/AppData/Local/Temp/claude/kanitgt2
+==============================================================
+
+WHAT THIS IS, AND WHAT IT IS NOT
+--------------------------------
+This is NOT a verification result. Kani could not be installed (see
+20260806-2310_kani_install_attempt.log). Every harness in this repository is NOT RUN.
+
+What this log establishes is strictly weaker and strictly prior: whether the
+`#[cfg(kani)]` harness code compiles at all. Kani front-ends rustc, so a harness
+module that does not type-check can never be model-checked; `cargo kani` would abort
+at codegen. Enabling the cfg by hand reproduces exactly the compilation Kani would
+attempt, minus the `kani` crate itself (which Kani injects, and whose absence accounts
+for the 21 E0433 `cannot find module or crate 'kani'` errors below — those are expected
+and are NOT defects). Every other error IS a defect and would still be present under
+a real Kani run.
+
+CONTROL RUN (cfg NOT set) -- proves the crate itself is healthy
+---------------------------------------------------------------
+command line     : cargo check --lib
+exit code        : 0
+VERBATIM (tail):
+    Checking authgate-kernel v0.1.0 (D:\authgate-kernel-integration\authgate-kernel)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 5m 34s
+
+TEST RUN (cfg kani set)
+-----------------------
+command line     : RUSTFLAGS="--cfg kani" cargo check --lib
+exit code        : 101
+totals           : 32 errors. 21 are `cannot find module or crate 'kani'` (expected,
+                   Kani supplies that crate). 11 are REAL type errors in
+                   authgate-kernel/src/kani_proofs.rs that Kani would hit too.
+
+VERBATIM (the 11 real errors, kani-crate noise removed)
+-------------------------------------------------------
+error[E0308]: mismatched types
+  --> src\kani_proofs.rs:18:52
+18 |         EntityWire { name: name.to_string(), kind: "HUMAN".to_string() }
+
+error[E0308]: mismatched types
+  --> src\kani_proofs.rs:22:52
+22 |         EntityWire { name: name.to_string(), kind: "MACHINE".to_string() }
+
+error[E0063]: missing field `trust_domain` in initializer of `ResourceWire`
+  --> src\kani_proofs.rs:26:9
+
+error[E0063]: missing fields `delegation_depth` and `trust_domain` in initializer of `ClaimWire`
+  --> src\kani_proofs.rs:36:9
+
+error[E0063]: missing field `trust_domains` in initializer of `OwnershipRegistryWire`
+  --> src\kani_proofs.rs:48:9
+
+error[E0063]: missing fields `delegation_depth` and `trust_domain` in initializer of `ActionWire`
+  --> src\kani_proofs.rs:58:9
+
+error[E0063]: missing field `trust_domains` in initializer of `OwnershipRegistryWire`
+   --> src\kani_proofs.rs:117:24
+
+error[E0063]: missing field `trust_domain` in initializer of `ResourceWire`
+   --> src\kani_proofs.rs:143:26
+
+error[E0063]: missing field `trust_domains` in initializer of `OwnershipRegistryWire`
+   --> src\kani_proofs.rs:162:24
+
+error[E0063]: missing field `trust_domains` in initializer of `OwnershipRegistryWire`
+   --> src\kani_proofs.rs:181:24
+
+error[E0063]: missing field `trust_domains` in initializer of `OwnershipRegistryWire`
+   --> src\kani_proofs.rs:200:24
+
+For more information about an error, try `rustc --explain E0063`.
+error: could not compile `authgate-kernel` (lib) due to 32 previous errors
+
+INTERPRETATION
+--------------
+`kani_proofs.rs` is stale with respect to this branch. `protocol/domain-separation`
+added `trust_domain` / `trust_domains` / `delegation_depth` fields to EntityWire,
+ResourceWire, ClaimWire, ActionWire and OwnershipRegistryWire; the harness helpers
+(`human`, `machine`, `file_resource`, `claim`, `minimal_registry_with_owner`,
+`base_action`, lines 17-78) were never updated. Because every harness in the file is
+built from those helpers, ALL 20 harnesses in kani_proofs.rs fail to compile. The
+breakage is invisible to `cargo build` and `cargo test` precisely because the module
+is `#[cfg(kani)]`, and nothing in CI sets that cfg.
+
+SEPARATE DEFECT: ORPHANED HARNESS FILES
+---------------------------------------
+Three files under authgate-kernel/src/tcb/ contain `#[kani::proof]` harnesses but are
+not declared as modules anywhere. `authgate-kernel/src/tcb/mod.rs` declares only
+call_gate, dag, types, engine, tests, hardening_tests. A repo-wide grep for the module
+names returns zero hits:
+
+  $ grep -rn "kani_chain\|kani_confinement" --include=*.rs --include=*.toml authgate-kernel/
+  (no output)
+
+Orphans, with the harnesses they contain:
+  authgate-kernel/src/tcb/kani_chain.rs        proof_attenuation_two_node, proof_epoch_check
+  authgate-kernel/src/tcb/kani_confinement.rs  proof_subject_resource_binding,
+                                               proof_canonical_gate_completeness,
+                                               proof_rights_sufficiency
+  authgate-kernel/src/tcb/sequence.rs          prop_seq_accumulated_monotone,
+                                               prop_seq_exceeds_limit_consistent,
+                                               prop_seq_step_count_matches_records,
+                                               prop_seq_empty_never_exceeds,
+                                               prop_seq_idempotent_rights
+
+Note authgate-kernel/src/sequence.rs (3525 bytes) is a DIFFERENT file from
+authgate-kernel/src/tcb/sequence.rs (7591 bytes); lib.rs:11 `pub mod sequence;` binds the
+former, which contains no harnesses. kani_chain.rs and kani_confinement.rs additionally
+open with `use authgate_kernel::tcb::types::*;` -- an external-crate path that cannot
+resolve from inside the crate -- so they would not compile even if declared.
+
+These 10 harnesses are not in any compilation unit. `cargo kani` would not discover them.
+
+A fourth file, formal/kani/prop_revocation.rs (proof_forged_revocation_ignored,
+proof_epoch_gate_priority), sits outside the crate directory entirely and belongs to no
+cargo target.
+
+BOTTOM LINE
+-----------
+Even had Kani installed, 0 of the 30 `#[kani::proof]` harnesses in this repository would
+have produced a verification result at commit 2465562:
+  20 fail to compile (kani_proofs.rs, stale wire-struct fields)
+  10 are not compiled at all (orphaned files, never declared as modules)
+==============================================================

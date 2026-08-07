@@ -128,6 +128,6 @@ The kernel stays small. Each phase adds a layer on top. The 255 LOC critical pat
 
 ## The number that matters
 
-273 tests, 141 Kani/Lean-covered, 255 LOC security path, p50=18µs Python latency.
+Counts are generated into `VERIFICATION_STATUS.md`, not asserted here. "Kani-covered" in particular must not be claimed: zero Kani harnesses have ever been discharged.
 
 All passing. No exceptions.

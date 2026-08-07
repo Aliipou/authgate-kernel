@@ -31,7 +31,7 @@ TOTAL:      ~498 LOC  (within budget)
 The four TCB files must contain:
 - No `std::io`, `std::net`, `std::fs` imports
 - No `unwrap()`, `expect()`, `panic!()` calls (use `?` or explicit `Err`)
-- No `unsafe` (enforced by `#![forbid(unsafe_code)]`)
+- No `unsafe` (enforced by `#![forbid(unsafe_code)]` on every file in `src/tcb/` **and on `tcb/mod.rs`**, so new files in the module inherit it. It is not crate-wide: `src/ffi.rs` requires `unsafe` for the C ABI. Until 2026-08-07 `types.rs` and `mod.rs` carried no such attribute while three documents claimed universal coverage.)
 
 ## C3: Invariant alignment
 

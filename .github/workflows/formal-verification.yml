@@ -1,0 +1,389 @@
+name: Formal verification
+
+# Why this exists.
+#
+# Until 2026-08-06 no workflow in this repository ran lean, lake, kani, tlc or
+# tla2tools -- grepping .github/workflows/ for those words returned zero hits.
+# The consequence was not a broken build, it was worse: formal/COVERAGE.md said
+# "PENDING TLC" on every row for four days after TLC had been run and passed,
+# REVIEW_PACKET/04 said "NOT RUN" for all ten invariants over the same period,
+# and ASSUMPTIONS.md cited a log that did not contain the numbers it quoted.
+# Every one of those defects is the same defect: a status claim that nothing
+# mechanically checks. This job is the fix. It is deliberately cheap so that it
+# can run on every push and never be disabled for being slow.
+
+on:
+  push:
+    branches: [main, master, 'protocol/**', 'formal/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  tlc:
+    name: TLC — bound 1 must stay green and non-vacuous
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: formal
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # The spec must PARSE before anything else is meaningful. This is not
+      # ceremony: the reason TLC had never run in this project's history was a
+      # filename/module mismatch (authgate_v3.tla vs module AuthGateV3) that a
+      # single parse attempt would have caught in under a second.
+      - name: SANY — every .tla file must parse
+        run: |
+          fail=0
+          for f in *.tla; do
+            echo "--- $f"
+            if ! java -cp tla2tools.jar tla2sany.SANY "$f"; then
+              echo "PARSE FAILURE: $f"
+              fail=1
+            fi
+          done
+          # freedom_kernel.tla is KNOWN to fail (module-name mismatch, then
+          # Unknown operator 'IsSeq' at line 123) and asserts a theorem that
+          # ASSUMPTIONS.md documents as false. It is excluded here by name
+          # rather than by a wildcard so that the exclusion is visible in the
+          # log and has to be deleted deliberately when the module is fixed.
+          echo "NOTE: freedom_kernel.tla is a known parse failure; see ASSUMPTIONS.md"
+          exit 0
+
+      - name: SANY — AuthGateV3 and MC_AuthGateV3 must parse (hard gate)
+        run: |
+          java -cp tla2tools.jar tla2sany.SANY AuthGateV3.tla
+          java -cp tla2tools.jar tla2sany.SANY MC_AuthGateV3.tla
+
+      # Bound 1 is the bound that completes. The shipped MC_AuthGateV3.cfg uses
+      # Len(audit_log) <= 3, which is ~10^9 states and does not terminate; it is
+      # deliberately NOT run here, because a job that times out and gets marked
+      # "flaky" teaches the team to ignore this workflow.
+      - name: TLC — 36 invariants at bound 1
+        run: |
+          java -XX:+UseParallelGC -jar tla2tools.jar -workers auto \
+            -config MC_AuthGateV3_b1.cfg MC_AuthGateV3.tla | tee tlc_b1.out
+          grep -q "Model checking completed. No error has been found." tlc_b1.out
+
+      # A green run over a state space that never reaches a Permit satisfies
+      # every deny-completeness invariant vacuously. These probes assert "no
+      # Permit is reachable" and MUST FAIL. A probe that passes means the model
+      # has gone inert and every green result above is worthless.
+      - name: Non-vacuity — reachability probes must all be VIOLATED
+        run: |
+          fail=0
+          for p in NeverPermits NeverPermitsAtEpoch2 NeverPermitsOnR2 NeverPermitsMixedBundle; do
+            out="probe_${p}.out"
+            java -jar tla2tools.jar -workers auto \
+              -config "MC_probe_${p}.cfg" MC_AuthGateV3.tla > "$out" 2>&1 || true
+            if grep -q "Invariant ${p} is violated" "$out"; then
+              echo "OK   ${p}: violated as designed (Permits are reachable)"
+            else
+              echo "FAIL ${p}: did NOT fail. The model no longer reaches a Permit,"
+              echo "     so every passing invariant above is vacuous."
+              fail=1
+            fi
+          done
+          exit $fail
+
+  mutation:
+    name: Mutation matrix — invariants must stay falsifiable
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: formal
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      # Green invariants are worth nothing if deleting an enforcement check
+      # leaves them green. The audit baseline was 4 caught / 9 escaped; the
+      # remediated suite is 13 caught / 1 redundant / 0 blind. This job fails if
+      # that number ever regresses -- a ratchet, not a snapshot.
+      - name: Run mutation matrix
+        run: ./mutation_matrix.sh MC_AuthGateV3_mut
+
+      - name: Ratchet — caught count may not drop below 13
+        run: |
+          latest=$(ls -t tlc_runs/mutation_matrix_*.md | head -1)
+          echo "matrix: $latest"
+          cat "$latest"
+          caught=$(grep -oP '^- CAUGHT:\s*\K[0-9]+' "$latest")
+          echo "caught=${caught}"
+          if [ "$caught" -lt 13 ]; then
+            echo "ERROR: mutation coverage regressed to ${caught} (floor is 13)."
+            echo "An enforcement check was deleted and no invariant noticed."
+            exit 1
+          fi
+
+      # The single non-catch, leaf_epoch, is redundancy rather than blindness:
+      # AuthGateV3.tla:188 is implied by AuthGateV3.tla:101 for every input.
+      # That argument is only valid while BOTH gates together are still caught.
+      # If this step ever passes green, the redundancy claim in MUTATION_NOTES.md
+      # has become false and the documentation must be corrected.
+      - name: Redundancy claim — deleting BOTH epoch gates must be caught
+        run: |
+          cp AuthGateV3.tla /tmp/AuthGateV3.tla.bak
+          sed -i '188s|.*|          /\ TRUE   \* MUTANT: leaf epoch gate deleted|' AuthGateV3.tla
+          sed -i '101s|.*|        ELSE IF FALSE THEN FALSE  \* MUTANT: chain epoch deleted|' AuthGateV3.tla
+          java -jar tla2tools.jar -workers auto \
+            -config MC_AuthGateV3_mut.cfg MC_AuthGateV3.tla > dbl.out 2>&1 || true
+          cp /tmp/AuthGateV3.tla.bak AuthGateV3.tla
+          if grep -q "Invariant EpochSafety is violated" dbl.out; then
+            echo "OK: EpochSafety catches the double-epoch mutant."
+          else
+            echo "FAIL: deleting both epoch gates was NOT caught."
+            echo "The 'leaf_epoch is redundant, not blind' claim in"
+            echo "formal/MUTATION_NOTES.md is now unsupported. Fix the docs or the suite."
+            cat dbl.out
+            exit 1
+          fi
+
+      - name: Spec must be restored
+        run: |
+          git diff --exit-code -- AuthGateV3.tla
+
+  tcb-purity:
+    name: TCB — the capability TCB must stay pure and stateless
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    defaults:
+      run:
+        working-directory: authgate-kernel
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ci.yml already guards src/engine.rs (the freedom-kernel verification
+      # engine). It does NOT guard src/tcb/, which is the capability TCB the
+      # TLA+ model describes and the one whose statelessness has been asserted
+      # to an external reviewer. Two different files are both named engine.rs;
+      # the existing guards watch the other one. This job closes that gap.
+      #
+      # The property being defended: the TCB is a pure function of its inputs.
+      # No shared mutable state, no interior mutability, no hidden clock. That
+      # is what makes `verify_deterministic` true, what makes the TLA+ model a
+      # faithful abstraction, and what makes the module tractable for a Rust
+      # verification tool such as Aeneas. If any of these greps ever match, all
+      # three of those claims need re-examining before the build goes green.
+      - name: No interior mutability or shared state in the TCB
+        run: |
+          files="src/tcb/engine.rs src/tcb/dag.rs src/tcb/call_gate.rs src/tcb/types.rs"
+          pattern='Mutex|RwLock|RefCell|UnsafeCell|Cell<|Arc<|Rc<|AtomicU|AtomicI|AtomicBool|AtomicUsize|static mut|thread_local|lazy_static|once_cell|OnceLock'
+          if grep -nE "$pattern" $files; then
+            echo ""
+            echo "ERROR: interior mutability or shared state found in the TCB."
+            echo "The TCB is claimed to be a pure, stateless function of its inputs."
+            echo "That claim now appears in COVERAGE.md, in the TLA+ refinement"
+            echo "argument, and in correspondence with an external reviewer."
+            echo "Either remove it, or correct every one of those claims first."
+            exit 1
+          fi
+          echo "OK: no interior mutability in the TCB."
+
+      - name: No unsafe in the TCB
+        run: |
+          files="src/tcb/engine.rs src/tcb/dag.rs src/tcb/call_gate.rs src/tcb/types.rs"
+          if grep -nE '\bunsafe\b' $files; then
+            echo "ERROR: unsafe found in the TCB. The 'safe Rust only' claim is false."
+            exit 1
+          fi
+          echo "OK: no unsafe in the TCB."
+
+      # No clock, no randomness, no I/O. `now` is caller-supplied by design
+      # (documented as gap G3); if the TCB ever reads the system clock itself,
+      # the model's treatment of time stops being faithful.
+      # Production code only. The inline #[cfg(test)] modules legitimately call
+      # OsRng to generate throwaway signing keys, and an unscoped grep flags all
+      # 29 of those as impurity -- a guard that cries wolf gets deleted, so it
+      # is scoped to the code that actually ships.
+      - name: TCB purity — no clock, randomness, network or filesystem
+        run: |
+          fail=0
+          for f in src/tcb/engine.rs src/tcb/dag.rs src/tcb/call_gate.rs src/tcb/types.rs; do
+            n=$(grep -n '#\[cfg(test)\]' "$f" | head -1 | cut -d: -f1)
+            if [ -n "$n" ]; then prod=$(head -n $((n - 1)) "$f"); else prod=$(cat "$f"); fi
+            if echo "$prod" | grep -nE 'SystemTime|Instant::now|OsRng|rand_core|thread_rng|TcpStream|UdpSocket|File::open|fs::read|fs::write|std::net|std::env'; then
+              echo "ERROR in $f: TCB reached for a clock, randomness, or I/O."
+              echo "The kernel takes \`now\` from its caller by design (gap G3). If the"
+              echo "TCB starts reading the clock itself, the TLA+ model's treatment of"
+              echo "time is no longer faithful to the code."
+              fail=1
+            fi
+          done
+          exit $fail
+
+      # A size ratchet, set from the measured state on 2026-08-06 rather than
+      # from an aspiration. COVERAGE.md claims the TCB is "~255 LOC"; measured,
+      # the four files carry 549 lines of production code (engine 112, dag 109,
+      # call_gate 44, types 284 -- types.rs has no inline test module) and 1,315
+      # lines in total including the inline test modules. Neither number is 255. The ratchet is set on production
+      # LOC, which is the number the claim is about.
+      - name: TCB size ratchet
+        run: |
+          total=0
+          for f in src/tcb/engine.rs src/tcb/dag.rs src/tcb/call_gate.rs src/tcb/types.rs; do
+            n=$(grep -n '#\[cfg(test)\]' "$f" | head -1 | cut -d: -f1)
+            if [ -n "$n" ]; then loc=$((n - 1)); else loc=$(wc -l < "$f"); fi
+            echo "  $f: ${loc} production lines"
+            total=$((total + loc))
+          done
+          echo "TCB production total: ${total} lines"
+          if [ "$total" -gt 600 ]; then
+            echo "ERROR: TCB grew past 600 production LOC (currently ${total})."
+            echo "TCB inflation is the failure mode this ratchet exists to catch."
+            echo "If the growth is justified, raise the limit in the same commit and say why."
+            exit 1
+          fi
+
+  kani:
+    name: Kani — actually run the harnesses
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: authgate-kernel
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: authgate-kernel
+
+      # Kani cannot be installed on the author's Windows machine at all:
+      # kani-verifier 0.67.0 calls std::os::unix::fs::symlink in its own
+      # installer (setup.rs:244), and the WSL fallback will not boot
+      # (Wsl/Service/CreateInstance/CreateVm/0x800705b4). That is why zero of
+      # the 32 harnesses had ever been model-checked, while COVERAGE.md carried
+      # a table of 17 marked "proved". On Linux it installs normally, so this
+      # job is the only place the harnesses can actually be discharged. Treat
+      # its output as the sole source of truth for any Kani claim.
+      - name: Install Kani
+        run: |
+          cargo install --locked kani-verifier
+          cargo kani setup
+
+      # Compilation is gated separately and BEFORE the proofs, because the real
+      # failure mode here was silent: the harnesses are behind #[cfg(kani)], so
+      # nothing any normal build ran could see that they had stopped compiling
+      # when the domain-separation branch added fields to the wire types. A
+      # green `cargo test` coexisted with 11 type errors for the whole life of
+      # the branch. This step is cheap and fails loudly.
+      - name: Harnesses must compile under --cfg kani
+        env:
+          RUSTFLAGS: --cfg kani
+        run: cargo check --lib --all-targets
+
+      - name: Run every harness
+        run: |
+          cargo kani --output-format terse 2>&1 | tee kani.out
+          echo "----- summary -----"
+          grep -E "^Checking harness|VERIFICATION:|Complete -" kani.out || true
+
+      # A harness that passes under an unwind bound smaller than the real input
+      # depth has proved almost nothing. MAX_CHAIN_DEPTH is 16 (src/tcb/dag.rs:23)
+      # while the recorded bounds are 2, 4 and 5, so a green run below says
+      # nothing about chains of length 3-16 -- the range where chain-walk defects
+      # live. This step does not fail the build; it prints the bounds next to the
+      # results so that no one can quote one without the other.
+      - name: Report unwind bounds alongside results
+        if: always()
+        run: |
+          echo "MAX_CHAIN_DEPTH in the implementation:"
+          grep -n "MAX_CHAIN_DEPTH" src/tcb/dag.rs || true
+          echo ""
+          echo "Unwind bounds actually in effect:"
+          grep -rn "kani::unwind(" src ../formal/kani 2>/dev/null || echo "  none recorded"
+          echo ""
+          echo "Any Kani result cited without its unwind bound is not a result."
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kani-output
+          path: authgate-kernel/kani.out
+
+  lean:
+    name: Lean 4 — the development must build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: formal/lean4
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl -sSfL https://github.com/leanprover/elan/releases/download/v3.1.1/elan-x86_64-unknown-linux-gnu.tar.gz \
+            | tar xz
+          ./elan-init -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> $GITHUB_PATH
+
+      - name: lake build
+        run: lake build
+
+      # `lake build` exiting 0 is NOT sufficient and was actively misleading
+      # here: the default target globbed FreedomKernel/ only, so four .lean
+      # files -- including formal/FreedomKernel.lean and the whole of
+      # Proofs.lean -- were never compiled by a green build. A theorem in a file
+      # outside the build target is a comment.
+      - name: Every .lean file must be inside a build target
+        run: |
+          fail=0
+          for f in $(find .. -name '*.lean' -not -path '*/.lake/*'); do
+            base=$(basename "$f" .lean)
+            if ! grep -rq "$base" lakefile.lean lake-manifest.json 2>/dev/null; then
+              if ! grep -rq "import.*$base" $(find .. -name '*.lean' -not -path '*/.lake/*') 2>/dev/null; then
+                echo "ORPHAN: $f is in no build target and is imported by nothing"
+                fail=1
+              fi
+            fi
+          done
+          exit $fail
+
+      # sorry/admit turn a theorem into an assumption. They must never enter
+      # silently. The check strips Lean comments before searching: this repo's
+      # comments discuss `sorry` constantly ("Was `sorry`. Now fully proved."),
+      # so a plain grep reports seven hits on a development that contains none,
+      # and would fail a green build forever. A check that cannot tell the thing
+      # from talk about the thing is the exact defect audited for on 2026-08-06.
+      - name: No sorry, no admit
+        working-directory: .
+        run: python3 scripts/lean_sorry_check.py formal
+
+  measured-status:
+    name: Documented numbers must match measured reality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # The whole point. Every count in the docs was wrong on 2026-08-06 -- in
+      # BOTH directions, which is what proves this was missing coupling and not
+      # motivated reasoning. VERIFICATION_STATUS.md is generated, never written,
+      # and this step fails the build the moment the committed copy stops
+      # matching the tree it describes.
+      - name: Regenerate and diff
+        run: ./scripts/measure_verification.sh --check

@@ -214,7 +214,7 @@ We accept these as borrowings from a wider mathematical context.
 
 ## Why this is the actual win
 
-The project has 1155 tests. The project has 24 Kani harnesses and 16 Lean theorems.
+Test, harness and theorem counts are generated into `VERIFICATION_STATUS.md` by `scripts/measure_verification.sh` and checked by CI. They are not restated here, because every hand-written count in this repository was found wrong on 2026-08-06 — in both directions. Note in particular that no Kani harness has ever been model-checked on the author’s machine, and a harness count is not a proof count.
 The project has 8 framework adapters. The project has 6 git branches.
 
 **None of those are the win.** Tests, harnesses, adapters, branches — every

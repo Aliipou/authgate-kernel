@@ -10,9 +10,9 @@ A wire format and a verify function. See [POSITIONING.md](POSITIONING.md).
 
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
-[![Tests](https://img.shields.io/badge/tests-1155%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-measured%2C%20see%20VERIFICATION__STATUS-blue.svg)](VERIFICATION_STATUS.md)
 [![Kani](https://img.shields.io/badge/Kani-24%20harnesses-green.svg)](formal/)
-[![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
+[![Lean4](https://img.shields.io/badge/Lean4-measured%2C%20see%20VERIFICATION__STATUS-blue.svg)](VERIFICATION_STATUS.md)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm--Noncommercial--1.0.0-orange.svg)](LICENSE)
 
 > **Branch note — `nazariye-azadi`.** This branch is engineering-identical to `main`:
@@ -92,7 +92,7 @@ Full enumeration: [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md)
 | TCB Rust tests | 141 (all passing) |
 | Python integration tests | 905 (all passing) |
 | Kani harnesses (bounded model checking) | 19 written. **0 ever run** — Kani is not installed (`cargo kani` → no such command), and the harnesses are `#[cfg(kani)]`, so `cargo build` never compiles them either. "All proved" was false. |
-| Lean 4 theorems | 16 declared, but **5 of 6 Lean files fail to compile** (identical errors under toolchains 4.32.2 and 4.31.0, so this is not version drift). A theorem in a file that does not build is not discharged. |
+| Lean 4 theorems | Counted by `scripts/measure_verification.sh`, not asserted here — see `VERIFICATION_STATUS.md`. The count that matters is smaller than the raw one: several declarations are `: True := trivial` or return their own hypothesis, and `Proofs.lean` does not compile. A theorem in a file that does not build is not discharged. |
 | Wire boundary attack classes | 18 (WA-1 through WA-18); 37 pytest assertions in `test_wire_hardening.py` |
 | Concurrent verify() calls (stress test) | 1 000 via ThreadPoolExecutor, 200 concurrent audit appends |
 | Python verify() latency | p50 ≈ 9.7µs (10-claim registry), 17.4µs (1 000-claim) |
@@ -137,7 +137,7 @@ CanonicalAction  (sealed by adapter)
   AuditLog  (SHA-256 hash-chained, tamper-evident, thread-safe)
 ```
 
-**Security-enforcing critical path:** `engine.rs` (114 LOC) + `dag.rs` (101 LOC) + `call_gate.rs` (40 LOC) = ~255 LOC. `#![forbid(unsafe_code)]` across all TCB files. `engine::verify` is `pub(crate)` — bypassing `CallGate` is a compile-time type error (AT-7.5 closed).
+**Security-enforcing critical path:** `src/tcb/` — `engine.rs` + `dag.rs` + `call_gate.rs` + `types.rs`. The measured production line count is in `VERIFICATION_STATUS.md`; the figure "~255 LOC" that stood here until 2026-08-07 omitted `types.rs` and was roughly half the real total. `#![forbid(unsafe_code)]` is on each TCB file and on `tcb/mod.rs`, so a new file added to the module inherits it; it is deliberately NOT crate-wide, because `src/ffi.rs` needs `unsafe` for the C ABI. `engine::verify` is `pub(crate)` — bypassing `CallGate` is a compile-time type error (AT-7.5 closed).
 
 **Identity binding:** `subject_id = SHA-256(issuer_pubkey)`. Every delegation node must satisfy this. An attacker who knows a parent proof hash but not the parent private key cannot forge a child.
 
