@@ -10,10 +10,10 @@ from __future__ import annotations
 
 import sys
 
-from authgate.kernel.entities import Entity, Resource, RightsClaim, AgentType, ResourceType
+from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
+from authgate.kernel.hardened import HardenedVerifier
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier
-from authgate.kernel.hardened import HardenedVerifier
 
 H = AgentType.HUMAN
 M = AgentType.MACHINE
