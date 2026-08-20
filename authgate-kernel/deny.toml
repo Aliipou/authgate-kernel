@@ -32,6 +32,10 @@ ignore = [
   "RUSTSEC-2026-0094",
   "RUSTSEC-2026-0095",
   "RUSTSEC-2026-0096",
+  # crossbeam-epoch via rayon/criterion/wasmtime — bump when wasmtime upgrades.
+  "RUSTSEC-2026-0204",
+  # wasmtime 25 store type-index mixup (optional sandbox feature only).
+  "RUSTSEC-2026-0222",
 ]
 
 [licenses]

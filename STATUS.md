@@ -91,3 +91,5 @@ The kill-test disposition above stands. Additional artifacts landed for review:
 - Bounded TLC run of AuthGateV3 — no error found (`formal/tlc_run.log`)
 - `REVIEW_PACKET.md`, `CHATGPT_REVIEW_BRIEF.md` — packaging for external readers
 - `FREEDOM_THEORY_POSITION.md`, `MCP_STANDARDIZATION.md` — positioning notes (do not alter the STATUS kill-tests)
+- **Infra-ready HTTP verifier** — `INFRA.md`, admin-gated `/machine`+`/claim`, attenuating `/delegate`, `/readyz`+`/metrics`, Docker/compose, GitHub Actions docker-smoke + API red-team boundary tests
+- Working branch renamed to product/infra intent (not “theory-gaps research”)

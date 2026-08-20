@@ -3,6 +3,9 @@
 Paste this whole file into ChatGPT (or another reviewer) and ask for a hostile
 review. Prefer: “Attack the claims; do not flatter; name what to archive.”
 
+**Product framing:** AuthGate is an infra-ready capability verifier + CallGate,
+not a “theory-gaps” or research-only branch.
+
 ---
 
 ## Who / what
@@ -12,8 +15,9 @@ kernel between any decision-maker and IO: verify a signed, non-revoked,
 attenuated capability chain — else deny and audit. Companion reference PEP with
 co-equal veto-only evaluators lives in sibling `decision-os-min`.
 
-Canonical pipeline: identity → FDK legitimacy (DENY-only) → AuthGate authority →
-PEP execute + audit.
+Canonical pipeline: identity → legitimacy evaluator (DENY-only) → AuthGate
+authority → PEP execute + audit. (Optional legitimacy component historically
+called FDK; it is a veto input, not the product name.)
 
 ## Claims that are still live
 

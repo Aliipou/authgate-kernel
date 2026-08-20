@@ -240,7 +240,8 @@ jobs:
             --ignore RUSTSEC-2026-0085 --ignore RUSTSEC-2026-0086 --ignore RUSTSEC-2026-0087 \
             --ignore RUSTSEC-2026-0088 --ignore RUSTSEC-2026-0089 --ignore RUSTSEC-2026-0091 \
             --ignore RUSTSEC-2026-0092 --ignore RUSTSEC-2026-0093 --ignore RUSTSEC-2026-0094 \
-            --ignore RUSTSEC-2026-0095 --ignore RUSTSEC-2026-0096
+            --ignore RUSTSEC-2026-0095 --ignore RUSTSEC-2026-0096 \
+            --ignore RUSTSEC-2026-0204 --ignore RUSTSEC-2026-0222
 
   api-smoke:
     name: API smoke test

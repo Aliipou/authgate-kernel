@@ -28,17 +28,18 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
-from authgate import __version__, health_check as runtime_health
+from authgate import __version__
+from authgate import health_check as runtime_health
 from authgate.extensions import ExtendedFreedomVerifier
 from authgate.kernel.audit import AuditLog
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
 
 app = FastAPI(
-    title="Freedom Theory AI Verifier",
+    title="AuthGate Verifier",
     description=(
-        "Formal axiomatic ethics runtime for AGI agents. "
-        "All machine actions pass through this verifier before execution."
+        "Capability-security verifier for agent actions. "
+        "All machine actions pass through this gate before execution."
     ),
     version=__version__,
 )

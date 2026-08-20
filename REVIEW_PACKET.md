@@ -1,7 +1,8 @@
-# REVIEW_PACKET — AuthGate / decision-os-min / FDK
+# REVIEW_PACKET — AuthGate kernel + decision-os-min
 
 **Audience:** external reviewers (formal methods, capability security, AuthZEN).  
 **Date:** 2026-08-20  
+**Branch intent:** infra-ready verifier (not a theory-gap research branch).  
 **Honesty rule:** cite `ASSUMPTIONS.md`; do not upgrade axioms to proofs in replies.
 
 ---
