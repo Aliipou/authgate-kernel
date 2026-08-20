@@ -121,32 +121,46 @@ def test_cli_key_verify_cert_valid_and_invalid(tmp_path, capsys):
 
 def test_api_register_machine_type_error_returns_422():
     fastapi_testclient = pytest.importorskip("fastapi.testclient")
+    import os
+
     from authgate.api.app import app
 
     client = fastapi_testclient.TestClient(app)
+    headers = {"X-AuthGate-Admin": os.environ["AUTHGATE_ADMIN_TOKEN"]}
     # machine declared as HUMAN -> register_machine raises TypeError -> 422
-    resp = client.post("/machine", json={
-        "machine": {"name": "M", "kind": "HUMAN"},
-        "owner": {"name": "O", "kind": "HUMAN"},
-    })
+    resp = client.post(
+        "/machine",
+        headers=headers,
+        json={
+            "machine": {"name": "M", "kind": "HUMAN"},
+            "owner": {"name": "O", "kind": "HUMAN"},
+        },
+    )
     assert resp.status_code == 422
 
 
 def test_api_resolve_conflict_index_error_returns_404():
     fastapi_testclient = pytest.importorskip("fastapi.testclient")
+    import os
+
     from authgate.api.app import app
 
     client = fastapi_testclient.TestClient(app)
+    headers = {"X-AuthGate-Admin": os.environ["AUTHGATE_ADMIN_TOKEN"]}
     # Fresh per-request verifier -> empty conflict queue -> IndexError -> 404
-    resp = client.post("/conflict/resolve", json={
-        "conflict_index": 0,
-        "winner_name": "Alice",
-    })
+    resp = client.post(
+        "/conflict/resolve",
+        headers=headers,
+        json={
+            "conflict_index": 0,
+            "winner_name": "Alice",
+        },
+    )
     assert resp.status_code == 404
 
 
 def test_api_resolve_conflict_success_direct():
-    # Cover the success return path (223-226) by calling the handler directly
+    # Cover the success return path by calling the handler directly
     from authgate.api.app import ArbitrateRequest, resolve_conflict
 
     class _Queue:
@@ -156,7 +170,11 @@ def test_api_resolve_conflict_success_direct():
     class _V:
         conflict_queue = _Queue()
 
-    out = resolve_conflict(ArbitrateRequest(conflict_index=0, winner_name="Alice"), _V())
+    out = resolve_conflict(
+        ArbitrateRequest(conflict_index=0, winner_name="Alice"),
+        None,  # admin dependency already satisfied in direct call
+        _V(),
+    )
     assert out["ok"] is True
 
 
