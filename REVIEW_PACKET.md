@@ -2,7 +2,7 @@
 
 **Audience:** external reviewers (formal methods, capability security, AuthZEN).  
 **Date:** 2026-08-20  
-**Branch intent:** infra-ready verifier (not a theory-gap research branch).  
+**Branch:** `main` (infra-ready verifier + review packet).  
 **Honesty rule:** cite `ASSUMPTIONS.md`; do not upgrade axioms to proofs in replies.
 
 ---

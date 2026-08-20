@@ -92,4 +92,5 @@ The kill-test disposition above stands. Additional artifacts landed for review:
 - `REVIEW_PACKET.md`, `CHATGPT_REVIEW_BRIEF.md` — packaging for external readers
 - `FREEDOM_THEORY_POSITION.md`, `MCP_STANDARDIZATION.md` — positioning notes (do not alter the STATUS kill-tests)
 - **Infra-ready HTTP verifier** — `INFRA.md`, admin-gated `/machine`+`/claim`, attenuating `/delegate`, `/readyz`+`/metrics`, Docker/compose, GitHub Actions docker-smoke + API red-team boundary tests
-- Working branch renamed to product/infra intent (not “theory-gaps research”)
+- **Landed on `main`** (2026-08-20): CI + TCB + Sandbox green; obsolete branches (`feat/theory-gaps`, `infra/ready`, …) deleted
+- Figures: `docs/figures/` (regenerate with `python scripts/render_infographic.py`)

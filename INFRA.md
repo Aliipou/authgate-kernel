@@ -1,8 +1,9 @@
-# Infra readiness — AuthGate Freedom Verifier API
+# Infra readiness — AuthGate Verifier API
 
 ## What “infra-ready” means here
 
 A **deployable reference verifier sidecar/service**, not a full enterprise gateway.
+Shipped on **`main`**; CI runs Docker `/readyz` smoke on every push.
 
 | Included | Deliberately at the ingress (not here) |
 |---|---|

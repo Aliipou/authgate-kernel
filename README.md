@@ -8,39 +8,37 @@ holds a valid, signed, non-revoked capability for the resource. No proof, no exe
 Not a framework plugin. Not model-specific. Not tied to today's agent architectures.
 A wire format and a verify function. See [POSITIONING.md](POSITIONING.md).
 
-> **Related — the decision layer *above* this kernel.** AuthGate answers
-> *authority*: "does this agent hold a valid capability for resource X?" The
-> **prior** question — *legitimacy*: "should this action happen at all, under
-> property rights, consent, and non-domination?" — is answered one layer up by a
-> **separate sibling project, the [Freedom Decision Kernel](https://github.com/Aliipou/freedom-decision-kernel)**
-> (pure Python, **no cryptography**). They are kept deliberately apart, because
-> legitimacy ≠ authority: the FDK decides *whether* an action is legitimate and
-> hands the chosen action to AuthGate, which enforces *whether* the actor is
-> authorized — "seccomp/SELinux for AI decisions." **Canonical pipeline (locked):**
-> identity admission → FDK legitimacy (DENY-only) → **AuthGate authority (grant
-> within legitimacy, this kernel)** → PEP execute + audit. **Invariant:** legitimacy
-> may only DENY; authority never overrides a legitimacy denial. Both layers are the
-> same theory made executable — this authority kernel is not neutral plumbing under
-> a philosophy; it is equally part of it (lineage traced in the `nazariye-azadi`
-> branch; framework-neutral framing on `main`).
+**Deployable verifier API:** [`INFRA.md`](INFRA.md) — Docker/compose, `/readyz`, admin-gated
+registry mutation, attenuating `/delegate`.
 
-[![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
+```mermaid
+flowchart LR
+  D[Decision maker] --> G[CallGate / AuthGate]
+  G -->|Permit| IO[Tool / IO]
+  G -->|Deny| A[Hash-chained audit]
+```
+
+![Authority path](docs/figures/gate_pipeline.png)
+
+![Verification evidence](docs/figures/verification_stack.png)
+
+> **Related — legitimacy above authority.** AuthGate answers *authority*: “does this
+> agent hold a valid capability for resource X?” The prior *legitimacy* veto
+> (“should this happen at all?”) is a separate DENY-only evaluator layer (historically
+> the Freedom Decision Kernel sibling). **Pipeline:** identity → legitimacy (DENY-only)
+> → **AuthGate authority** → PEP execute + audit. Legitimacy may only DENY; authority
+> never overrides a legitimacy denial.
+
+[![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
-[![Tests](https://img.shields.io/badge/tests-1155%20passing-brightgreen.svg)](tests/)
+[![Tests](https://img.shields.io/badge/tests-1300%2B%20passing-brightgreen.svg)](tests/)
 [![Kani](https://img.shields.io/badge/Kani-24%20harnesses-green.svg)](formal/)
 [![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm--Noncommercial--1.0.0-orange.svg)](LICENSE)
 
-**Review materials (same facts, packaged for outsiders):** [`REVIEW_PACKET.md`](REVIEW_PACKET.md) · [`ASSUMPTIONS.md`](ASSUMPTIONS.md) · [`CHATGPT_REVIEW_BRIEF.md`](CHATGPT_REVIEW_BRIEF.md)
+**Review / ops:** [`REVIEW_PACKET.md`](REVIEW_PACKET.md) · [`ASSUMPTIONS.md`](ASSUMPTIONS.md) · [`INFRA.md`](INFRA.md) · [`CHATGPT_REVIEW_BRIEF.md`](CHATGPT_REVIEW_BRIEF.md)
 
-> **Branch note — `nazariye-azadi`.** This branch is engineering-identical to `main`:
-> same TCB, same wire format, same proofs, no behavioral change. The only difference is
-> an added, code-free [`PHILOSOPHY/`](PHILOSOPHY/) directory that traces each component
-> back to the **نظریه آزادی (Theory of Freedom)** the kernel was derived from — axioms,
-> the ownership hierarchy, consent, justice, guidance, and the Mahdavi compass — mapped
-> line-by-line to where they live in `src/`. `main` keeps the framework-neutral framing;
-> this branch makes the theoretical lineage explicit. Nothing in the trusted core
-> changes. See [`PHILOSOPHY/README.md`](PHILOSOPHY/README.md).
+Optional Theory-of-Freedom lineage maps live under [`PHILOSOPHY/`](PHILOSOPHY/) when present — they do not change the TCB.
 
 ## The problem
 

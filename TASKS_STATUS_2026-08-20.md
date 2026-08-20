@@ -1,7 +1,7 @@
 # کارهای جاری — وضعیت پس از سشن ۲۰ اوت ۲۰۲۶
 
 منبع: فهرست کاربر (۲۹ مرداد ۱۴۰۵). این فایل فقط **وضعیت اجرا** است؛ ادعاهای امنیتی → `ASSUMPTIONS.md`.
-شاخه کاری: **infra/ready** (نه theory-gaps).
+شاخهٔ مرجع: **`main`** (infra-ready ادغام شد؛ theory-gaps حذف شد).
 
 ## ۱. هسته فنی AuthGate (+ legitimacy / decision-os)
 
@@ -10,11 +10,12 @@
 | AE-10 (دلیل وتو در لاگ) | **انجام‌شده** — `execute.py` + `test_fixed6`; conformance AE-10 PASS |
 | AE-4 / AE-5 | **انجام‌شده** — `decision_os_min/attenuation.py` (macaroon-lite); **10/10 PASS** |
 | جایگزینی تفویض دست‌ساز با تضعیف macaroon/biscuit | **انجام‌شده (lite)** — HMAC caveat chain؛ نه پیاده‌سازی کامل Biscuit |
-| تکمیل red team | **جزئی** — break6 بسته؛ 7a/7c/8/8b عمداً باز |
+| تکمیل red team | **جزئی** — AuthGate API boundary بسته؛ decision-os gaps intentional باقی |
 | تصمیم نظریه آزادی | **انجام‌شده** — `FREEDOM_THEORY_POSITION.md` (لایه هنجاری اختیاری، نه ادعای اصلی) |
 | ادعای پروفایل انطباق قابل دفاع | **انجام‌شده** — `contracts-spec/conformance/CLAIM.md` |
 | مسیر MCP به‌جای RFC جدید | **انجام‌شده** — `MCP_STANDARDIZATION.md` |
-| REVIEW_PACKET | **نوشته شد** — `REVIEW_PACKET.md`؛ **push به GitHub هنوز دستی** |
+| REVIEW_PACKET | **روی `main`** — `REVIEW_PACKET.md` |
+| Infra / Docker / CI | **روی `main`، CI سبز** — `INFRA.md` |
 | Ed25519 تأیید‌شده (HACL*/Fiat) | **باز** — فعلاً اصل‌موضوعه در `ASSUMPTIONS.md` |
 | مسیر Squirrel/Tamarin | **باز** — پیش‌نویس outreach در `OUTREACH_DRAFTS.md` |
 
