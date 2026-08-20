@@ -1,56 +1,38 @@
 # authgate-kernel
 
-**The authorization layer between any decision and any IO.**
+**Capability verification between a decision and IO.**
 
-Wherever something decides and something else executes, this verifies the actor
-holds a valid, signed, non-revoked capability for the resource. No proof, no execution.
+Given a sealed action and a capability-proof chain, the gate answers one
+structural question: does this actor hold a valid, non-expired, cryptographically
+signed capability for this resource and these rights, in a chain traceable to a
+trust root? Same inputs → same `Permit` / `Deny`. No LLM calls, no scores, no
+network I/O inside the verify path.
 
-Not a framework plugin. Not model-specific. Not tied to today's agent architectures.
-A wire format and a verify function. See [POSITIONING.md](POSITIONING.md).
+Not a better Cedar/OPA/Zanzibar. Not a product pitch for “AI safety.” See
+[`STATUS.md`](STATUS.md) for what was killed and what remains open, and
+[`ASSUMPTIONS.md`](ASSUMPTIONS.md) for what is proved vs axiomatized.
 
-> **Related — the decision layer *above* this kernel.** AuthGate answers
-> *authority*: "does this agent hold a valid capability for resource X?" The
-> **prior** question — *legitimacy*: "should this action happen at all, under
-> property rights, consent, and non-domination?" — is answered one layer up by a
-> **separate sibling project, the [Freedom Decision Kernel](https://github.com/Aliipou/freedom-decision-kernel)**
-> (pure Python, **no cryptography**). They are kept deliberately apart, because
-> legitimacy ≠ authority: the FDK decides *whether* an action is legitimate and
-> hands the chosen action to AuthGate, which enforces *whether* the actor is
-> authorized — "seccomp/SELinux for AI decisions." **Canonical pipeline (locked):**
-> identity admission → FDK legitimacy (DENY-only) → **AuthGate authority (grant
-> within legitimacy, this kernel)** → PEP execute + audit. **Invariant:** legitimacy
-> may only DENY; authority never overrides a legitimacy denial. Both layers are the
-> same theory made executable — this authority kernel is not neutral plumbing under
-> a philosophy; it is equally part of it (lineage traced in the `nazariye-azadi`
-> branch; framework-neutral framing on `main`).
+**Pipeline (when composed with a legitimacy layer):** identity → legitimacy
+(DENY-only) → **this kernel (authority)** → PEP execute + audit. Legitimacy may
+only refuse; it cannot grant. The optional normative lineage of the Theory of
+Freedom is documented under [`PHILOSOPHY/`](PHILOSOPHY/) / `nazariye-azadi` and is
+**not** the industrial claim — see [`FREEDOM_THEORY_POSITION.md`](FREEDOM_THEORY_POSITION.md).
 
 [![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
-[![Tests](https://img.shields.io/badge/tests-1155%20passing-brightgreen.svg)](tests/)
-[![Kani](https://img.shields.io/badge/Kani-24%20harnesses-green.svg)](formal/)
-[![Lean4](https://img.shields.io/badge/Lean4-16%20theorems-blue.svg)](formal/lean4/)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm--Noncommercial--1.0.0-orange.svg)](LICENSE)
 
-> **Branch note — `nazariye-azadi`.** This branch is engineering-identical to `main`:
-> same TCB, same wire format, same proofs, no behavioral change. The only difference is
-> an added, code-free [`PHILOSOPHY/`](PHILOSOPHY/) directory that traces each component
-> back to the **نظریه آزادی (Theory of Freedom)** the kernel was derived from — axioms,
-> the ownership hierarchy, consent, justice, guidance, and the Mahdavi compass — mapped
-> line-by-line to where they live in `src/`. `main` keeps the framework-neutral framing;
-> this branch makes the theoretical lineage explicit. Nothing in the trusted core
-> changes. See [`PHILOSOPHY/README.md`](PHILOSOPHY/README.md).
+**External review:** [`REVIEW_PACKET.md`](REVIEW_PACKET.md) ·
+[`CHATGPT_REVIEW_BRIEF.md`](CHATGPT_REVIEW_BRIEF.md) · wire format under [`spec/`](spec/)
+
+---
 
 ## The problem
 
-> Any decision-maker can execute IO without proving authority.
-
-Today's decision-makers are LLM agents. Tomorrow's may be planners, AGI subagents,
-or autonomous economic actors. Authorization gaps in this chain do not depend on
-which decision-maker is at the top.
+Any decision-maker can reach IO without proving authority. Today that is often an
+LLM agent; the gap does not depend on which planner sits on top.
 
 ## What this is
-
-Puts a structural gate between the decision and the IO:
 
 ```
 [Any decision-maker]  →  CallGate (verify authority proof)  →  [Any IO target]
@@ -58,29 +40,15 @@ Puts a structural gate between the decision and the IO:
                          audit log entry, action does not execute
 ```
 
-The gate answers one question, structurally:
+### Contract (the integration surface)
 
-> *Does this actor hold a valid, non-expired, cryptographically signed capability for this resource and these rights, in a chain traceable to its trust root?*
+- [`spec/canonical_action.schema.json`](spec/canonical_action.schema.json)
+- [`spec/gate_result.schema.json`](spec/gate_result.schema.json)
+- [`spec/audit_entry.schema.json`](spec/audit_entry.schema.json)
 
-`Decision::Permit` or `Decision::Deny { reason }`. Same inputs → same output, always.
-No probability scores. No LLM calls. No network I/O inside the gate.
-
-## The contract
-
-The thing external systems implement is the JSON wire format:
-
-- [`spec/canonical_action.schema.json`](spec/canonical_action.schema.json) — what you submit
-- [`spec/gate_result.schema.json`](spec/gate_result.schema.json) — what you receive
-- [`spec/audit_entry.schema.json`](spec/audit_entry.schema.json) — what gets logged
-
-Any system that can produce and consume these JSON shapes integrates with authgate.
-No framework dependency exists at this layer.
-
-Adapters for popular frameworks (LangChain, OpenAI Agents SDK, Anthropic, AutoGen,
-CrewAI, LangGraph, DSPy, MCP) live in `src/authgate/adapters/` as **conveniences,
-not as the product**. When a framework dies, its adapter dies. The wire format lives.
-
-This is the same principle as capability-based OS security (seL4, CHERI), applied to autonomous agent tool execution.
+Framework adapters (LangChain, OpenAI, Anthropic, AutoGen, CrewAI, LangGraph,
+DSPy, MCP) under `src/authgate/adapters/` are conveniences. The wire format is
+the product boundary.
 
 ---
 
@@ -88,41 +56,38 @@ This is the same principle as capability-based OS security (seL4, CHERI), applie
 
 | Not this | Why |
 |---|---|
-| Alignment | Alignment is about values. This kernel is about typed authority. |
-| Intent verification | The kernel does not parse or interpret natural language. |
-| Ethics enforcement | Ethical reasoning requires semantic content — this is structural. |
-| Side-channel defense | Timing attacks, covert channels — out of scope by design. |
-| Python-equivalent security | The Python layer is a compatibility runtime — not formally checked. |
+| Alignment / ethics / intent | Values and NL intent are out of scope; this is typed authority |
+| Side-channel defense | Timing / covert channels excluded by design |
+| Python-equivalent security | `src/authgate/` is a compatibility runtime — **not** the TCB |
+| Replacing Cedar / OPA / ReBAC | Authorization-as-policy is absorbed by incumbents (`WHY_NOT_OPA.md`) |
 
-The Python layer (`src/authgate/`) is a **compatibility runtime, not a security boundary**. It mirrors the *shape* of the TCB's checks for ergonomics, prototyping, and tests — but it is **not formally verified and is bypassable**: a malicious Python tool can call `subprocess` directly. Only the Rust TCB (`authgate-kernel/src/tcb/`) carries the security guarantees. Treat every `src/authgate/**` module as untrusted regardless of how authoritative its filename sounds. The Rust WASM sandbox closes the execution gap at the OS level — see [Engineering Gaps](#engineering-gaps) below.
-
-Full enumeration: [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md)
+The Python layer mirrors TCB *shape* for tests and prototyping. It is bypassable
+(e.g. a tool calling `subprocess`). Only `authgate-kernel/src/tcb/` carries the
+stated security guarantees. Gaps: [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md).
 
 ---
 
-## Numbers that matter
+## Numbers that matter (re-run before citing)
 
-| Metric | Value |
+| Metric | Value (2026-08-20 local) |
 |---|---|
-| Security-enforcing Rust LOC | `engine.rs`: 250 LOC. Full path (`engine.rs` + `dag.rs` + `call_gate.rs`): ~934 LOC |
-| Rust kernel-crate lib tests (`cargo test --lib`) | 293 (all passing) — includes the consent TCB gate and 47 red-team attack tests |
-| Python integration tests | 905 (all passing) |
-| Kani harnesses (bounded model checking) | 19 (all proved) |
-| Lean 4 theorems | 16 (4 fully proved scope theorems + 2 admitted; 2 crypto axioms) |
-| Wire boundary attack classes | 18 (WA-1 through WA-18); 37 pytest assertions in `test_wire_hardening.py` |
-| Concurrent verify() calls (stress test) | 1 000 via ThreadPoolExecutor, 200 concurrent audit appends |
-| Python verify() latency | p50 ≈ 9.7µs (10-claim registry), 17.4µs (1 000-claim) |
-| Delegation lattice theorems | T1–T4 proved: transitivity, anti-monotone, DAG, bounded distributive lattice |
-| TLA+ invariants | 9 + PermitSoundness (TLC run pending Java setup) |
+| Security-enforcing Rust path | `engine.rs` + `dag.rs` + `call_gate.rs` (see `authgate-kernel/src/tcb/`) |
+| Rust `cargo test --lib` | **293** passed |
+| Kani | Bounded model checking — not unbounded proof (`ASSUMPTIONS.md`) |
+| Lean 4 | Partial; crypto boundary is **axiomatized** (`sig_euf_cma`) |
+| TLA+ AuthGateV3 | **TLC completed, no error** on bounded model (`Len(audit_log)≤1`, safety-only) — `formal/tlc_run.log`, `formal/COVERAGE.md` |
 
----
+Python integration suite size fluctuates with optional extras; do not treat README
+badges as a substitute for a fresh `pytest` / `cargo test` run.
 
-## Theory → Engineering coverage (نظریه آزادی)
+> **Windows note:** building the Rust crate under a non-ASCII filesystem path can
+> break `gcc` linking. Use an ASCII junction and `CARGO_TARGET_DIR` (e.g.
+> `D:\ag-target`).
 
-The `nazariye-azadi` line maps the Theory of Freedom's seven axioms to code (see
-[`PHILOSOPHY/AXIOM_MAP.md`](PHILOSOPHY/AXIOM_MAP.md) and
-[`Theory_to_Engineering_Plan.md`](Theory_to_Engineering_Plan.md)). Three axioms
-that previously lived only in the Python layer now have first-class Rust:
+## Theory → Engineering coverage (optional lineage)
+
+On `nazariye-azadi` / [`PHILOSOPHY/`](PHILOSOPHY/), axioms map to modules. Trust
+levels matter: only TCB rows below are in the trusted core.
 
 | Axiom | Module | Trust level | What it guarantees |
 |---|---|---|---|
@@ -172,7 +137,10 @@ CanonicalAction  (sealed by adapter)
   AuditLog  (SHA-256 hash-chained, tamper-evident, thread-safe)
 ```
 
-**Security-enforcing critical path:** `engine.rs` (114 LOC) + `dag.rs` (101 LOC) + `call_gate.rs` (40 LOC) = ~255 LOC. `#![forbid(unsafe_code)]` across all TCB files. `engine::verify` is `pub(crate)` — bypassing `CallGate` is a compile-time type error (AT-7.5 closed).
+**Security-enforcing critical path:** `tcb/engine.rs` + `tcb/dag.rs` +
+`tcb/call_gate.rs`. `#![forbid(unsafe_code)]` on TCB files. `engine::verify` is
+`pub(crate)` — bypassing `CallGate` is a compile-time type error where that
+boundary is enforced.
 
 **Identity binding:** `subject_id = SHA-256(issuer_pubkey)`. Every delegation node must satisfy this. An attacker who knows a parent proof hash but not the parent private key cannot forge a child.
 
@@ -195,11 +163,13 @@ freedom-kernel/src/
   sandbox.rs         SandboxedExecutor — WASM capability-gated tool runner
 
 formal/
-  authgate_v3.tla    TLA+ state machine (9 invariants + PermitSoundness)
-  kani/              Kani harnesses (19 harnesses — all proved)
-  lean4/             Lean 4 proofs (7 theorems)
-  COVERAGE.md        What is and is not formally verified
-  INCOMPLETENESS.md  Explicit enumeration of gaps
+  authgate_v3.tla / AuthGateV3.tla   TLA+ model (TLC: see COVERAGE.md)
+  MC_AuthGateV3.tla|.cfg             Bounded TLC instance
+  tlc_run.log                        Latest green TLC log (bounded)
+  kani/                              Kani harnesses (bounded)
+  lean4/                             Lean 4 modules (partial; crypto axiomatized)
+  COVERAGE.md                        What is and is not discharged
+  INCOMPLETENESS.md                  Explicit gaps
 
 attack_harness/
   wire_attacks.py        27 wire boundary tests (WA-1 through WA-18)

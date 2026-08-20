@@ -1,33 +1,35 @@
 # Formal Specification — authgate-kernel
 
-Branch: `spec-core` | Track: Mathematical Truth
+Correctness targets for the capability verify path: TLA+ (TLC), Lean 4, Kani.
+No file here is a deployable gate.
 
-## What This Is
-
-The authoritative formal specification of authgate-kernel's security properties.
-No code here compiles or deploys. Correctness is established by model checking
-(TLC) and/or proof assistant discharge (Lean4, TLAPS).
-
-**Rule:** Every invariant that tcb-core enforces must appear here first.
-
----
+**Honesty:** cite [`../ASSUMPTIONS.md`](../ASSUMPTIONS.md). Ed25519 is an axiom
+until a verified implementation is linked. Kani results are bounded.
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `authgate_v3.tla` | TLA+ state machine — the canonical formal model |
-| `THREAT_MODEL.md` | Attack taxonomy (AT-1 through AT-7), invariant mapping, open gaps |
-| `COVERAGE.md` | Which invariants have TLC instances / Lean proofs |
-| `INCOMPLETENESS.md` | Known limits of the formal model (Gödel budget) |
-| `FreedomKernel.lean` | Lean4 proof sketches |
-| `plan_semantics.md` | Denotational semantics for capability plan IR |
-| `distributed/` | Distributed epoch / multi-node extension (research) |
-| `kani/` | Rust Kani verification stubs |
-| `lean4/` | Lean4 proof modules |
-| `proofs/` | TLAPS proof scripts |
+| `authgate_v3.tla` / `AuthGateV3.tla` | TLA+ state machine |
+| `MC_AuthGateV3.tla` + `.cfg` | Bounded TLC instance |
+| `tlc_run.log` | Latest TLC log (green on `Len(audit_log)≤1`, safety-only, 2026-08-20) |
+| `THREAT_MODEL.md` | Attack taxonomy AT-1…AT-7 |
+| `COVERAGE.md` | TLC / Lean / Kani discharge status |
+| `INCOMPLETENESS.md` | Model limits |
+| `lean4/` | Lean modules |
+| `kani/` | Kani harnesses |
+| `TLC_SETUP.md` | How to download `tla2tools.jar` and re-run |
 
----
+## TLC (current)
+
+```bash
+cd formal
+# after placing tla2tools.jar (see TLC_SETUP.md)
+java -XX:+UseParallelGC -jar tla2tools.jar -workers 4 MC_AuthGateV3
+```
+
+Expected on the checked-in bound: `Model checking completed. No error has been found.`
+Raise `Len(audit_log)` and re-add weak fairness only with overnight budget.
 
 ## TLA+ Spec Overview (`authgate_v3.tla`)
 

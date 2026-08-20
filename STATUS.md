@@ -1,8 +1,9 @@
-# AuthGate status — disposition (2026-06-20)
+# AuthGate status — disposition
 
-Same discipline applied to FDK, applied here: kill the idea first; keep only what survives. Three
-kill-tests were run (`WHY_NOT_OPA.md`, `WHY_NOT_DLP.md`, `LABEL_PROPAGATION.md`). This is where
-AuthGate honestly stands.
+**Updated:** 2026-08-20 (addendum at bottom). Original kill-test write-up: 2026-06-20.
+
+Same discipline: kill the idea first; keep only what survives. Three kill-tests:
+`WHY_NOT_OPA.md`, `WHY_NOT_DLP.md`, `LABEL_PROPAGATION.md`.
 
 ## What collapsed
 
@@ -80,3 +81,19 @@ advantage is **systems engineering**, not normative theory. Spend energy accordi
 
 *Engineering: Ali Pourrahim. Kept honest: "could matter" is not "does matter"; only the label-creep
 measurement on real agent traces converts this thesis from plausible to proven — or closes it.*
+
+---
+
+## Addendum — 2026-08-20
+
+Engineering that landed without changing the disposition above:
+
+- **ASSUMPTIONS.md** — Ed25519 EUF-CMA explicit axiom; Kani = bounded.
+- **TLC** — AuthGateV3 bounded model green (`formal/tlc_run.log`).
+- **FREEDOM_THEORY_POSITION.md** — theory optional upstream, not product claim.
+- **MCP_STANDARDIZATION.md** — standardize on MCP tool mediation; no new RFC yet.
+- **REVIEW_PACKET.md** / **CHATGPT_REVIEW_BRIEF.md** — external review entry points.
+
+The market kill-test (purpose/flow vs Purview) and the label-creep measurement remain
+the product deciders. Formal/capability work continues as portfolio-grade evidence
+regardless of that verdict.
