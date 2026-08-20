@@ -29,9 +29,15 @@ Please try to break these claims specifically:
 5. **Generality.** Is the result only true inside our own scenarios? (Heljanko)
 6. **TCB boundary.** Does `INCOMPLETENESS.md` understate what callers will assume? (Jung)
 
-Runnable suites:
+Runnable suites (AuthGate kernel first):
 
 ```text
+# this repo
+AUTHGATE_BACKEND=python pytest tests/test_call_gate.py tests/test_core.py -q
+cd authgate-kernel && CARGO_TARGET_DIR=/tmp/ag-target cargo test --lib
+cd formal && java -XX:+UseParallelGC -jar tla2tools.jar -workers 4 MC_AuthGateV3
+
+# sibling PEP / profile (optional)
 cd decision-os-min && python -m pytest -q
 cd contracts-spec && python -m conformance.suite
 ```
