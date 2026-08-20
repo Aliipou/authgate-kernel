@@ -1,9 +1,8 @@
-# AuthGate status — disposition
+# AuthGate status — disposition (2026-06-20)
 
-**Updated:** 2026-08-20 (addendum at bottom). Original kill-test write-up: 2026-06-20.
-
-Same discipline: kill the idea first; keep only what survives. Three kill-tests:
-`WHY_NOT_OPA.md`, `WHY_NOT_DLP.md`, `LABEL_PROPAGATION.md`.
+Same discipline applied to FDK, applied here: kill the idea first; keep only what survives. Three
+kill-tests were run (`WHY_NOT_OPA.md`, `WHY_NOT_DLP.md`, `LABEL_PROPAGATION.md`). This is where
+AuthGate honestly stands.
 
 ## What collapsed
 
@@ -84,16 +83,11 @@ measurement on real agent traces converts this thesis from plausible to proven �
 
 ---
 
-## Addendum — 2026-08-20
+## Addendum — 2026-08-20 (evidence only; disposition unchanged)
 
-Engineering that landed without changing the disposition above:
+The kill-test disposition above stands. Additional artifacts landed for review:
 
-- **ASSUMPTIONS.md** — Ed25519 EUF-CMA explicit axiom; Kani = bounded.
-- **TLC** — AuthGateV3 bounded model green (`formal/tlc_run.log`).
-- **FREEDOM_THEORY_POSITION.md** — theory optional upstream, not product claim.
-- **MCP_STANDARDIZATION.md** — standardize on MCP tool mediation; no new RFC yet.
-- **REVIEW_PACKET.md** / **CHATGPT_REVIEW_BRIEF.md** — external review entry points.
-
-The market kill-test (purpose/flow vs Purview) and the label-creep measurement remain
-the product deciders. Formal/capability work continues as portfolio-grade evidence
-regardless of that verdict.
+- `ASSUMPTIONS.md` — explicit Ed25519 axiom / proved-vs-open table
+- Bounded TLC run of AuthGateV3 — no error found (`formal/tlc_run.log`)
+- `REVIEW_PACKET.md`, `CHATGPT_REVIEW_BRIEF.md` — packaging for external readers
+- `FREEDOM_THEORY_POSITION.md`, `MCP_STANDARDIZATION.md` — positioning notes (do not alter the STATUS kill-tests)
