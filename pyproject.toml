@@ -50,7 +50,7 @@ Repository = "https://github.com/Aliipou/authgate"
 Issues = "https://github.com/Aliipou/authgate/issues"
 
 [project.scripts]
-authgate-server = "authgate.api.app:app"
+authgate-server = "authgate.api.app:main"
 authgate-cli = "authgate.cli:main"
 
 [tool.hatch.build.targets.wheel]

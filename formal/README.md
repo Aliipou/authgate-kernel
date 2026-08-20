@@ -75,21 +75,21 @@ THEOREM RevocThm        == [][RevocationSafety]_vars
 THEOREM ComposThm       == [][CompositionMono]_vars
 ```
 
-Status: declared, **not yet TLC-verified** (open gap — see COVERAGE.md).
+Status: **bounded TLC green** (2026-08-20, `Len(audit_log)≤1`, ~4227 distinct states) — see `tlc_run.log` and `COVERAGE.md`. Larger bounds / TLAPS proofs remain open.
 
 ---
 
 ## Running TLC (when Java available)
 
 ```bash
-# Download TLA+ tools
+# Download TLA+ tools (see TLC_SETUP.md)
 curl -L https://github.com/tlaplus/tlaplus/releases/latest/download/tla2tools.jar -o tla2tools.jar
 
-# Run model checker
-java -jar tla2tools.jar -tool MC_AuthGateV3
+# Run bounded model checker
+java -jar tla2tools.jar -config MC_AuthGateV3.cfg MC_AuthGateV3.tla
 ```
 
-TLC configuration file (`MC_AuthGateV3.tla`) — **pending creation**.
+TLC instance: `MC_AuthGateV3.tla` + `MC_AuthGateV3.cfg` (present; re-run anytime).
 
 ---
 

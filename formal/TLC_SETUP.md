@@ -184,7 +184,7 @@ Estimated time to run: <5 minutes on a laptop once Java is available.
 
 ## After running TLC
 
-1. If all invariants pass: mark criterion #1 ✓ in `TODO.md`
-2. Commit `tlc_run.log` to `spec-core` branch
-3. Update `formal/COVERAGE.md`: change PENDING TLC → ✓ VERIFIED (date)
-4. Update `README.md` badge: TLA+ → VERIFIED
+1. If all invariants pass: criterion already reflected in `COVERAGE.md` / `tlc_run.log`
+2. Keep `tlc_run.log` on the review branch (committed)
+3. `formal/COVERAGE.md` rows for TLC invariants are ✓ VERIFIED (2026-08-20)
+4. Optional: update root README badge when merging to `main`

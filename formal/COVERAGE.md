@@ -168,7 +168,7 @@ This closes the Python-layer gap for delegation chain integrity (previously only
 | G3 | Clock trust | Caller-supplied `now` — documented limitation |
 | G5 | No replay protection | Kernel is stateless; replay protection belongs in the orchestration layer |
 | G6 | Crypto assumptions | ed25519 break = NIST-level threat — out of scope |
-| TLC run | TLA+ model not yet TLC-checked | Needs Java + tla2tools.jar (setup documented in TLC_SETUP.md) |
+| TLC larger bound | Green at `Len(audit_log)≤1`; `≤3` + WF not overnight-run | Tractability; setup in TLC_SETUP.md |
 | Refinement | No TLA+ → Rust refinement proof | Research-level gap; documented in INCOMPLETENESS.md |
 
 ## What Is NOT Formally Verified

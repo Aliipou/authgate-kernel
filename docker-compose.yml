@@ -1,8 +1,31 @@
+# Infra-ready starter stack for AuthGate verifier API.
+# Put TLS/auth/rate-limits at the ingress in front of this.
+
 services:
-  app:
+  authgate:
     build: .
     ports:
-      - "8000:8000"
-    env_file:
-      - .env
+      - "${PORT:-8000}:8000"
+    environment:
+      PORT: "8000"
+      HOST: "0.0.0.0"
+      AUTHGATE_BACKEND: python
+      AUTHGATE_ADMIN_TOKEN: ${AUTHGATE_ADMIN_TOKEN:?set AUTHGATE_ADMIN_TOKEN in .env}
+      AUTHGATE_AUDIT_PATH: /data/audit.jsonl
+    volumes:
+      - authgate_data:/data
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz')",
+        ]
+      interval: 15s
+      timeout: 3s
+      retries: 5
     restart: unless-stopped
+
+volumes:
+  authgate_data:

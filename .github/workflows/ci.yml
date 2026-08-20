@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, feat/**, docs/**]
   pull_request:
     branches: [main, master]
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -13,6 +14,7 @@ permissions:
 # type system. The Rust TCB is validated by the rust-check + TCB-tests jobs.
 env:
   AUTHGATE_BACKEND: python
+  AUTHGATE_ADMIN_TOKEN: ci-admin-token
 
 jobs:
   rust-check:
@@ -318,4 +320,33 @@ jobs:
       - run: pip install -e ".[dev]"
 
       - name: Run red team tests
-        run: pytest tests/test_adversarial_redteam.py tests/test_epoch_revocation.py -v
+        run: pytest tests/test_adversarial_redteam.py tests/test_epoch_revocation.py tests/test_api_redteam_boundary.py -v
+
+  docker-smoke:
+    name: Docker image build + /readyz smoke
+    runs-on: ubuntu-24.04
+    needs: api-smoke
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Build image
+        run: docker build -t authgate:ci .
+
+      - name: Smoke container
+        run: |
+          docker run -d --name ag \
+            -e AUTHGATE_ADMIN_TOKEN=ci-smoke-token \
+            -e AUTHGATE_AUDIT_PATH=/data/audit.jsonl \
+            -p 8000:8000 authgate:ci
+          for i in $(seq 1 30); do
+            curl -sf http://localhost:8000/readyz && break || sleep 1
+          done
+          curl -sf http://localhost:8000/readyz
+          curl -sf http://localhost:8000/healthz
+          curl -sf -X POST http://localhost:8000/verify \
+            -H 'content-type: application/json' \
+            -d '{"action_id":"ci","actor":{"name":"ghost","kind":"MACHINE"},"bypasses_verifier":true}' \
+            | grep -q '"permitted":false'
+          docker rm -f ag
+

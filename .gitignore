@@ -34,3 +34,8 @@ ANTI_GARBAGE_CHECKLIST.md
 formal/tla2tools.jar
 formal/states/
 formal/*.tla.old
+formal/tlc_run_verify.log
+# Local verification scratch (do not commit)
+_pytest_full.txt
+_exp_*.txt
+_*.log

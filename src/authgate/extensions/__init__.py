@@ -77,9 +77,10 @@ class ExtendedFreedomVerifier:
         conclusion_tester: Callable[[str], bool] | None = None,
         manipulation_threshold: float = 0.5,
         freeze: bool = True,
+        audit_log: object | None = None,
     ) -> None:
         self.registry = registry
-        self._gate = FreedomVerifier(registry, freeze=freeze)
+        self._gate = FreedomVerifier(registry, freeze=freeze, audit_log=audit_log)
         self.synthesis = SynthesisEngine()
         self.conflict_queue = ConflictQueue()
         self._conclusion_tester = conclusion_tester

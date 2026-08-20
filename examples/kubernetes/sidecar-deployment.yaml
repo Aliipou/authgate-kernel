@@ -85,11 +85,9 @@ spec:
             # The sidecar listens on the pod's loopback interface. The agent
             # must route all capability checks through this endpoint.
             - name: VERIFIER_ENDPOINT
-              value: "http://localhost:8080/verify"
-            # Used by the agent to retrieve the sidecar's public key for
-            # offline verification of signed VerificationResult payloads.
-            - name: KERNEL_PUBKEY_ENDPOINT
-              value: "http://localhost:8080/pubkey"
+              value: "http://localhost:8000/verify"
+            - name: KERNEL_READY_ENDPOINT
+              value: "http://localhost:8000/readyz"
             # The agent's own identity in the OwnershipRegistry. Must match
             # the entity name registered under the human principal.
             - name: AGENT_IDENTITY
@@ -129,19 +127,24 @@ spec:
           image: ghcr.io/aliipou/authgate-kernel:latest
           imagePullPolicy: Always
           ports:
-            - containerPort: 8080
+            - containerPort: 8000
               name: verify
               protocol: TCP
           env:
+            - name: PORT
+              value: "8000"
+            - name: AUTHGATE_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: authgate-admin
+                  key: token
+            - name: AUTHGATE_AUDIT_PATH
+              value: "/audit/kernel.jsonl"
             # Name of the Kubernetes Secret containing the registry configuration.
             # Referenced here for operational visibility; the actual config is
             # mounted as a volume below.
             - name: REGISTRY_SECRET_NAME
               value: "agent-registry-config"
-            # Append-only audit log. In production, pair this emptyDir with a
-            # log shipper sidecar (e.g., Fluent Bit) to forward to a SIEM.
-            - name: AUDIT_LOG_PATH
-              value: "/audit/kernel.log"
             # Maximum delegation depth accepted in any Action IR. Matches the
             # depth cap in ARCHITECTURE.md (default 16; reduced here to 4
             # because this deployment has a flat, single-agent topology).
@@ -177,15 +180,15 @@ spec:
               memory: "64Mi"
           livenessProbe:
             httpGet:
-              path: /health
-              port: 8080
+              path: /healthz
+              port: 8000
             initialDelaySeconds: 5
             periodSeconds: 10
             failureThreshold: 3
           readinessProbe:
             httpGet:
-              path: /ready
-              port: 8080
+              path: /readyz
+              port: 8000
             initialDelaySeconds: 2
             periodSeconds: 5
             failureThreshold: 2
