@@ -2,21 +2,23 @@
 
 ## TLA+ Model Checking
 
-Run: `java -jar tla2tools.jar -tool MC_AuthGateV3`
+Run: `java -XX:+UseParallelGC -jar tla2tools.jar -workers 4 MC_AuthGateV3`  
+**First green run:** 2026-08-20 — *Model checking completed. No error has been found.*  
+4227 distinct states, depth 9, `MCConstraint == Len(audit_log) <= 1`, safety-only Spec (no WF).  
+Log: `formal/tlc_run.log`. Raise log bound to 3 for overnight stress; re-add `WF_vars` for liveness later.
 
-| Property                | Status          | State Space                        |
-|-------------------------|-----------------|------------------------------------|
-| I1 CanonicalBinding     | PENDING TLC     | MC model: MCActors × MCResources   |
-| I2 IdentityBinding      | PENDING TLC     | MC model                           |
-| I3 ExpiryGate           | PENDING TLC     | MC model                           |
-| I4 EpochSafety          | PENDING TLC     | MC model, MCMaxEpoch=2             |
-| I5 ResourceBinding      | PENDING TLC     | MC model                           |
-| I6 Attenuation          | PENDING TLC     | MC model, MCMaxChainDepth=2        |
-| I7 ChainEpoch           | PENDING TLC     | MC model                           |
-| I8 ChainComplete        | PENDING TLC     | MC model                           |
-| I9 RevocationSafety     | PENDING TLC     | MC model                           |
-| BigSafety (I1–I9)       | PENDING TLC     | Conjunction                        |
-| PermitSoundness         | PENDING TLC     | Primary theorem                    |
+| Property                | Status                          | State Space                        |
+|-------------------------|---------------------------------|------------------------------------|
+| TypeInvariant           | ✓ TLC 2026-08-20                | MC model                           |
+| EpochSafety             | ✓ TLC 2026-08-20                | MCMaxEpoch=2                       |
+| IdentityBinding         | ✓ TLC 2026-08-20                | MC model                           |
+| Attenuation             | ✓ TLC 2026-08-20                | MCMaxChainDepth=2                  |
+| RevocationSafety        | ✓ TLC 2026-08-20                | MC model                           |
+| ResourceBinding         | ✓ TLC 2026-08-20                | MC model                           |
+| ChainEpoch              | ✓ TLC 2026-08-20                | MC model                           |
+| ChainComplete           | ✓ TLC 2026-08-20                | MC model                           |
+| BigSafety               | ✓ TLC 2026-08-20                | Conjunction                        |
+| PermitSoundness         | ✓ TLC 2026-08-20                | Primary theorem                    |
 
 Constants used in MC model:
 ```

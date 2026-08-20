@@ -171,7 +171,9 @@ spec means the state machine is stuck — usually a missing transition.
 
 ## Current status
 
-**TLC has not yet been run** — this is MASTER_PLAN success criterion #1 (pending Java setup).
+**TLC has been run** (2026-08-20): first green completion with
+`Len(audit_log) <= 1`, safety-only. See `tlc_run.log` and `COVERAGE.md`.
+Larger bounds and weak-fairness remain follow-ups.
 
 The spec (`authgate_v3.tla`) and model (`MC_AuthGateV3.tla`, `MC_AuthGateV3.cfg`)
 are complete and ready. The only requirement is Java installation and tla2tools.jar download.

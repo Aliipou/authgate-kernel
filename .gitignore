@@ -30,3 +30,7 @@ extracted_raw.txt
 CLAUDE.md
 ANTI_GARBAGE_CHECKLIST.md
 .claude/
+# TLC / TLA+ local tooling (download per formal/TLC_SETUP.md)
+formal/tla2tools.jar
+formal/states/
+formal/*.tla.old
