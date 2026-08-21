@@ -1,6 +1,5 @@
 # authgate-kernel
 
-**Live (graph):** [https://ali-authgate-kernel.vercel.app](https://ali-authgate-kernel.vercel.app)
 
 **A capability gate between any decision and any real-world action.**
 
