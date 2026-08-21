@@ -1,5 +1,7 @@
 # authgate-kernel
 
+**Live (graph):** [https://ali-authgate-kernel.vercel.app](https://ali-authgate-kernel.vercel.app)
+
 **A capability gate between any decision and any real-world action.**
 
 If an agent, planner, or service wants to read a file, call an API, or move money, AuthGate checks one structural question first:
