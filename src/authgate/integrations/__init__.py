@@ -1,9 +1,15 @@
 """
-authgate.integrations — adapters that connect AuthGate to upstream deciders.
+authgate.integrations — seams to upstream / co-equal evaluators.
 
-Each integration is a thin, decoupled seam. The only one today is `fdk`: the
-boundary to the Freedom Decision Kernel, which answers the *prior* question
-("is this action legitimate?") before AuthGate answers "can this actor execute
-it?". The two products share a JSON contract (the PolicyDecision schema), not
-code — see `authgate.integrations.fdk`.
+Composition model (decision-os): lattice meet of DENY-only evaluators.
+AuthGate CallGate is the authority evaluator. Legitimacy is optional and
+never grants.
+
+  - `legitimacy` — PolicyDecision seam + Freedom Formal adapter (preferred)
+  - `fdk` — deprecated alias re-exporting `legitimacy`
 """
+from __future__ import annotations
+
+from authgate.integrations import legitimacy as legitimacy
+
+__all__ = ["legitimacy"]

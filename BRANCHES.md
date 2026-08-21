@@ -19,7 +19,14 @@ produces **self-justifying security** — the most dangerous failure mode.
 ## Branch Map
 
 ```
-main  (ground truth — immutable baseline)
+main  (ground truth — AuthGate authority only; legitimacy NOT required)
+ ├── with-legitimacy  Optional decision-os meet: legitimacy ∨ AuthGate
+ │     DENY-only legitimacy (Freedom Formal) → PolicyDecision → CallGate
+ │     Does NOT change Rust TCB; merges ideas to main only as opt-in API
+ │
+ ├── research/freedom-fullscope  Lab for Freedom Formal axioms + red-team
+ │     Feeds with-legitimacy; never merges theology into TCB
+ │
  ├── spec-core        Mathematical Truth
  │     TLA+ state machine, Lean4 proofs, THREAT_MODEL, COVERAGE
  │     → merges to main only when TLC-verified or Lean-discharged
