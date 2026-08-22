@@ -4,6 +4,8 @@ This directory shows how to deploy the authgate-kernel verifier as a Kubernetes
 sidecar alongside an AI agent, making the capability gate structurally unavoidable
 at the infrastructure level.
 
+**Ops guides:** [INFRA.md](../../INFRA.md) · [KEY_MANAGEMENT.md](../../KEY_MANAGEMENT.md) · [DISASTER_RECOVERY.md](../../DISASTER_RECOVERY.md) · [INDUSTRY_READINESS.md](../../INDUSTRY_READINESS.md)
+
 ---
 
 ## The sidecar pattern: why structure beats application-level checks

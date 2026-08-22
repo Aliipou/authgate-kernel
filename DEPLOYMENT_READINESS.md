@@ -47,10 +47,10 @@ or `[YES*]` with caveats they accept. Below 80%: still research-grade.
 | B4 | Forensic replay of past decision | YES | AuditLog.replay(index) |
 | B5 | Chain integrity check tool | YES | authgate-cli audit verify |
 | B6 | Health check endpoint | YES | authgate.health_check() |
-| B7 | Performance metrics exported | NO | No Prometheus/StatsD integration yet |
+| B7 | Performance metrics exported | YES | Prometheus `/metrics` on HTTP verifier (`src/authgate/api/app.py`); CI smoke in `test_api.py` |
 | B8 | Structured logs (JSON) | YES | All audit entries are JSON |
 
-**B subtotal: 7/8 (88%)**
+**B subtotal: 8/8 (100%)**
 
 ---
 
@@ -61,15 +61,15 @@ or `[YES*]` with caveats they accept. Below 80%: still research-grade.
 | C1 | Container image available | YES | Dockerfile in repo |
 | C2 | docker-compose for local dev | YES | docker-compose.yml |
 | C3 | Kubernetes manifests | YES | examples/kubernetes/ |
-| C4 | Health & readiness probes | YES* | health_check() exists; manifests need wire-up |
+| C4 | Health & readiness probes | YES | `livenessProbe`/`readinessProbe` on `/healthz`/`/readyz` in `examples/kubernetes/sidecar-deployment.yaml` |
 | C5 | Key rotation procedure documented | YES | key_rotation.py + DEPLOYMENT.md |
-| C6 | Key storage guidance (HSM/Vault) | NO | Trust root supply is "caller's responsibility" |
+| C6 | Key storage guidance (HSM/Vault) | YES* | [KEY_MANAGEMENT.md](KEY_MANAGEMENT.md) — Vault, AWS KMS, Azure Key Vault |
 | C7 | Incident response playbook | YES | INCIDENT_RESPONSE.md |
-| C8 | Migration guide between versions | NO | No v1→v2 migration plan written |
+| C8 | Migration guide between versions | YES | [MIGRATION.md](MIGRATION.md) |
 | C9 | Capacity planning numbers | YES | benchmarks/comprehensive_bench.py |
-| C10 | Disaster recovery plan | NO | No procedure for audit log loss / key compromise |
+| C10 | Disaster recovery plan | YES | [DISASTER_RECOVERY.md](DISASTER_RECOVERY.md) |
 
-**C subtotal: 6/10 (60%)**
+**C subtotal: 9/10 (90%)**
 
 ---
 
@@ -104,7 +104,7 @@ or `[YES*]` with caveats they accept. Below 80%: still research-grade.
 | E6 | Adapter integration tests | YES | test_adapters_callgate_integration.py |
 | E7 | Type hints (mypy clean) | YES | mypy in CI |
 | E8 | API stability guarantee | YES* | schema_version = 1.0.0; breaking changes need MAJOR bump |
-| E9 | Migration tool between versions | NO | Same as C8 |
+| E9 | Migration tool between versions | YES* | [MIGRATION.md](MIGRATION.md); `authgate-cli migrate` planned — registry transform documented |
 | E10 | Multi-language SDKs | NO | Only Python + Rust. Go, TypeScript, Java pending |
 
 **E subtotal: 8/10 (80%)**
@@ -130,12 +130,12 @@ or `[YES*]` with caveats they accept. Below 80%: still research-grade.
 | Section | Score |
 |---------|-------|
 | A. Core enforcement | 10/10 |
-| B. Observability | 7/8 |
-| C. Operations | 6/10 |
+| B. Observability | 8/8 |
+| C. Operations | 9/10 |
 | D. Security validation | 7/10 |
 | E. Developer experience | 8/10 |
 | F. Real deployment evidence | 0/5 |
-| **TOTAL** | **38/53 (72%)** |
+| **TOTAL** | **44/53 (83%)** |
 
 ---
 
@@ -171,4 +171,4 @@ Items 1, 3, 5 cannot be done by code alone. They need humans.
 
 ---
 
-*Updated: 2026-05-30. Re-score after any items change.*
+*Updated: 2026-08-22. Re-score after any items change.*

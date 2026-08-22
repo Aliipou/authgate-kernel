@@ -2,6 +2,8 @@
 
 Systematically generates and runs **231 adversarial scenarios** across all 7 attack classes. Used as ground-truth for what the Rust TCB must enforce.
 
+**CI:** `adversarial-simulation` job in `.github/workflows/ci.yml` — must report 0 violations on every PR.
+
 ## Architecture
 
 ```
