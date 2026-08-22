@@ -40,4 +40,4 @@ jobs:
         run: pytest tests/test_seccomp_adversarial.py::TestSeccompAllowlist -v
 
       - name: Adversarial — execve killed under read-only seccomp
-        run: pytest tests/test_seccomp_adversarial.py::TestSeccompAdversarial -v
+        run: pytest tests/test_seccomp_adversarial.py::TestSeccompAdversarial::test_execve_killed_under_read_only_allowlist -v

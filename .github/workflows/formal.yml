@@ -55,19 +55,22 @@ jobs:
           echo "TLC green — see formal/COVERAGE.md for run parameters"
 
   lean:
-    name: Lean 4 — FreedomKernel (no sorry in security-critical modules)
+    name: Lean 4 — FreedomKernel
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
 
-      - name: Install Lean 4
-        uses: leanprover/lean-action@v1
+      - name: Install elan + Lean
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
 
       - name: Build FreedomKernel
         working-directory: formal/lean4/FreedomKernel
         run: |
+          elan toolchain install $(cat lean-toolchain)
           lake update
           lake build
           echo "Lean build OK — see formal/INCOMPLETENESS.md for admitted theorems"

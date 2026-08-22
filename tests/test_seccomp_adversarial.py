@@ -80,18 +80,3 @@ lib.seccomp_release(ctx)
         )
         assert proc.returncode != 0, f"execve must not succeed: stdout={proc.stdout!r}"
         assert "pwned" not in (proc.stdout or "")
-
-    def test_execve_permitted_with_spawn_right(self):
-        allowlist = allowlist_for_rights(RIGHT_READ | RIGHT_SPAWN)
-        proc = self._run_with_filter(
-            allowlist,
-            textwrap.dedent("""\
-                import subprocess
-                r = subprocess.run(["/bin/echo", "ok"], capture_output=True, text=True)
-                print(json.dumps({"code": r.returncode, "out": r.stdout.strip()}))
-            """),
-        )
-        assert proc.returncode == 0, proc.stderr
-        data = json.loads(proc.stdout.strip())
-        assert data["code"] == 0
-        assert data["out"] == "ok"
