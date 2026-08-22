@@ -53,18 +53,17 @@ class TestSeccompAdversarial:
             pytest.skip("libseccomp not installed")
 
     def _run_with_filter(self, allowlist: list[int], tool_body: str) -> subprocess.CompletedProcess:
-        runner = textwrap.dedent(f"""\
-            import ctypes, ctypes.util, json, sys, os
-            libname = ctypes.util.find_library("seccomp")
-            lib = ctypes.CDLL(libname)
-            SCMP_ACT_KILL, SCMP_ACT_ALLOW = 0x00000000, 0x7FFF0000
-            ctx = lib.seccomp_init(SCMP_ACT_KILL)
-            for nr in {allowlist!r}:
-                lib.seccomp_rule_add(ctx, SCMP_ACT_ALLOW, nr, 0)
-            lib.seccomp_load(ctx)
-            lib.seccomp_release(ctx)
-            {tool_body}
-        """)
+        setup = f"""import ctypes, ctypes.util, json, sys, os
+libname = ctypes.util.find_library("seccomp")
+lib = ctypes.CDLL(libname)
+SCMP_ACT_KILL, SCMP_ACT_ALLOW = 0x00000000, 0x7FFF0000
+ctx = lib.seccomp_init(SCMP_ACT_KILL)
+for nr in {allowlist!r}:
+    lib.seccomp_rule_add(ctx, SCMP_ACT_ALLOW, nr, 0)
+lib.seccomp_load(ctx)
+lib.seccomp_release(ctx)
+"""
+        runner = setup + textwrap.dedent(tool_body).strip() + "\n"
         return subprocess.run(
             [sys.executable, "-c", runner],
             capture_output=True,

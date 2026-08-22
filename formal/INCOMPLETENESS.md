@@ -144,7 +144,7 @@ formal/lean4/FreedomKernel/
     [✓] attenuation_cannot_escalate          (proved)
     [✓] delegation_depth_bounded             (trivial)
   Scope.lean
-    [ ] scope_contains_reflexive (T-SC1)     (admitted — String.normalize induction pending)
+    [ ] scope_contains_reflexive (T-SC1)     (partial — non-trailing proved; trailing `/` one sorry)
     [✓] scope_contains_root_universal (T-SC2)
     [✓] traversal_in_parent/child (T-SC3)    (proved — security-critical)
     [✓] prefix_implies_containment (T-SC4)   (proved — security-critical)
@@ -157,8 +157,8 @@ formal/lean4/FreedomKernel/
 
 | Theorem | File | Why admitted |
 |---|---|---|
-| `scope_contains_reflexive` (T-SC1) | `Scope.lean` | Requires induction over `String.normalize`; Lean 4 String library support for this proof pattern is not yet wired |
-| `scope_contains_antisymmetric` (T-SC5) | `Scope.lean` | Requires mutual-prefix antisymmetry over normalized paths; same String-library gap as T-SC1 |
+| `scope_contains_reflexive` (T-SC1) | `Scope.lean` | Trailing-slash `startsWith` branch — non-trailing case **proved** via `normalize_no_trailing`; one `sorry` remains for trailing `/` paths |
+| `scope_contains_antisymmetric` (T-SC5) | `Scope.lean` | Mutual prefix antisymmetry over `String.normalize` — admitted pending Mathlib string lemmas |
 
 Both are axiomatically sound by inspection of the Python `scope_contains` implementation.
 Security-critical traversal rejection (T-SC3) and prefix containment (T-SC4) are fully proved.

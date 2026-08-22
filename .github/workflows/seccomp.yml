@@ -5,7 +5,7 @@ name: Seccomp enforcement
 
 on:
   push:
-    branches: [main, integration, tcb-core]
+    branches: [main, integration, tcb-core, with-legitimacy]
     paths:
       - "src/authgate/kernel/seccomp_executor.py"
       - "tests/test_seccomp_adversarial.py"

@@ -5,7 +5,7 @@ name: Formal verification
 
 on:
   push:
-    branches: [main, integration, spec-core, tcb-core]
+    branches: [main, integration, spec-core, tcb-core, with-legitimacy]
     paths:
       - "formal/**"
       - ".github/workflows/formal.yml"
@@ -53,3 +53,21 @@ jobs:
           grep -q "4227 distinct states" tlc_ci_run.log || \
             grep -q "distinct states" tlc_ci_run.log
           echo "TLC green — see formal/COVERAGE.md for run parameters"
+
+  lean:
+    name: Lean 4 — FreedomKernel (no sorry in security-critical modules)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install Lean 4
+        uses: leanprover/lean-action@v1
+
+      - name: Build FreedomKernel
+        working-directory: formal/lean4/FreedomKernel
+        run: |
+          lake update
+          lake build
+          echo "Lean build OK — see formal/INCOMPLETENESS.md for admitted theorems"

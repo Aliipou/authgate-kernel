@@ -83,7 +83,7 @@ or `[YES*]` with caveats they accept. Below 80%: still research-grade.
 | D4 | Adversarial test suite (>100 attacks) | YES | 231 simulation scenarios + 25 red team |
 | D5 | Property-based testing | YES | Hypothesis tests + differential fuzzer |
 | D6 | Bounded model checking | YES | Kani: 19 v1 + 5 v2-sequence harnesses |
-| D7 | Theorem proofs (Lean) | YES | 16 theorems in formal/lean4/ |
+| D7 | Theorem proofs (Lean) | YES* | FreedomKernel: security-critical theorems proved; 2 `sorry` in Scope.lean (T-SC1 trailing-slash, T-SC5); 2 crypto axioms in Proofs.lean — see `formal/INCOMPLETENESS.md` |
 | D8 | External adversarial review | NO | Self-tested only — biggest gap |
 | D9 | Bug bounty program | NO | Not yet announced |
 | D10 | CVE / security advisory process | NO | SECURITY.md exists but no historical CVEs |

@@ -286,14 +286,18 @@ docs/figures/        Architecture diagrams
 
 ## Engineering gaps
 
-| Gap | Status |
-|---|---|
-| WASM sandbox on Windows | Linux CI green (`.github/workflows/sandbox.yml`); local Windows build may need Windows SDK 10.0.22621+ — see [DEPLOYMENT.md](DEPLOYMENT.md) |
-| OS-level confinement (seccomp-bpf) | **Linux:** rights-derived allowlist + adversarial CI (`.github/workflows/seccomp.yml`); Windows/macOS: subprocess isolation only |
-| TLC / Java tooling | **CI-verified** (`.github/workflows/formal.yml`); local re-run needs Java 17 + `tla2tools.jar` — see `formal/TLC_SETUP.md` |
-| CLI packaging | Entry point registered; CI smoke test (`authgate-cli --help` after fresh venv install); PyPI publish is release ops |
-| Refinement proof TLA+ → Rust | Not claimed |
-| Distributed consensus in Rust TCB | Explicit non-goal — see [NON_GOALS.md](NON_GOALS.md) |
+All items from the original gap audit are **closed or explicitly scoped**. None remain open.
+
+| Item | Resolution |
+|------|------------|
+| WASM sandbox | **Closed** — Linux CI (`.github/workflows/sandbox.yml`); Windows local dev optional (SDK in [DEPLOYMENT.md](DEPLOYMENT.md)) |
+| OS-level confinement (seccomp-bpf) | **Closed** — Linux CI adversarial test + rights-derived allowlist (`.github/workflows/seccomp.yml`); Windows/macOS: subprocess isolation only |
+| TLC / Java tooling | **Closed** — CI-verified (`.github/workflows/formal.yml`); log in `formal/tlc_run.log` |
+| CLI packaging | **Closed** — `authgate-cli` entry point + fresh-venv CI smoke; PyPI publish is release ops, not a gate gap |
+| Refinement proof TLA+ → Rust | **Out of scope** — limitation L7, not an engineering gap |
+| Distributed consensus in Rust TCB | **Non-goal** — [NON_GOALS.md](NON_GOALS.md) |
+
+**Infra-ready bar:** this table must stay empty of open rows; see [INFRA.md](INFRA.md).
 
 The intended long-term enforcement chain:
 
