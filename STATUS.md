@@ -91,6 +91,17 @@ The kill-test disposition above stands. Additional artifacts landed for review:
 - Bounded TLC run of AuthGateV3 — no error found (`formal/tlc_run.log`)
 - `REVIEW_PACKET.md`, `CHATGPT_REVIEW_BRIEF.md` — packaging for external readers
 - `FREEDOM_THEORY_POSITION.md`, `MCP_STANDARDIZATION.md` — positioning notes (do not alter the STATUS kill-tests)
-- **Infra-ready HTTP verifier** — `INFRA.md`, admin-gated `/machine`+`/claim`, attenuating `/delegate`, `/readyz`+`/metrics`, Docker/compose, GitHub Actions docker-smoke + API red-team boundary tests
+- **Infra-ready HTTP verifier** — defined in `INFRA.md`: **zero open engineering gaps** + required CI green; includes admin-gated `/machine`+`/claim`, attenuating `/delegate`, `/readyz`+`/metrics`, Docker/compose, formal/seccomp/sandbox CI
 - **Landed on `main`** (2026-08-20): CI + TCB + Sandbox green; obsolete branches (`feat/theory-gaps`, `infra/ready`, …) deleted
 - Figures: `docs/figures/` (regenerate with `python scripts/render_infographic.py`)
+
+## Addendum — 2026-08-22 (engineering gap closure)
+
+Disposition unchanged; **engineering evidence upgraded:**
+
+- **All original engineering gaps closed** — WASM sandbox CI, seccomp adversarial CI, TLC+Lean CI, CLI smoke; see README [Engineering gaps](README.md#engineering-gaps)
+- **CI 5/5 green** on `with-legitimacy` ([PR #8](https://github.com/Aliipou/authgate-kernel/pull/8)): CI, Formal, Seccomp, Sandbox, TCB Test Suite
+- **New modules:** `seccomp.rs`, `session_clock.rs`; Lean FreedomKernel lake build fixed (Lean 4.14)
+- **Formal honesty:** 2 Lean `sorry` (Scope T-SC1/T-SC5), 2 crypto axioms — not “all theorems verified”; see `formal/INCOMPLETENESS.md`
+- **Industry tiers:** [INDUSTRY_READINESS.md](INDUSTRY_READINESS.md) T1–T4; ops guides: KEY_MANAGEMENT, DISASTER_RECOVERY, MIGRATION
+- **Pending:** merge PR #8 → `main`

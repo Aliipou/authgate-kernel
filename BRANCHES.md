@@ -19,7 +19,14 @@ produces **self-justifying security** — the most dangerous failure mode.
 ## Branch Map
 
 ```
-main  (ground truth — immutable baseline)
+main  (ground truth — AuthGate authority only; legitimacy NOT required)
+ ├── with-legitimacy  Optional decision-os meet: legitimacy ∨ AuthGate
+ │     DENY-only legitimacy (Freedom Formal) → PolicyDecision → CallGate
+ │     Does NOT change Rust TCB; merges ideas to main only as opt-in API
+ │
+ ├── research/freedom-fullscope  Lab for Freedom Formal axioms + red-team
+ │     Feeds with-legitimacy; never merges theology into TCB
+ │
  ├── spec-core        Mathematical Truth
  │     TLA+ state machine, Lean4 proofs, THREAT_MODEL, COVERAGE
  │     → merges to main only when TLC-verified or Lean-discharged
@@ -75,15 +82,32 @@ A violation of CBCT-2 is a **known gap** — documented explicitly in
 
 ---
 
-## Current Status (2026-05-28)
+## Current Status (2026-08-22)
 
-| Branch | Last commit | Status |
-|---|---|---|
-| `main` | bf23248 | v2 TCB, AT-5.1 + AT-3.1 closed |
-| `spec-core` | 965ac3f | authgate_v3.tla + THREAT_MODEL.md |
-| `tcb-core` | 740e374 | TCB_CONSTRAINTS.md, LOC gate defined |
-| `adversarial-lab` | current | 231 scenarios, 0 violations |
-| `integration` | b0244c8 | Python mirror, BRANCHES.md |
+| Branch | Status |
+|---|---|
+| `main` | Pre–PR #8 merge; gap table on remote may lag |
+| `with-legitimacy` | **PR #8** — engineering gaps closed, CI 5/5 green, legitimacy seam optional |
+| `spec-core` | authgate_v3.tla + TLC/Lean CI via `formal.yml` |
+| `tcb-core` | TCB_CONSTRAINTS.md, LOC gate; seccomp + session_clock in crate |
+| `adversarial-lab` | 231 scenarios, 0 violations; seccomp kill-test in CI |
+| `integration` | Python mirror, adapters |
+| `tier/*` | Industry maturity branches — see [INDUSTRY_READINESS.md](INDUSTRY_READINESS.md) |
+
+---
+
+## Industry maturity branches (T1–T4)
+
+Cumulative promotion ladder — see [INDUSTRY_READINESS.md](INDUSTRY_READINESS.md):
+
+```text
+tier/assurance-bounded      →  formal core documented; admits explicit
+tier/engineering-complete   →  zero engineering gaps + CI green
+tier/deployable-reference   →  Docker/K8s/runbooks
+tier/production-infra-ready →  KMS/DR/migration + deployment checklist
+```
+
+These complement (do not replace) the three-truth branches below.
 
 ---
 
@@ -92,8 +116,8 @@ A violation of CBCT-2 is a **known gap** — documented explicitly in
 | Gap | Class | Status | Branch |
 |---|---|---|---|
 | AT-7.5 shadow execution | AT-7 | **CLOSED** (CallGate, tcb-core e136edb) | tcb-core |
-| TLC model-check instance | formal | OPEN | spec-core |
-| TLAPS proofs for I1–I8 | formal | OPEN | spec-core |
+| TLC model-check instance | formal | **CLOSED** (CI `formal.yml`) | spec-core |
+| TLAPS proofs for I1–I8 | formal | OPEN (TLC green; TLAPS optional) | spec-core |
 
 **CBCT-2 violations: 0.** All attack classes are either closed or explicitly
 documented as out-of-scope (semantic gap G1, clock trust G3, crypto assumptions G6).

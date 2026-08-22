@@ -39,7 +39,7 @@ AuthGate is pitched as systems/security engineering?
 | Layer | Role | Public claim |
 |---|---|---|
 | Theory of Freedom (`freedom-theory-work`, `PHILOSOPHY/`) | Optional normative *interpretation* of why veto-only legitimacy exists | Academic / lineage only; never a product differentiator |
-| FDK legitimacy | Veto-only evaluator (DENY/DEFER); co-equal under lattice meet | Constraint input, not grant authority |
+| Legitimacy (ex-FDK; Freedom Formal engine) | Veto-only evaluator (DENY/DEFER); co-equal under lattice meet | Constraint input, not grant authority — see `authgate.integrations.legitimacy` |
 | AuthGate / decision-os-min | Authority, attenuation, PEP, audit | **Primary claim** — executable AE-1…AE-10 under non-amplification |
 | MCP | Standardization surface for tool mediation | Adoption path (not a new RFC) |
 

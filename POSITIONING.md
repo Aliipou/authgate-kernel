@@ -1,12 +1,16 @@
 # Project Positioning — What authgate IS, What it IS NOT
 
+> **Canonical ecosystem positioning:** [`contracts-spec/POSITIONING.md`](https://github.com/Aliipou/contracts-spec/blob/feat/composition-contract-and-adr/POSITIONING.md)
+> (local: `../contracts-spec/POSITIONING.md`). This document is authoritative only for
+> **AuthGate project-specific** scope and implementation context.
+
 > "If you define authgate as 'a product for LangChain/OpenAI/CrewAI,' it dies
 > when those frameworks change. If you define it as 'the authorization layer
 > between decision and execution,' it becomes more important as agents get stronger."
 > — Architect review, 2026-05-30
 
-This document is the canonical answer. Every other document defers to this one
-when there is a conflict about identity.
+This document is the canonical answer for **AuthGate-local** identity. For
+ecosystem-wide claims, defer to `contracts-spec/POSITIONING.md`.
 
 ---
 

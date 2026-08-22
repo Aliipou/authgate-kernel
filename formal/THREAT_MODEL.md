@@ -125,7 +125,7 @@ Everything else (semantic correctness of the LLM's intent, correctness of the ad
 | ID | Attack | Mitigation | Status |
 |---|---|---|---|
 | AT-7.1 | Post-seal action mutation | binding_hash | ✅ closed |
-| AT-7.2 | Adapter bypasses verify() (shadow execution) | **AT-7.5** — architectural gap | ⚠️ open |
+| AT-7.2 | Adapter bypasses verify() (shadow execution) | **Partial:** WASM sandbox + `SeccompCallGate` block OS-level execution when deployed; pre-registration fn reference still bypasses pure Python | ⚠️ mitigated (Linux + enforcement stack) |
 | AT-7.3 | Python mirror used as TCB | Python is test oracle only; not in trust boundary | documented |
 | AT-7.4 | LLM generates malicious IR | semantic enforcement layer | out of scope (L1) |
 

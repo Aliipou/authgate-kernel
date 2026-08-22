@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Aliipou — AuthGate & Decision OS</title>
+  <script type="module">
+    import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+    mermaid.initialize({ startOnLoad: true, theme: "neutral" });
+  </script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --panel: #1a222c;
+      --text: #e7ecf1;
+      --muted: #9aa7b5;
+      --accent: #3d8bfd;
+      --line: #2a3542;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", system-ui, sans-serif;
+      background: radial-gradient(1200px 600px at 10% -10%, #1b3a5f 0%, var(--bg) 55%);
+      color: var(--text);
+      line-height: 1.5;
+    }
+    main { max-width: 960px; margin: 0 auto; padding: 2.5rem 1.25rem 4rem; }
+    h1 { font-size: 1.75rem; margin: 0 0 0.35rem; letter-spacing: -0.02em; }
+    h2 { font-size: 1.15rem; margin: 2rem 0 0.75rem; }
+    p.lead { color: var(--muted); margin: 0 0 1.5rem; max-width: 42rem; }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 1rem 1.1rem;
+      margin: 1rem 0;
+      overflow-x: auto;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 0.92rem; }
+    th, td { text-align: left; padding: 0.55rem 0.4rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+    th { color: var(--muted); font-weight: 600; }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    .tag {
+      display: inline-block;
+      font-size: 0.7rem;
+      padding: 0.12rem 0.45rem;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      color: var(--muted);
+      margin-left: 0.35rem;
+    }
+    footer { margin-top: 2.5rem; color: var(--muted); font-size: 0.85rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>AuthGate · Decision OS · Legitimacy</h1>
+    <p class="lead">
+      Live map of Ali Pourrahim’s capability / decision stack.
+      AuthGate answers authority; legitimacy (ex-FDK) is an optional DENY-only veto under decision-os composition.
+      Canonical ecosystem claims: <code>contracts-spec/POSITIONING.md</code> (version-controlled).
+    </p>
+
+    <h2>Composition graph</h2>
+    <div class="panel">
+      <pre class="mermaid">
+flowchart TB
+  REQ[Agent / planner request]
+  LEG[Legitimacy evaluator<br/>Freedom Formal · DENY-only]
+  PD[PolicyDecision JSON]
+  AG[AuthGate CallGate<br/>Rust TCB authority]
+  IO[Tool / IO]
+  AUD[Hash-chained audit]
+
+  REQ --> LEG
+  LEG -->|ALLOW| PD
+  LEG -->|DENY / DEFER| AUD
+  PD --> AG
+  AG -->|Permit| IO
+  AG -->|Deny| AUD
+  IO --> AUD
+      </pre>
+    </div>
+
+    <h2>Deployed surfaces</h2>
+    <div class="panel">
+      <table>
+        <thead>
+          <tr><th>Project</th><th>Role</th><th>Live</th><th>Repo</th></tr>
+        </thead>
+        <tbody id="deploys">
+          <tr>
+            <td>authgate-hub <span class="tag">this site</span></td>
+            <td>Stack map + links</td>
+            <td id="self-link">this deployment</td>
+            <td><a href="https://github.com/Aliipou/authgate-kernel">authgate-kernel</a></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h2>Core repos (GitHub)</h2>
+    <div class="panel">
+      <table>
+        <tbody>
+          <tr><td><a href="https://github.com/Aliipou/authgate-kernel">authgate-kernel</a></td><td>Capability gate / Rust TCB</td></tr>
+          <tr><td><a href="https://github.com/Aliipou/decision-os-min">decision-os-min</a></td><td>Decision OS reference core</td></tr>
+          <tr><td><a href="https://github.com/Aliipou/freedom-decision-kernel">freedom-decision-kernel</a></td><td>Legacy FDK (→ legitimacy)</td></tr>
+          <tr><td><a href="https://github.com/Aliipou/freedom-policy">freedom-policy</a></td><td>Theory-of-Freedom policy layer</td></tr>
+          <tr><td><a href="https://github.com/Aliipou/decision-runtime">decision-runtime</a></td><td>Experimental agent runtime</td></tr>
+          <tr><td><a href="https://github.com/Aliipou/ride-startup">ride-startup</a></td><td>Ride product (web/admin)</td></tr>
+          <tr><td><a href="https://github.com/Aliipou/crowd-vs-model">crowd-vs-model</a></td><td>Next.js experiment</td></tr>
+          <tr><td><a href="https://github.com/Aliipou/PipelineGuard">PipelineGuard</a></td><td>Pipeline monitoring SaaS</td></tr>
+          <tr><td><a href="https://github.com/Aliipou/qfl">qfl</a></td><td>Quantum federated learning</td></tr>
+          <tr><td><a href="https://github.com/Aliipou/logforge">logforge</a></td><td>Log analytics</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <footer>
+      Branches: <code>main</code> = AuthGate without legitimacy required ·
+      <code>with-legitimacy</code> = optional meet ·
+      <a href="https://github.com/Aliipou/authgate-kernel/pull/8">PR #8</a>
+    </footer>
+  </main>
+</body>
+</html>

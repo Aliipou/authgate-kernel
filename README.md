@@ -24,14 +24,43 @@ flowchart LR
 
 ![Verification evidence](docs/figures/verification_stack.png)
 
-[![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Aliipou/authgate-kernel/actions)
+[![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg?branch=with-legitimacy)](https://github.com/Aliipou/authgate-kernel/actions)
+[![Formal](https://img.shields.io/badge/formal-TLC%2BLean%20CI-green.svg)](.github/workflows/formal.yml)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
 [![Tests](https://img.shields.io/badge/tests-1300%2B%20passing-brightgreen.svg)](tests/)
 [![Kani](https://img.shields.io/badge/Kani-19%20harnesses-green.svg)](formal/)
 [![Lean4](https://img.shields.io/badge/Lean4-partial-blue.svg)](formal/lean4/)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm--Noncommercial--1.0.0-orange.svg)](LICENSE)
 
-**Review / ops:** [REVIEW_PACKET.md](REVIEW_PACKET.md) · [ASSUMPTIONS.md](ASSUMPTIONS.md) · [INFRA.md](INFRA.md)
+**Review / ops:** [REVIEW_PACKET.md](REVIEW_PACKET.md) · [ASSUMPTIONS.md](ASSUMPTIONS.md) · [INFRA.md](INFRA.md) · [INDUSTRY_READINESS.md](INDUSTRY_READINESS.md)
+
+---
+
+## What's new (Aug 2026)
+
+**Engineering gap audit — closed.** All items from the original gap list are resolved or explicitly scoped (see [Engineering gaps](#engineering-gaps)). No open rows remain.
+
+**CI — all green** on branch `with-legitimacy` ([PR #8](https://github.com/Aliipou/authgate-kernel/pull/8) → `main`):
+
+| Workflow | What it verifies |
+|----------|------------------|
+| [CI](.github/workflows/ci.yml) | Rust clippy/tests, Python ruff/mypy/pytest, docker `/readyz`, red-team, adversarial simulation |
+| [Formal verification](.github/workflows/formal.yml) | TLC model check + Lean 4 `lake build` (FreedomKernel) |
+| [Seccomp enforcement](.github/workflows/seccomp.yml) | Linux adversarial: `execve` killed under read-only allowlist |
+| [Sandbox](.github/workflows/sandbox.yml) | WASM sandbox: write blocked with read-only rights |
+| TCB Test Suite | Full Rust TCB regression |
+
+**New enforcement & ops modules:**
+
+- `authgate-kernel/src/seccomp.rs` — rights-derived syscall allowlist (mirrors WASM bitmask)
+- `authgate-kernel/src/session_clock.rs` — monotonic session clock; rejects backward time jumps
+- `tests/test_seccomp_adversarial.py` — seccomp kill-test in CI
+
+**Formal system posture (honest):** minimal, **incomplete but consistent** — every theorem is proved, admitted (`sorry`), or listed as axiom/non-goal. Security-critical scope lemmas T-SC3/T-SC4 are proved; 2 `sorry` remain in `Scope.lean` (trailing `/`, prefix antisymmetry); 2 crypto axioms in `Proofs.lean`. Details: [formal/INCOMPLETENESS.md](formal/INCOMPLETENESS.md).
+
+**Industry readiness tiers** defined in [INDUSTRY_READINESS.md](INDUSTRY_READINESS.md) — T1 assurance-bounded through T4 production infra-ready. Current branch meets **T2 engineering-complete** (gaps closed + CI green); ops guides (KMS, DR, migration) land in T3/T4 docs.
+
+**Pending:** merge PR #8 to `main` so the default branch carries the same CI and gap closure.
 
 ---
 
@@ -115,7 +144,7 @@ Optional philosophy / Theory-of-Freedom notes live under [`PHILOSOPHY/`](PHILOSO
 
 ---
 
-## Numbers (as of current `main`)
+## Numbers (Aug 2026 — `with-legitimacy`; merges to `main` via PR #8)
 
 | Metric | Value |
 |---|---|
@@ -123,8 +152,9 @@ Optional philosophy / Theory-of-Freedom notes live under [`PHILOSOPHY/`](PHILOSO
 | Rust crate lib tests | ~293 (`cargo test --lib`) |
 | Python / integration tests | 1300+ passing |
 | Kani harnesses | 19 proved (bounded) |
-| Lean 4 | Partial — several scope theorems proved; crypto treated as axioms where noted |
-| TLA+ / TLC | Safety model checked 2026-08-20 (bounded; see `formal/COVERAGE.md`) |
+| Lean 4 | Partial — TCB/Temporal/MultiAgent proved; Scope: 2 `sorry`; 2 crypto axioms |
+| TLA+ / TLC | Safety model checked; **CI-verified** via `formal.yml` (`formal/tlc_run.log`) |
+| CI workflows (PR #8) | 5/5 green (CI, Formal, Seccomp, Sandbox, TCB) |
 | Python `verify()` latency (indicative) | p50 ≈ 10–17 µs depending on registry size |
 
 Treat formal badges as **evidence of engineering discipline**, not as a certificate that every deployment is secure. Crypto implementations and clock integrity remain caller/environment responsibilities unless separately attested.
@@ -223,7 +253,7 @@ authgate-cli audit verify /var/log/authgate.jsonl
 cargo build --features sandbox
 ```
 
-`SandboxedExecutor` wraps `CallGate` so permitted actions run with host imports limited to the rights bitmask. Closing OS-level confinement (seccomp, etc.) is still engineering work — see gaps below.
+`SandboxedExecutor` wraps `CallGate` so permitted actions run with host imports limited to the rights bitmask. On Linux, pair with `SeccompExecutor` / `SeccompCallGate` for subprocess syscall confinement using the same rights mapping (`authgate-kernel/src/seccomp.rs`).
 
 ---
 
@@ -274,26 +304,36 @@ Enforced on every `verify()` / `CallGate::execute`, in order:
 ## Repository layout
 
 ```text
-authgate-kernel/     Rust kernel; TCB under src/tcb/
+authgate-kernel/     Rust kernel; TCB under src/tcb/; seccomp + session_clock helpers
 formal/              TLA+, Kani, Lean 4, coverage & incompleteness notes
+.github/workflows/   CI, formal.yml, seccomp.yml, sandbox.yml
 attack_harness/      Wire / differential / mutation probes
 src/authgate/        Python compatibility runtime + adapters (not TCB)
 spec/                JSON Schema wire contract
-examples/            Integrations (incl. Kubernetes sidecar sketch)
+examples/            Integrations (incl. Kubernetes sidecar)
 docs/figures/        Architecture diagrams
+INDUSTRY_READINESS.md  Maturity tiers T1–T4 (assurance → production)
+KEY_MANAGEMENT.md    Vault / KMS / Key Vault integration guide
+DISASTER_RECOVERY.md Root-key compromise & audit recovery runbooks
+MIGRATION.md         Registry/schema migration guide
 ```
 
 ---
 
 ## Engineering gaps
 
-| Gap | Status |
-|---|---|
-| WASM sandbox on Windows | Often blocked by missing Windows SDK libs — prefer Linux CI/images |
-| OS-level confinement (seccomp-bpf) | Not implemented |
-| TLC / Java tooling in every environment | Model checked on record; local runs need Java + `tla2tools` |
-| Refinement proof TLA+ → Rust | Not claimed |
-| Distributed consensus in Rust TCB | Future work; Python experiments exist |
+All items from the original gap audit are **closed or explicitly scoped**. None remain open.
+
+| Item | Resolution |
+|------|------------|
+| WASM sandbox | **Closed** — Linux CI (`.github/workflows/sandbox.yml`); Windows local dev optional (SDK in [DEPLOYMENT.md](DEPLOYMENT.md)) |
+| OS-level confinement (seccomp-bpf) | **Closed** — Linux CI adversarial test + rights-derived allowlist (`.github/workflows/seccomp.yml`); Windows/macOS: subprocess isolation only |
+| TLC / Java tooling | **Closed** — CI-verified (`.github/workflows/formal.yml`); log in `formal/tlc_run.log` |
+| CLI packaging | **Closed** — `authgate-cli` entry point + fresh-venv CI smoke; PyPI publish is release ops, not a gate gap |
+| Refinement proof TLA+ → Rust | **Out of scope** — limitation L7, not an engineering gap |
+| Distributed consensus in Rust TCB | **Non-goal** — [NON_GOALS.md](NON_GOALS.md) |
+
+**Infra-ready bar:** this table must stay empty of open rows; see [INFRA.md](INFRA.md).
 
 The intended long-term enforcement chain:
 
@@ -312,7 +352,7 @@ Agent → CallGate → capability-bound WASM (or OS sandbox) → restricted IO
 | L3 | Side channels not addressed |
 | L4 | Python runtime is not formally verified |
 | L5 | Heuristic extensions (IFC helpers, scorers) are not TCB |
-| L6 | Clock is caller-supplied — a compromised clock is not detected by the gate |
+| L6 | Clock is caller-supplied — use `SessionClock` / monotonic sourcing; backward jumps rejected within a session (see `TCB_DISCIPLINE.md`) |
 | L7 | No implementation-level refinement proof from TLA+ to Rust |
 
 ---
