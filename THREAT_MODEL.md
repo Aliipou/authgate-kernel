@@ -103,7 +103,7 @@ The kernel does **not** claim to verify:
 | Kernel module / hypervisor compromise | Attacker with ring-0 access | No software defense; ed25519 signatures allow external audit post-compromise | **Fundamental TCB assumption: if hardware or OS kernel is compromised, no software guarantee holds** |
 | Process memory inspection | Read verifier state from another process | OS-level isolation (process boundary); not defended within this kernel | Requires OS-level compromise (covered above) |
 
-**Deployment recommendation:** Run the verifier as an isolated sidecar process with no network access, minimal filesystem permissions, and restricted syscalls (seccomp/AppArmor). This is defense-in-depth, not a kernel-level guarantee.
+**Deployment recommendation:** Run the verifier as an isolated sidecar process with no network access, minimal filesystem permissions, and restricted syscalls. On Linux, use `SeccompExecutor` (rights-derived seccomp-bpf allowlist — same mapping as WASM host imports) or the WASM sandbox feature; AppArmor is additional defense-in-depth. Windows/macOS: subprocess isolation only (seccomp unsupported).
 
 ---
 

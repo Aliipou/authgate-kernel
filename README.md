@@ -222,7 +222,7 @@ authgate-cli audit verify /var/log/authgate.jsonl
 cargo build --features sandbox
 ```
 
-`SandboxedExecutor` wraps `CallGate` so permitted actions run with host imports limited to the rights bitmask. Closing OS-level confinement (seccomp, etc.) is still engineering work — see gaps below.
+`SandboxedExecutor` wraps `CallGate` so permitted actions run with host imports limited to the rights bitmask. On Linux, pair with `SeccompExecutor` / `SeccompCallGate` for subprocess syscall confinement using the same rights mapping (`authgate-kernel/src/seccomp.rs`).
 
 ---
 
@@ -288,11 +288,12 @@ docs/figures/        Architecture diagrams
 
 | Gap | Status |
 |---|---|
-| WASM sandbox on Windows | Often blocked by missing Windows SDK libs — prefer Linux CI/images |
-| OS-level confinement (seccomp-bpf) | Not implemented |
-| TLC / Java tooling in every environment | Model checked on record; local runs need Java + `tla2tools` |
+| WASM sandbox on Windows | Linux CI green (`.github/workflows/sandbox.yml`); local Windows build may need Windows SDK 10.0.22621+ — see [DEPLOYMENT.md](DEPLOYMENT.md) |
+| OS-level confinement (seccomp-bpf) | **Linux:** rights-derived allowlist + adversarial CI (`.github/workflows/seccomp.yml`); Windows/macOS: subprocess isolation only |
+| TLC / Java tooling | **CI-verified** (`.github/workflows/formal.yml`); local re-run needs Java 17 + `tla2tools.jar` — see `formal/TLC_SETUP.md` |
+| CLI packaging | Entry point registered; CI smoke test (`authgate-cli --help` after fresh venv install); PyPI publish is release ops |
 | Refinement proof TLA+ → Rust | Not claimed |
-| Distributed consensus in Rust TCB | Future work; Python experiments exist |
+| Distributed consensus in Rust TCB | Explicit non-goal — see [NON_GOALS.md](NON_GOALS.md) |
 
 The intended long-term enforcement chain:
 
@@ -311,7 +312,7 @@ Agent → CallGate → capability-bound WASM (or OS sandbox) → restricted IO
 | L3 | Side channels not addressed |
 | L4 | Python runtime is not formally verified |
 | L5 | Heuristic extensions (IFC helpers, scorers) are not TCB |
-| L6 | Clock is caller-supplied — a compromised clock is not detected by the gate |
+| L6 | Clock is caller-supplied — use `SessionClock` / monotonic sourcing; backward jumps rejected within a session (see `TCB_DISCIPLINE.md`) |
 | L7 | No implementation-level refinement proof from TLA+ to Rust |
 
 ---

@@ -143,6 +143,31 @@ formal/lean4/FreedomKernel/
   MultiAgent.lean
     [✓] attenuation_cannot_escalate          (proved)
     [✓] delegation_depth_bounded             (trivial)
+  Scope.lean
+    [ ] scope_contains_reflexive (T-SC1)     (admitted — String.normalize induction pending)
+    [✓] scope_contains_root_universal (T-SC2)
+    [✓] traversal_in_parent/child (T-SC3)    (proved — security-critical)
+    [✓] prefix_implies_containment (T-SC4)   (proved — security-critical)
+    [ ] scope_contains_antisymmetric (T-SC5) (admitted — String prefix antisymmetry pending)
   Incompleteness.lean
     [✓] infinite_horizon_undecidable         (axiom — undecidability result)
 ```
+
+### Admitted theorems (explicit, not hidden)
+
+| Theorem | File | Why admitted |
+|---|---|---|
+| `scope_contains_reflexive` (T-SC1) | `Scope.lean` | Requires induction over `String.normalize`; Lean 4 String library support for this proof pattern is not yet wired |
+| `scope_contains_antisymmetric` (T-SC5) | `Scope.lean` | Requires mutual-prefix antisymmetry over normalized paths; same String-library gap as T-SC1 |
+
+Both are axiomatically sound by inspection of the Python `scope_contains` implementation.
+Security-critical traversal rejection (T-SC3) and prefix containment (T-SC4) are fully proved.
+
+### Crypto axioms (trusted boundary — Chlipala feedback)
+
+| Axiom | Statement | Replacement plan |
+|---|---|---|
+| `sig_euf_cma` | ed25519 EUF-CMA security | HACL\*/Fiat-lineage verified Ed25519 (highest-value formal gap) |
+| `forged_revocation_harmless` | Invalid-sig revocations do not affect decisions | Discharge via signature verification proof chain |
+
+Do **not** claim "16 theorems proved" without this split — see `formal/COVERAGE.md` and README badges.

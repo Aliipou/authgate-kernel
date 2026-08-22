@@ -267,6 +267,30 @@ jobs:
       - name: Smoke test API
         run: pytest tests/test_api.py -v
 
+  cli-smoke:
+    name: CLI — pip install + authgate-cli --help
+    runs-on: ubuntu-24.04
+    needs: rust-check
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Fresh venv install (matches README Quick Start)
+        run: |
+          python -m venv /tmp/ag-cli-venv
+          /tmp/ag-cli-venv/bin/pip install -U pip
+          /tmp/ag-cli-venv/bin/pip install ./authgate-kernel
+          /tmp/ag-cli-venv/bin/pip install .
+          /tmp/ag-cli-venv/bin/authgate-cli --help
+          /tmp/ag-cli-venv/bin/authgate-cli verify --help
+
   performance-gate:
     name: Performance regression gate
     runs-on: ubuntu-24.04
