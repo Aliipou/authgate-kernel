@@ -13,6 +13,10 @@ lineage from theory to implementation is explicit and checkable.
 
 > One sentence: **same engineering, with the philosophy made traceable.**
 
+The public explanatory edition of the book (English + Persian, philosopher path,
+fair justification) is **[Aliipou/freedom-theory](https://github.com/Aliipou/freedom-theory)**.
+This folder is the AuthGate *trace*; that repo is the *text*.
+
 ---
 
 ## The theory in one chain

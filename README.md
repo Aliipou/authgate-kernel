@@ -10,6 +10,8 @@ No valid proof → the action does not run. Same inputs always yield the same Pe
 
 Not a LangChain plugin. Not model-specific. The product is a **wire format** plus a **verify function**. Framework adapters are convenience glue — when a framework goes away, the contract stays. See [POSITIONING.md](POSITIONING.md).
 
+**Constitution (book + philosopher edition):** [Aliipou/freedom-theory](https://github.com/Aliipou/freedom-theory). This repo is **authority** (AuthGate TCB). It does not replace the legitimacy floor. Start there for A1–A7; start here for signed capability proofs.
+
 **Deployable verifier API:** [INFRA.md](INFRA.md) — Docker Compose, `/readyz`, admin-gated registry mutation, attenuating `/delegate`.
 
 ```mermaid
