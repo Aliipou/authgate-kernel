@@ -26,6 +26,25 @@ verdict before the capability gate, connecting the two products into
 - `examples/fdk_authgate_flow.py` — decoupled runnable demo of the three outcomes.
 - `DECISIONS.md` — records the contract-not-code boundary decision.
 
+**Delegate Reputation Extension (DRE) — Phases 1–5**
+- `src/authgate/extensions/delegate_reputation.py` — `DelegateReputationEngine` with DCRS scoring, NDC risk weights, chain-depth attenuation, and external attestation integration
+- `src/authgate/extensions/historical_behavior_store.py` — SQLite-backed append-only HBS with covering index (`idx_actor_ts_covering`) and partial indexes for flagged/failed-attest rows
+- `src/authgate/extensions/hbs_protection.py` — `GuardedBehaviorStore` with rate-limiting, burst detection, NDC spoofing detection, and daily resource-breadth limits
+- `src/authgate/extensions/attestation.py` — Pluggable attestors: SPIFFE/SVID, AWS IAM, GCP IAM, Azure IAM, plus `CompositeAttestor` and `NullAttestor`
+- `docs/attestation.md` — Operator-facing documentation and custom attestor guide
+- `benchmarks/dre_benchmark.py` — Performance benchmark: **2.8ms p99** on 10k-entry history (target <5ms)
+- `examples/langchain_integration/demo_with_dre.py` — End-to-end LangChain adapter with NDC
+
+**Metrics**
+
+| Metric | Before | After |
+|--------|--------|-------|
+| Python integration tests | 1,381 | **1,400** |
+| DRE latency p99 (10k history) | — | **2.8 ms** |
+| Attestation production paths | 0 | 4 (SPIFFE, AWS, GCP, Azure) |
+| HBS write guards | 0 | 4 (rate, burst, NDC, breadth) |
+| Adversarial DRE tests | 0 | 10 |
+
 ## v2.4.0 — 2026-05-29
 
 ### Added
@@ -280,8 +299,6 @@ verdict before the capability gate, connecting the two products into
 - `// Book pp.800-805` inline comment from `verifier.rs`
 
 ---
-
-## [Unreleased]
 
 ## [1.0.0] - 2026-05-17
 
