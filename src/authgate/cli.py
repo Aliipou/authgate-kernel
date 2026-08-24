@@ -8,6 +8,7 @@ Commands:
 
 Usage:
   authgate-cli verify --registry reg.json --action action.json [--audit log.jsonl]
+  authgate-cli verify --registry reg.json --action action.json --enable-dre --dre-config dre.json
   authgate-cli audit verify log.jsonl
   authgate-cli audit replay log.jsonl <index>
   authgate-cli audit stats log.jsonl
@@ -47,7 +48,8 @@ def _build_registry_from_dict(data: dict[str, Any]):
 
     for a in data.get("agents", []):
         kind = AgentType[a["kind"].upper()]
-        agents[a["id"]] = Entity(a["id"], kind)
+        metadata = a.get("metadata", {})
+        agents[a["id"]] = Entity(a["id"], kind, metadata=metadata)
 
     for m in data.get("machine_owners", []):
         machine = agents[m["machine"]]
@@ -134,6 +136,8 @@ def cmd_verify(args: argparse.Namespace) -> int:
         audit = AuditLog(path=args.audit)
 
     frozen = registry.freeze()
+
+    # Kernel verification is always the authority gate
     verifier = FreedomVerifier(frozen, audit_log=audit)
     result = verifier.verify(action)
 
@@ -145,6 +149,51 @@ def cmd_verify(args: argparse.Namespace) -> int:
         "warnings": list(result.warnings),
         "requires_human_arbitration": result.requires_human_arbitration,
     }
+
+    # DRE advisory overlay (explicit opt-in only)
+    if args.enable_dre:
+        from authgate.extensions.delegate_reputation_config import DREConfig
+
+        dre_cfg = DREConfig()
+        if args.dre_config:
+            cfg_data = _load_json(args.dre_config, "DRE config")
+            dre_cfg = DREConfig.from_dict(cfg_data)
+
+        dre_engine = dre_cfg.build_engine()
+        dre_assessment = dre_engine.evaluate(action, result)
+
+        output["dre"] = {
+            "dcrs": dre_assessment.dcrs,
+            "requires_human_arbitration": dre_assessment.requires_human_arbitration,
+            "risk_flags": list(dre_assessment.risk_flags),
+        }
+        if dre_assessment.score is not None:
+            output["dre"]["detail"] = {
+                "threshold": dre_assessment.score.threshold,
+                "ndc": dre_assessment.score.ndc,
+                "chain_length": dre_assessment.score.chain_length,
+                "base_risk": dre_assessment.score.base_risk,
+                "historical_penalty": dre_assessment.score.historical_penalty,
+                "attestation_penalty": dre_assessment.score.attestation_penalty,
+                "decay_factor": dre_assessment.score.decay_factor,
+                "historical_actions_90d": dre_assessment.score.historical_actions_90d,
+                "flagged_actions_90d": dre_assessment.score.flagged_actions_90d,
+                "denied_actions_90d": dre_assessment.score.denied_actions_90d,
+                "unique_resources_90d": dre_assessment.score.unique_resources_90d,
+            }
+
+        # Advisory-only: DRE cannot change the kernel verdict
+        if not result.permitted and dre_assessment.dcrs < dre_engine.threshold:
+            output["dre_note"] = (
+                "DRE score is advisory. Kernel Deny stands. "
+                "DRE cannot mint Permit."
+            )
+        elif result.permitted and dre_assessment.dcrs >= dre_engine.threshold:
+            output["dre_note"] = (
+                "DRE flags elevated risk. Integrator decides next step. "
+                "DRE cannot Deny — only assess."
+            )
+
     if args.json:
         print(json.dumps(output, indent=2))
     else:
@@ -255,6 +304,10 @@ def build_parser() -> argparse.ArgumentParser:
                           help="Append audit entry to this JSONL file")
     p_verify.add_argument("--json", action="store_true",
                           help="Output machine-readable JSON instead of human text")
+    p_verify.add_argument("--enable-dre", action="store_true",
+                          help="Enable DRE advisory overlay (default: off)")
+    p_verify.add_argument("--dre-config", metavar="DRE.json",
+                          help="DRE configuration JSON file (requires --enable-dre)")
     p_verify.set_defaults(func=cmd_verify)
 
     # audit

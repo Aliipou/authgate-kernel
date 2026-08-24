@@ -9,6 +9,10 @@ ExtendedFreedomVerifier = kernel.FreedomVerifier
 The API uses ExtendedFreedomVerifier.
 The kernel FreedomVerifier is the formal gate; extensions add observability
 and adversarial robustness on top.
+
+DRE (delegate reputation) is NOT wired into ExtendedFreedomVerifier by default.
+It lives in extensions/ as a standalone advisory module. Integrators that want
+behavioral risk scoring must call it explicitly after the kernel verify() step.
 """
 from __future__ import annotations
 
@@ -19,6 +23,7 @@ from authgate.extensions.detection import detect
 from authgate.extensions.ifc import IFCViolation, NonInterferenceChecker, SecurityLattice
 from authgate.extensions.resolver import ConflictQueue
 from authgate.extensions.synthesis import ProposedRule, SynthesisEngine
+from authgate.kernel.audit import AuditLog
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier, VerificationResult
 
@@ -29,9 +34,10 @@ class ExtendedVerificationResult:
     Heuristic-augmented result. NEVER returned by the kernel.
 
     Wraps a kernel VerificationResult with heuristic signals like
-    manipulation_score. Callers that need these signals use ExtendedFreedomVerifier;
-    callers that need only structural enforcement use the kernel FreedomVerifier
-    and get a clean VerificationResult.
+    manipulation_score. Callers that need these signals use
+    ExtendedFreedomVerifier; callers that need only structural
+    enforcement use the kernel FreedomVerifier and get a clean
+    VerificationResult.
 
     The kernel contract stays clean. The extension carries its own type.
     """
@@ -69,6 +75,10 @@ class ExtendedFreedomVerifier:
 
     Returns ExtendedVerificationResult — a SUPERTYPE that carries the kernel
     result plus heuristic fields. The kernel's VerificationResult is never mutated.
+
+    DRE (delegate reputation) is intentionally NOT included here.
+    It is an optional advisory overlay in extensions/delegate_reputation.py.
+    Integrators that want DRE must compose it explicitly after verify().
     """
 
     def __init__(
@@ -77,12 +87,13 @@ class ExtendedFreedomVerifier:
         conclusion_tester: Callable[[str], bool] | None = None,
         manipulation_threshold: float = 0.5,
         freeze: bool = True,
-        audit_log: object | None = None,
+        audit_log: AuditLog | None = None,
     ) -> None:
         self.registry = registry
         self._gate = FreedomVerifier(registry, freeze=freeze, audit_log=audit_log)
         self.synthesis = SynthesisEngine()
         self.conflict_queue = ConflictQueue()
+        self._audit_log = audit_log
         self._conclusion_tester = conclusion_tester
         self._manip_threshold = manipulation_threshold
 
