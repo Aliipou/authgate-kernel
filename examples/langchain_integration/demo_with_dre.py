@@ -1,11 +1,11 @@
 """
 authgate-kernel LangChain integration with DRE — end-to-end demo.
 
-Demonstrates: registry setup → NDC annotation → DRE scoring → audit trail.
+Demonstrates: registry setup → kernel verify → DRE advisory scoring → audit trail.
 
 This extends the Phase D2 demo with:
   - Non-Determinism Class (NDC) annotation on agents
-  - Delegate Reputation Extension (DRE) for reasonable-delegate scoring
+  - Delegate Reputation Extension (DRE) as an optional behavioral risk overlay
   - External attestation stubs (SPIFFE / Cloud IAM)
 
 Run:
@@ -28,13 +28,12 @@ from typing import Any, Callable
 # Add src/ to path for direct execution without install
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from authgate.extensions import ExtendedFreedomVerifier, NDC
-from authgate.extensions.delegate_reputation import DelegateReputationEngine
+from authgate.extensions.delegate_reputation import DelegateReputationEngine, NDC
 from authgate.extensions.historical_behavior_store import HistoricalBehaviorStore
 from authgate.kernel.audit import AuditLog
 from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
 from authgate.kernel.registry import OwnershipRegistry
-from authgate.kernel.verifier import Action, VerificationResult
+from authgate.kernel.verifier import Action, FreedomVerifier, VerificationResult
 
 logging.basicConfig(
     level=logging.INFO,
@@ -70,18 +69,23 @@ class ToolCallResult:
     output: str = ""
     violations: tuple[str, ...] = field(default_factory=tuple)
     dre_score: dict[str, Any] | None = None
+    dre_flags: list[str] = field(default_factory=list)
     audit_entry_count: int = 0
 
 
 # ---------------------------------------------------------------------------
-# Gated tool executor with DRE
+# Gated tool executor with DRE (standalone advisory pattern)
 # ---------------------------------------------------------------------------
 
 class GatedToolExecutorWithDRE:
     """
     Execute tools with DRE-enabled capability verification.
 
-    Every call produces kernel + extension audit entries.
+    Architecture:
+      1. Kernel FreedomVerifier runs first (authority gate).
+      2. If kernel permits, DRE evaluates behavioral risk (advisory only).
+      3. Integrator decides whether to act on DRE flags.
+
     The registry is frozen at construction time — no TOCTOU.
     """
 
@@ -95,11 +99,8 @@ class GatedToolExecutorWithDRE:
         self._frozen = registry.freeze()
         self._tools: dict[str, Tool] = {t.name: t for t in tools}
         self._audit = audit_log
-        self._verifier = ExtendedFreedomVerifier(
-            self._frozen,
-            audit_log=self._audit,
-            reputation_engine=dre_engine,
-        )
+        self._kernel_verifier = FreedomVerifier(self._frozen, audit_log=self._audit)
+        self._dre = dre_engine
 
     def execute(self, request: ToolCallRequest) -> ToolCallResult:
         tool = self._tools.get(request.tool_name)
@@ -121,38 +122,58 @@ class GatedToolExecutorWithDRE:
             action_kwargs["resources_write"] = [tool.resource]
 
         action = Action(**action_kwargs)
-        result = self._verifier.verify(action)
 
-        dre_dict = dataclasses.asdict(result.reputation) if result.reputation else None
+        # Step 1: Kernel authority check (the only gate that can Permit/Deny)
+        kernel_result = self._kernel_verifier.verify(action)
 
-        if not result.permitted:
+        # Step 2: DRE advisory overlay (only if kernel permitted)
+        dre_assessment = self._dre.evaluate(action, kernel_result)
+        dre_dict = dataclasses.asdict(dre_assessment.score) if dre_assessment.score else None
+
+        # Step 3: Integrator decision (DRE is advisory; kernel is authority)
+        # In this demo, we respect the kernel verdict and log DRE flags.
+        permitted = kernel_result.permitted
+
+        if not permitted:
             log.warning(
-                "BLOCKED: actor=%s tool=%s violations=%s dre=%s",
+                "BLOCKED: actor=%s tool=%s violations=%s",
                 request.actor.name,
                 request.tool_name,
-                result.violations,
-                result.reputation.dcrs if result.reputation else "N/A",
+                kernel_result.violations,
             )
             return ToolCallResult(
                 tool_name=request.tool_name,
                 permitted=False,
-                violations=result.violations,
+                violations=kernel_result.violations,
                 dre_score=dre_dict,
+                dre_flags=list(dre_assessment.risk_flags),
                 audit_entry_count=len(self._audit),
             )
 
-        log.info(
-            "PERMIT: actor=%s tool=%s dre=%.2f",
-            request.actor.name,
-            request.tool_name,
-            result.reputation.dcrs if result.reputation else 0.0,
-        )
+        # Kernel permitted — DRE may still flag elevated risk
+        if dre_assessment.requires_human_arbitration:
+            log.warning(
+                "PERMIT (elevated risk): actor=%s tool=%s DRE=%.2f flags=%s",
+                request.actor.name,
+                request.tool_name,
+                dre_assessment.dcrs,
+                list(dre_assessment.risk_flags),
+            )
+        else:
+            log.info(
+                "PERMIT: actor=%s tool=%s DRE=%.2f",
+                request.actor.name,
+                request.tool_name,
+                dre_assessment.dcrs,
+            )
+
         output = tool.handler(request.inputs)
         return ToolCallResult(
             tool_name=request.tool_name,
             permitted=True,
             output=output,
             dre_score=dre_dict,
+            dre_flags=list(dre_assessment.risk_flags),
             audit_entry_count=len(self._audit),
         )
 
@@ -229,6 +250,7 @@ def _build_scenario():
 def run_demo():
     print("=" * 70)
     print("authgate-kernel — LangChain + DRE integration demo")
+    print("(DRE is advisory-only; kernel TCB is the authority gate)")
     print("=" * 70)
 
     registry, tools, analyst_bot, code_gen_bot, attacker = _build_scenario()
@@ -237,7 +259,6 @@ def run_demo():
     dre = DelegateReputationEngine(hbs=hbs, threshold=1.0)
 
     # Seed some history: code-gen-bot has prior violations
-    now = time.time()
     dre.record(
         Action(
             action_id="prior-bad-1",
@@ -261,7 +282,7 @@ def run_demo():
         # (label, actor, tool_name, inputs)
         ("EXPECT PERMIT", analyst_bot,     "read_sales",   {}),
         ("EXPECT PERMIT", analyst_bot,     "write_report",  {"content": "Q1 sales: $1.2M"}),
-        ("EXPECT DENY  ", code_gen_bot,    "read_sales",   {}),  # DRE should block (history)
+        ("EXPECT PERMIT (flagged)", code_gen_bot,    "read_sales",   {}),  # kernel permits, DRE flags risk
         ("EXPECT DENY  ", analyst_bot,     "read_config",   {}),  # no claim on system_config
         ("EXPECT DENY  ", attacker,        "read_sales",    {}),  # unregistered machine
         ("EXPECT DENY  ", analyst_bot,     "unknown_tool",  {}),  # tool doesn't exist
@@ -276,6 +297,8 @@ def run_demo():
             print(f"  DRE score : DCRS={r.dre_score['dcrs']:.2f} "
                   f"ndc={r.dre_score['ndc']} "
                   f"hist={r.dre_score['historical_actions_90d']} actions")
+        if r.dre_flags:
+            print(f"  DRE flags : {r.dre_flags}")
         if r.permitted:
             print(f"  output    : {r.output[:80]}")
         else:
@@ -294,12 +317,7 @@ def run_demo():
     # Show each entry summary
     for i, entry in enumerate(audit.entries()):
         status = "PERMIT" if entry["permitted"] else "DENY  "
-        source = entry.get("source", "kernel")
-        extra = ""
-        if "extensions" in entry:
-            ext = entry["extensions"]
-            extra = f" DCRS={ext.get('dcrs', '?')} ndc={ext.get('ndc', '?')}"
-        print(f"  [{i:02d}] {status} [{source:40s}] {entry['action_id'][:50]}{extra}")
+        print(f"  [{i:02d}] {status} {entry['action_id'][:50]}")
 
     # Summary
     print("\n" + "=" * 70)
@@ -311,17 +329,18 @@ def run_demo():
     # Assertions
     assert results[0].permitted, "analyst_bot read_sales should be permitted"
     assert results[1].permitted, "analyst_bot write_report should be permitted"
-    assert not results[2].permitted, "code_gen_bot should be denied by DRE (bad history)"
+    # code_gen_bot: kernel permits (has claim), but DRE flags elevated risk
+    assert results[2].permitted, "code_gen_bot read_sales: kernel permits; DRE is advisory"
+    assert results[2].dre_flags, "code_gen_bot should have DRE risk flags due to bad history"
     assert not results[3].permitted, "read_config should be denied (no claim)"
     assert not results[4].permitted, "rogue-bot should be denied (no owner)"
     assert not results[5].permitted, "unknown tool should be denied"
     assert chain_ok, "Audit chain must be intact"
 
-    # Expect 8+ audit entries: 4 kernel + 4 DRE extension records
-    # (read_sales, write_report, read_sales[DRE], read_config, read_sales[attacker])
-    assert len(audit) >= 8, f"Expected at least 8 audit entries, got {len(audit)}"
+    # Only kernel records in audit; DRE does not write to kernel audit
+    assert len(audit) == 6, f"Expected 6 kernel audit entries, got {len(audit)}"
 
-    print("\nAll assertions passed — DRE integration demo complete.")
+    print("\nAll assertions passed — DRE advisory overlay demo complete.")
     return 0
 
 

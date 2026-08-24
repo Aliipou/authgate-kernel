@@ -1,8 +1,8 @@
 """
 Tests for the Delegate Reputation Extension (DRE).
 
-Security invariant: DRE can only escalate Permit → Deny.
-It can never de-escalate Deny → Permit.
+Security invariant: DRE is advisory-only. It returns scores, not verdicts.
+It cannot mint Permit and it cannot override Deny.
 """
 from __future__ import annotations
 
@@ -67,12 +67,12 @@ def denied_result() -> VerificationResult:
 # Invariant: TCB Supremacy
 # ---------------------------------------------------------------------------
 
-def test_dre_never_overrides_tcb_deny(
+def test_dre_is_silent_on_tcb_deny(
     in_memory_hbs: HistoricalBehaviorStore,
     read_action: Action,
     denied_result: VerificationResult,
 ) -> None:
-    """If the kernel returns Deny, DRE must return Deny regardless of history."""
+    """If the kernel returns Deny, DRE returns an empty assessment."""
     engine = DelegateReputationEngine(hbs=in_memory_hbs, threshold=0.0)
 
     # Seed history that would normally trigger a block
@@ -92,67 +92,69 @@ def test_dre_never_overrides_tcb_deny(
             confidence=1.0,
         ))
 
-    result = engine.evaluate(read_action, denied_result)
-    assert not result.permitted
-    assert result.reputation is None  # DRE should not even compute score
+    assessment = engine.evaluate(read_action, denied_result)
+    assert assessment.dcrs == 0.0
+    assert assessment.score is None
+    assert assessment.risk_flags == ()
+    assert assessment.requires_human_arbitration is False
 
 
 # ---------------------------------------------------------------------------
 # NDC Risk Weights
 # ---------------------------------------------------------------------------
 
-def test_human_ndc_always_passes_with_clean_history(
+def test_human_ndc_low_score_with_clean_history(
     in_memory_hbs: HistoricalBehaviorStore,
     read_action: Action,
     permitted_result: VerificationResult,
 ) -> None:
-    """HUMAN with no history should always pass at default threshold."""
+    """HUMAN with no history should have low DCRS at default threshold."""
     engine = DelegateReputationEngine(hbs=in_memory_hbs)
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.HUMAN)
-    assert result.permitted
-    assert result.reputation is not None
-    assert result.reputation.ndc == "HUMAN"
-    assert result.reputation.base_risk == 0.0
-    assert result.reputation.dcrs < 1.0
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.HUMAN)
+    assert assessment.score is not None
+    assert assessment.score.ndc == "HUMAN"
+    assert assessment.score.base_risk == 0.0
+    assert assessment.score.dcrs < 1.0
+    assert assessment.requires_human_arbitration is False
 
 
-def test_llm_closed_with_no_history_passes(
+def test_llm_closed_with_no_history_has_moderate_score(
     in_memory_hbs: HistoricalBehaviorStore,
     read_action: Action,
     permitted_result: VerificationResult,
 ) -> None:
-    """LLM_CLOSED with no history should pass (DCRS ≈ 0.6 < 1.0)."""
+    """LLM_CLOSED with no history should have DCRS ≈ 0.6."""
     engine = DelegateReputationEngine(hbs=in_memory_hbs)
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
-    assert result.permitted
-    assert result.reputation is not None
-    assert result.reputation.base_risk == 0.6
-    assert result.reputation.dcrs == pytest.approx(0.6, abs=0.01)
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    assert assessment.score is not None
+    assert assessment.score.base_risk == 0.6
+    assert assessment.score.dcrs == pytest.approx(0.6, abs=0.01)
+    assert assessment.requires_human_arbitration is False
 
 
-def test_swarm_ndc_blocks_at_lowered_threshold(
+def test_swarm_ndc_high_score_at_default_threshold(
     in_memory_hbs: HistoricalBehaviorStore,
     read_action: Action,
     permitted_result: VerificationResult,
 ) -> None:
-    """SWARM with no history should be blocked at threshold=0.85 (DCRS ≈ 0.9)."""
-    engine = DelegateReputationEngine(hbs=in_memory_hbs, threshold=0.85)
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.SWARM)
-    assert not result.permitted
-    assert result.dre_violation is not None
-    assert "DCRS=" in result.dre_violation
+    """SWARM with no history should have DCRS ≈ 0.9 — below default threshold."""
+    engine = DelegateReputationEngine(hbs=in_memory_hbs)
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.SWARM)
+    assert assessment.score is not None
+    assert assessment.score.dcrs == pytest.approx(0.9, abs=0.01)
+    assert assessment.requires_human_arbitration is False
 
 
 # ---------------------------------------------------------------------------
 # Historical Penalties
 # ---------------------------------------------------------------------------
 
-def test_flagged_history_triggers_block(
+def test_flagged_history_increases_dcrs(
     in_memory_hbs: HistoricalBehaviorStore,
     read_action: Action,
     permitted_result: VerificationResult,
 ) -> None:
-    """An LLM_CLOSED agent with 3 prior flag triggers should be blocked."""
+    """An LLM_CLOSED agent with 3 prior flag triggers should have elevated DCRS."""
     import time
     now = time.time()
     for i in range(3):
@@ -172,11 +174,10 @@ def test_flagged_history_triggers_block(
         ))
 
     engine = DelegateReputationEngine(hbs=in_memory_hbs)
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
-    assert not result.permitted
-    assert result.reputation is not None
-    assert result.reputation.flagged_actions_90d == 3
-    assert result.reputation.historical_penalty == pytest.approx(1.2, abs=0.01)
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    assert assessment.score is not None
+    assert assessment.score.flagged_actions_90d == 3
+    assert assessment.score.historical_penalty == pytest.approx(1.2, abs=0.01)
 
 
 def test_denied_history_adds_penalty(
@@ -204,10 +205,10 @@ def test_denied_history_adds_penalty(
         ))
 
     engine = DelegateReputationEngine(hbs=in_memory_hbs)
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
-    assert result.reputation is not None
-    assert result.reputation.denied_actions_90d == 5
-    assert result.reputation.historical_penalty == pytest.approx(0.5, abs=0.01)
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    assert assessment.score is not None
+    assert assessment.score.denied_actions_90d == 5
+    assert assessment.score.historical_penalty == pytest.approx(0.5, abs=0.01)
 
 
 def test_resource_breadth_penalty(
@@ -235,10 +236,10 @@ def test_resource_breadth_penalty(
         ))
 
     engine = DelegateReputationEngine(hbs=in_memory_hbs)
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
-    assert result.reputation is not None
-    assert result.reputation.unique_resources_90d == 55
-    assert result.reputation.historical_penalty == pytest.approx(0.2, abs=0.01)
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    assert assessment.score is not None
+    assert assessment.score.unique_resources_90d == 55
+    assert assessment.score.historical_penalty == pytest.approx(0.2, abs=0.01)
 
 
 def test_time_decay_reduces_old_penalties(
@@ -283,12 +284,12 @@ def test_time_decay_reduces_old_penalties(
     ))
 
     engine = DelegateReputationEngine(hbs=in_memory_hbs)
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
-    assert result.reputation is not None
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    assert assessment.score is not None
     # Recent penalty: 0.3 (flag) + 0.1 (denied) = 0.4, decayed by 0.95 for 1 day ≈ 0.38
     # Old penalty: ~0.4 * 0.95^90 ≈ negligible
-    assert result.reputation.historical_penalty > 0.3
-    assert result.reputation.historical_penalty < 0.45
+    assert assessment.score.historical_penalty > 0.3
+    assert assessment.score.historical_penalty < 0.45
 
 
 # ---------------------------------------------------------------------------
@@ -319,15 +320,15 @@ def test_one_shot_evaluation(
     permitted_result: VerificationResult,
 ) -> None:
     """evaluate_reputation convenience function should work with in-memory store."""
-    result = evaluate_reputation(
+    assessment = evaluate_reputation(
         read_action,
         permitted_result,
         hbs_path=":memory:",
         threshold=1.0,
         ndc=NDC.HUMAN,
     )
-    assert result.permitted
-    assert result.reputation is not None
+    assert assessment.score is not None
+    assert assessment.score.dcrs < 1.0
 
 
 # ---------------------------------------------------------------------------
@@ -349,16 +350,17 @@ def test_ndc_matrix_default_threshold(
     ndc: NDC,
     expected_pass: bool,
 ) -> None:
-    """All NDCs should pass at default threshold=1.0 with no history."""
+    """All NDCs should have DCRS < 1.0 at default threshold with no history."""
     engine = DelegateReputationEngine(hbs=in_memory_hbs)
-    result = engine.evaluate(read_action, permitted_result, ndc=ndc)
-    assert result.permitted == expected_pass
+    assessment = engine.evaluate(read_action, permitted_result, ndc=ndc)
+    assert assessment.score is not None
+    assert (assessment.score.dcrs < 1.0) == expected_pass
 
 
-@pytest.mark.parametrize("ndc,threshold,expected_pass", [
-    (NDC.HUMAN, 0.0, False),           # DCRS=0.0 >= 0.0 → BLOCKED
-    (NDC.DETERMINISTIC, 0.05, False),  # DCRS=0.1 >= 0.05 → BLOCKED
-    (NDC.DETERMINISTIC, 0.15, True),   # DCRS=0.1 < 0.15 → PASS
+@pytest.mark.parametrize("ndc,threshold,expected_below", [
+    (NDC.HUMAN, 0.0, False),           # DCRS=0.0 >= 0.0 → at/over threshold
+    (NDC.DETERMINISTIC, 0.05, False),  # DCRS=0.1 >= 0.05 → at/over threshold
+    (NDC.DETERMINISTIC, 0.15, True),   # DCRS=0.1 < 0.15 → below threshold
 ])
 def test_low_threshold_blocks_high_ndc(
     in_memory_hbs: HistoricalBehaviorStore,
@@ -366,34 +368,40 @@ def test_low_threshold_blocks_high_ndc(
     permitted_result: VerificationResult,
     ndc: NDC,
     threshold: float,
-    expected_pass: bool,
+    expected_below: bool,
 ) -> None:
-    """With very low thresholds, even moderate NDCs should be blocked."""
+    """With very low thresholds, even moderate NDCs may trigger risk flags."""
     engine = DelegateReputationEngine(hbs=in_memory_hbs, threshold=threshold)
-    result = engine.evaluate(read_action, permitted_result, ndc=ndc)
-    assert result.permitted == expected_pass
+    assessment = engine.evaluate(read_action, permitted_result, ndc=ndc)
+    assert assessment.score is not None
+    assert (assessment.score.dcrs < threshold) == expected_below
 
 
-def test_low_threshold_blocks_llm(
+def test_low_threshold_flags_llm(
     in_memory_hbs: HistoricalBehaviorStore,
     read_action: Action,
     permitted_result: VerificationResult,
 ) -> None:
-    """LLM_CLOSED at threshold=0.5 should be blocked (DCRS ≈ 0.6 > 0.5)."""
+    """LLM_CLOSED at threshold=0.5 should flag (DCRS ≈ 0.6 > 0.5)."""
     engine = DelegateReputationEngine(hbs=in_memory_hbs, threshold=0.5)
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
-    assert not result.permitted
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    assert assessment.score is not None
+    assert assessment.score.dcrs >= 0.5
+    assert assessment.requires_human_arbitration is True
+    assert len(assessment.risk_flags) > 0
 
 
-def test_very_low_threshold_blocks_deterministic(
+def test_very_low_threshold_flags_deterministic(
     in_memory_hbs: HistoricalBehaviorStore,
     read_action: Action,
     permitted_result: VerificationResult,
 ) -> None:
-    """DETERMINISTIC at threshold=0.05 should be blocked (DCRS=0.1 >= 0.05)."""
+    """DETERMINISTIC at threshold=0.05 should flag (DCRS=0.1 >= 0.05)."""
     engine = DelegateReputationEngine(hbs=in_memory_hbs, threshold=0.05)
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.DETERMINISTIC)
-    assert not result.permitted
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.DETERMINISTIC)
+    assert assessment.score is not None
+    assert assessment.score.dcrs >= 0.05
+    assert assessment.requires_human_arbitration is True
 
 
 # ---------------------------------------------------------------------------
@@ -407,9 +415,9 @@ def test_unknown_ndc_defaults_to_moderate_risk(
 ) -> None:
     """UNKNOWN NDC should use weight 0.5."""
     engine = DelegateReputationEngine(hbs=in_memory_hbs)
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.UNKNOWN)
-    assert result.reputation is not None
-    assert result.reputation.base_risk == 0.5
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.UNKNOWN)
+    assert assessment.score is not None
+    assert assessment.score.base_risk == 0.5
 
 
 def test_chain_depth_attenuation(
@@ -421,17 +429,17 @@ def test_chain_depth_attenuation(
     engine = DelegateReputationEngine(hbs=in_memory_hbs)
 
     # Single-node chain: depth_factor = 0.5^0 = 1.0
-    result1 = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED, chain=["root"])
-    assert result1.reputation is not None
-    dcrs1 = result1.reputation.dcrs
+    assessment1 = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED, chain=["root"])
+    assert assessment1.score is not None
+    dcrs1 = assessment1.score.dcrs
 
     # Three-node chain: depth_factor = 0.5^2 = 0.25
-    result3 = engine.evaluate(
+    assessment3 = engine.evaluate(
         read_action, permitted_result, ndc=NDC.LLM_CLOSED,
         chain=["root", "intermediate", "leaf"],
     )
-    assert result3.reputation is not None
-    dcrs3 = result3.reputation.dcrs
+    assert assessment3.score is not None
+    dcrs3 = assessment3.score.dcrs
 
     assert dcrs3 < dcrs1
     assert dcrs1 == pytest.approx(0.6, abs=0.01)

@@ -1,21 +1,26 @@
 """
-Delegate Reputation Extension (DRE) — heuristic extension for the
-"reasonable delegate" problem identified by Abadi & Lampson (1993).
+Delegate Reputation Extension (DRE) — optional behavioral risk overlay.
+
+This module is NOT part of the TCB. It does not answer "does this actor hold
+the capability?" (AuthGate) or "is the effect legitimate?" (FDK). It answers
+only: "given this actor's history and attestation, what is the behavioral
+risk score?"
 
 SECURITY CONTRACT:
   - This module is NOT part of the TCB.
-  - It can only escalate Permit → Deny. It can never de-escalate Deny → Permit.
-  - The TCB gate (FreedomVerifier / engine.rs) runs first, unconditionally.
-  - All DRE decisions are advisory heuristics; the security claim remains
-    "TCB + optional extensions".
+  - It returns an advisory score. It does NOT grant or deny authority.
+  - The integrator decides whether to act on the score.
+  - A high score cannot mint a grant. A low score cannot override a kernel Deny.
 
-USAGE (standalone):
+USAGE (standalone, advisory-only):
     dre = DelegateReputationEngine(hbs_path="/var/lib/authgate/hbs.db")
-    result = dre.evaluate(action, base_result)
+    assessment = dre.evaluate(action, kernel_permit_result)
+    # integrator decides:
+    if assessment.dcrs >= integrator_threshold:
+        ...  # flag for review, add warning, etc.
 
-USAGE (with ExtendedFreedomVerifier):
-    ev = ExtendedFreedomVerifier(registry, ...)
-    ev.add_reputation_engine(dre)
+The kernel gate (FreedomVerifier / engine.rs) runs first, unconditionally.
+All DRE output is advisory; the security claim remains "TCB + optional overlays".
 """
 from __future__ import annotations
 
@@ -80,7 +85,7 @@ DEFAULT_NDC_RISK: dict[NDC, float] = {
 
 @dataclass(frozen=True)
 class ReputationScore:
-    """Detailed reputation score breakdown."""
+    """Detailed reputation score breakdown. Advisory only."""
     dcrs: float
     threshold: float
     ndc: str
@@ -93,34 +98,29 @@ class ReputationScore:
     flagged_actions_90d: int
     denied_actions_90d: int
     unique_resources_90d: int
-    passed: bool
 
 
 @dataclass(frozen=True)
-class DelegateReputationResult:
-    """Result of a DRE evaluation."""
-    kernel_result: VerificationResult
-    reputation: ReputationScore | None = None
-    dre_violation: str | None = None
+class ReputationAssessment:
+    """
+    Advisory result of a DRE evaluation.
 
-    @property
-    def action_id(self) -> str: return self.kernel_result.action_id
-    @property
-    def permitted(self) -> bool: return self.kernel_result.permitted
-    @property
-    def violations(self) -> tuple: return self.kernel_result.violations
-    @property
-    def warnings(self) -> tuple: return self.kernel_result.warnings
-    @property
-    def confidence(self) -> float: return self.kernel_result.confidence
+    This is NOT a permit/deny verdict. The integrator decides what to do
+    with the score. The kernel's capability check is the only authority gate.
+    """
+    dcrs: float
+    requires_human_arbitration: bool
+    risk_flags: tuple[str, ...]
+    score: ReputationScore | None = None
 
     def summary(self) -> str:
-        base = self.kernel_result.summary()
-        if self.reputation is not None:
-            base += f" (DRE DCRS={self.reputation.dcrs:.2f})"
-        if self.dre_violation:
-            base += f" [DRE BLOCKED: {self.dre_violation}]"
-        return base
+        if self.score is not None:
+            return (
+                f"DRE assessment: DCRS={self.dcrs:.2f} "
+                f"flags={list(self.risk_flags)} "
+                f"arbitration={self.requires_human_arbitration}"
+            )
+        return "DRE assessment: no score"
 
 
 # ---------------------------------------------------------------------------
@@ -132,9 +132,13 @@ class DelegateReputationEngine:
     """
     Compute delegation chain risk score (DCRS) for a given action.
 
+    This engine is advisory-only. It returns scores, not verdicts.
+    The integrator must still check capability via the kernel TCB.
+
     Args:
         hbs: HistoricalBehaviorStore instance (or path string).
-        threshold: DCRS value above which Permit is escalated to Deny.
+        threshold: DCRS value above which the integrator may want review.
+                   This is a hint, not an enforcement boundary.
         window_days: Lookback window for historical behavior.
         ndc_weights: Override default NDC risk weights.
         max_unique_resources_penalty: Resource breadth threshold.
@@ -161,15 +165,23 @@ class DelegateReputationEngine:
         base_result: VerificationResult,
         ndc: NDC | None = None,
         chain: list[str] | None = None,
-    ) -> DelegateReputationResult:
+    ) -> ReputationAssessment:
         """
         Evaluate delegate reputation for an action.
 
-        If base_result is Deny, returns immediately (DRE does not override TCB).
-        If base_result is Permit, computes DCRS and escalates if threshold exceeded.
+        If base_result is Deny, returns an empty assessment (DRE is silent
+        when the kernel has already denied).
+
+        If base_result is Permit, computes DCRS and returns an advisory
+        assessment. The integrator decides whether to act on it.
         """
         if not base_result.permitted:
-            return DelegateReputationResult(kernel_result=base_result)
+            return ReputationAssessment(
+                dcrs=0.0,
+                requires_human_arbitration=False,
+                risk_flags=(),
+                score=None,
+            )
 
         actor_id = self._actor_id(action)
         ndc_resolved = ndc if ndc is not None else self._infer_ndc(action)
@@ -181,24 +193,21 @@ class DelegateReputationEngine:
             chain_length=chain_len,
         )
 
-        if dcrs >= self.threshold:
-            dre_result = VerificationResult(
-                action_id=base_result.action_id,
-                permitted=False,
-                violations=tuple(list(base_result.violations) + [
-                    f"[DRE] Delegate reputation threshold exceeded (DCRS={dcrs:.2f})"
-                ]),
-                warnings=base_result.warnings,
-                confidence=base_result.confidence,
-                requires_human_arbitration=True,
-            )
-            return DelegateReputationResult(
-                kernel_result=dre_result,
-                reputation=score,
-                dre_violation=f"DCRS={dcrs:.2f} >= threshold={self.threshold}",
-            )
+        risk_flags: list[str] = []
+        requires_arbitration = False
 
-        return DelegateReputationResult(kernel_result=base_result, reputation=score)
+        if dcrs >= self.threshold:
+            risk_flags.append(
+                f"DCRS={dcrs:.2f} >= threshold={self.threshold}"
+            )
+            requires_arbitration = True
+
+        return ReputationAssessment(
+            dcrs=round(dcrs, 3),
+            requires_human_arbitration=requires_arbitration,
+            risk_flags=tuple(risk_flags),
+            score=score,
+        )
 
     def record(self, action: Action, result: VerificationResult, ndc: NDC | None = None) -> None:
         """
@@ -306,7 +315,6 @@ class DelegateReputationEngine:
             flagged_actions_90d=flagged_count,
             denied_actions_90d=denied_count,
             unique_resources_90d=len(unique_resources),
-            passed=dcrs < self.threshold,
         )
 
         return dcrs, score
@@ -336,7 +344,7 @@ class DelegateReputationEngine:
 
 
 # ---------------------------------------------------------------------------
-# Convenience wrapper for ExtendedFreedomVerifier integration
+# Convenience wrapper
 # ---------------------------------------------------------------------------
 
 def evaluate_reputation(
@@ -346,13 +354,15 @@ def evaluate_reputation(
     threshold: float = 1.0,
     ndc: NDC | None = None,
     attestor: Attestor | None = None,
-) -> DelegateReputationResult:
+) -> ReputationAssessment:
     """
     One-shot convenience function.
 
     Creates a fresh engine, evaluates, and closes the store.
     Suitable for testing and CLI usage. For production, reuse a
     DelegateReputationEngine instance.
+
+    Returns an advisory assessment, not a permit/deny verdict.
     """
     engine = DelegateReputationEngine(
         hbs=HistoricalBehaviorStore(db_path=hbs_path),

@@ -101,46 +101,6 @@ class AuditLog:
             if self.max_entries is not None and len(self._records) > self.max_entries:
                 self._records = self._records[-self.max_entries:]
 
-    def record_extension(
-        self,
-        action_id: str,
-        source: str,
-        permitted: bool,
-        extensions: dict[str, Any] | None = None,
-    ) -> None:
-        """
-        Append an extension decision record. Thread-safe.
-
-        Extension records are hash-chained alongside kernel records,
-        so the full decision lineage (kernel → extensions) is tamper-evident.
-
-        Args:
-            action_id:  The action this extension decision pertains to.
-            source:     Extension identifier, e.g. "extension:delegate_reputation".
-            permitted:  Whether the extension allowed the action to proceed.
-            extensions: Extension-specific fields (e.g. {"dcrs": 1.2, "ndc": "LLM_CLOSED"}).
-        """
-        entry: dict[str, Any] = {
-            "ts": time.time(),
-            "action_id": action_id,
-            "source": source,
-            "permitted": permitted,
-        }
-        if extensions:
-            entry["extensions"] = extensions
-
-        with self._lock:
-            entry["prev_hash"] = self._last_hash
-            entry["entry_hash"] = _compute_hash(entry)
-            self._last_hash = entry["entry_hash"]
-            self._records.append(entry)
-            self._total_count += 1
-            if self.path is not None:
-                with open(self.path, "a", encoding="utf-8") as f:
-                    f.write(json.dumps(entry) + "\n")
-            if self.max_entries is not None and len(self._records) > self.max_entries:
-                self._records = self._records[-self.max_entries:]
-
     @property
     def total_count(self) -> int:
         """Total decisions recorded, including those rotated out of memory."""

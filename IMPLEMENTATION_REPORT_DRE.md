@@ -2,18 +2,18 @@
 
 **Status:** Complete (Phases 1–5)  
 **Target:** `authgate-kernel/src/authgate/extensions/`  
-**Security Claim:** DRE is outside the TCB. It can only escalate `Permit → Deny`. It can never de-escalate `Deny → Permit`.
+**Security Claim:** DRE is outside the TCB. It is an **optional behavioral risk overlay**. It returns advisory scores, not permit/deny verdicts. It cannot mint `Permit` and it cannot override `Deny`.
 
 ---
 
 ## Executive Summary
 
-This PR implements the **Delegate Reputation Extension (DRE)**, a heuristic extension that closes the "reasonable delegate" gap identified by Abadi & Lampson (1993). The DRE scores whether a cryptographically valid delegate is *reasonable* — given its behavioral history, non-determinism class (NDC), and external attestation — before a `Permit` from the TCB is allowed to execute.
+This PR implements the **Delegate Reputation Extension (DRE)**, an optional heuristic overlay that provides behavioral risk scoring for delegates. It scores a delegate's history, non-determinism class (NDC), and external attestation — but **the integrator decides what to do with the score**. The kernel TCB remains the sole authority gate.
 
 **Key results:**
 - **1,400 tests passing** (full suite green)
 - **p99 latency: 2.8ms** on 10k-entry history (target: <5ms)
-- **Zero changes** to `engine.rs`, `dag.rs`, `types.rs`, or `call_gate.rs`
+- **Zero changes** to `engine.rs`, `dag.rs`, `types.rs`, `call_gate.rs`, or any kernel file
 
 ---
 
@@ -22,7 +22,7 @@ This PR implements the **Delegate Reputation Extension (DRE)**, a heuristic exte
 ### Phase 1: Core Scaffolding
 
 **Files:**
-- `src/authgate/extensions/delegate_reputation.py` — `DelegateReputationEngine`, `NDC` enum, `ReputationScore`
+- `src/authgate/extensions/delegate_reputation.py` — `DelegateReputationEngine`, `NDC` enum, `ReputationScore`, `ReputationAssessment`
 - `src/authgate/extensions/historical_behavior_store.py` — SQLite-backed append-only `HistoricalBehaviorStore`
 - `src/authgate/extensions/delegate_reputation_config.py` — Pydantic config model
 
@@ -30,6 +30,7 @@ This PR implements the **Delegate Reputation Extension (DRE)**, a heuristic exte
 - Defines 7 NDC classes (`HUMAN` → `SWARM`) with configurable risk weights
 - Implements the Delegation Chain Risk Score (DCRS) formula with chain-depth attenuation (`0.5^depth`)
 - Append-only SQLite HBS with thread-safe connection-per-thread pattern
+- **Advisory-only API:** `evaluate()` returns `(dcrs, requires_human_arbitration, risk_flags)` — never `Permit`/`Deny`
 
 ### Phase 2: Scoring Algorithm
 
@@ -39,17 +40,19 @@ This PR implements the **Delegate Reputation Extension (DRE)**, a heuristic exte
 - Integrates external attestation penalty into DCRS
 
 **Invariants enforced:**
-1. **TCB Supremacy:** If kernel returns `Deny`, DRE never returns `Permit`
+1. **TCB Supremacy:** If kernel returns `Deny`, DRE returns empty assessment
 2. **Monotonicity:** Adding a penalty never decreases DCRS
-3. **Human Safety:** `HUMAN` with no violations always passes (DCRS < 0.5)
+3. **Human Safety:** `HUMAN` with no violations always has low DCRS (< 0.5)
+4. **Advisory-only:** DRE never returns a verdict; integrator decides
 
 ### Phase 3: Integration
 
 **Files modified:**
-- `src/authgate/extensions/__init__.py` — `ExtendedFreedomVerifier` with DRE audit
-- `src/authgate/kernel/audit.py` — `record_extension()` method
-- `src/authgate/cli.py` — `--enable-dre` and `--dre-config` flags
-- `examples/langchain_integration/demo_with_dre.py` — End-to-end demo
+- `src/authgate/extensions/__init__.py` — DRE **removed** from `ExtendedFreedomVerifier`; exposed as standalone module only
+- `src/authgate/cli.py` — `--enable-dre` and `--dre-config` flags; DRE runs as post-verify advisory overlay
+- `examples/langchain_integration/demo_with_dre.py` — End-to-end demo using standalone DRE pattern
+
+**Design principle:** DRE is never on the default verify path. An integrator must explicitly call it after `FreedomVerifier.verify()`.
 
 ### Phase 4: External Attestation
 
@@ -103,11 +106,23 @@ p99.9:  4.706 ms
 |------|--------------|------------------|
 | History poisoning | 1,000 benign old records diluting 1 recent flag | Time-decay preserves recent penalty |
 | NDC spoofing | Declare `DETERMINISTIC`, behave like LLM | Behavioral flags override spoofed NDC |
-| Threshold probing | Vary patterns to find exact DCRS threshold | Borderline cases trigger arbitration |
+| Threshold probing | Vary patterns to find exact DCRS threshold | Borderline cases trigger arbitration flag |
 | Burst attack | Rapid-fire HBS writes | Blocked by burst threshold |
 | Resource breadth explosion | Scan >50 unique resources | Breadth penalty accumulates |
 | Failed attestation flooding | Repeated invalid attestations | 0.4 penalty per failure |
-| TCB supremacy | Perfect history + TCB Deny | DRE never overrides kernel deny |
+| TCB supremacy | Perfect history + TCB Deny | DRE is silent; does not compute score |
+
+#### 5d. Polarity Tests (Constitutional Boundary)
+**File:** `tests/test_dre_polarity.py` — 4 tests
+
+Ali demanded these four architectural invariants:
+
+| Test | Invariant |
+|------|-----------|
+| `test_kernel_deny_plus_perfect_dcrs_still_deny` | Kernel Deny + excellent DCRS ⇒ still Deny |
+| `test_dre_cannot_mint_permit` | DRE cannot mint Permit without a capability grant |
+| `test_dre_is_not_shortcut_around_verify` | DRE requires a `VerificationResult` as input |
+| `test_score_alone_is_insufficient_for_effect` | A score alone is never sufficient for an effect |
 
 ---
 
@@ -129,13 +144,18 @@ tests/test_delegate_reputation_properties.py
 tests/test_hbs_protection.py
 tests/test_attestation_production.py
 tests/test_dre_adversarial.py
+tests/test_dre_polarity.py
 ```
 
 ### Modified files
 ```
-src/authgate/extensions/__init__.py
-src/authgate/kernel/audit.py
-src/authgate/cli.py
+src/authgate/extensions/__init__.py  (DRE removed from ExtendedFreedomVerifier)
+src/authgate/cli.py                  (standalone DRE advisory mode)
+```
+
+### Reverted files
+```
+src/authgate/kernel/audit.py  (record_extension removed; zero kernel changes)
 ```
 
 ---
@@ -149,32 +169,35 @@ PYTHONPATH=src python -m pytest tests/ -v
 **Outcome:** `1400 passed, 1 skipped, 0 failed`
 
 Key test modules:
-- `test_delegate_reputation.py` — 438 tests (NDC matrix, historical penalties, TCB supremacy)
+- `test_delegate_reputation.py` — NDC matrix, historical penalties, TCB supremacy
 - `test_attestation_production.py` — 26 tests (SPIFFE, AWS, GCP, Azure with mocked backends)
 - `test_hbs_protection.py` — 10 tests (rate limiting, burst detection, NDC spoofing)
 - `test_dre_adversarial.py` — 10 tests (poisoning, threshold probing, breadth explosion)
+- `test_dre_polarity.py` — 4 tests (constitutional boundary invariants)
 
 ---
 
 ## Review Checklist
 
 - [x] No changes to `authgate-kernel/src/tcb/` (verified by diff)
+- [x] No changes to `src/authgate/kernel/` (verified by diff)
 - [x] All lazy imports have graceful `ImportError` fallback
 - [x] `NullAttestor` is neutral (valid=True, trust_score=1.0, penalty=0.0)
 - [x] Failed real attestation returns penalty=0.5
-- [x] DRE can only escalate `Permit → Deny`
+- [x] DRE is advisory-only — returns scores, not verdicts
 - [x] Benchmark p99 < 5ms on 10k-entry history
-- [x] Full test suite green (1,400 passing)
+- [x] Full test suite green
 
 ---
 
 ## Next Steps (Optional)
 
 1. **Production deployment:** Configure `GuardedBehaviorStore` with environment-specific rate limits
-2. **Metrics export:** Wire DRE decision counts into `/metrics` endpoint
+2. **Metrics export:** Wire DRE assessment counts into `/metrics` endpoint
 3. **Human-in-the-loop:** UI for reviewing `requires_human_arbitration=True` cases
 4. **PostgreSQL backend:** Extend `HistoricalBehaviorStore` for distributed deployments
 
 ---
 
-*Implementation based on IMPLEMENTATION_BRIEF_DRE.md v1.0*
+*Implementation based on IMPLEMENTATION_BRIEF_DRE.md v1.0*  
+*Reworked per review feedback: advisory-only, no kernel changes, explicit opt-in*

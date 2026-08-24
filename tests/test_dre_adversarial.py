@@ -4,8 +4,7 @@ Adversarial / red-team tests for the Delegate Reputation Extension (DRE).
 These tests verify that the DRE resists history poisoning, NDC spoofing,
 threshold probing, and other gaming attempts identified in the A&L analysis.
 
-Security invariant: DRE can only escalate Permit → Deny.
-A compromised DRE cannot cause a false-negative permit.
+Security invariant: DRE is advisory-only. It returns scores, not verdicts.
 """
 from __future__ import annotations
 
@@ -91,14 +90,14 @@ def test_monotonicity_adding_penalty_never_decreases_dcrs(
     engine = DelegateReputationEngine(hbs=in_memory_hbs)
 
     # Baseline: clean history
-    result1 = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
-    dcrs1 = result1.reputation.dcrs if result1.reputation else 0.0
+    assessment1 = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    dcrs1 = assessment1.score.dcrs if assessment1.score else 0.0
 
     # Add a denied record (penalty +0.1)
     in_memory_hbs.append(_make_record(result="denied"))
 
-    result2 = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
-    dcrs2 = result2.reputation.dcrs if result2.reputation else 0.0
+    assessment2 = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    dcrs2 = assessment2.score.dcrs if assessment2.score else 0.0
 
     assert dcrs2 >= dcrs1
 
@@ -111,13 +110,13 @@ def test_monotonicity_adding_flag_never_decreases_dcrs(
     """Adding a sovereignty flag trigger must not decrease DCRS."""
     engine = DelegateReputationEngine(hbs=in_memory_hbs)
 
-    result1 = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
-    dcrs1 = result1.reputation.dcrs if result1.reputation else 0.0
+    assessment1 = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    dcrs1 = assessment1.score.dcrs if assessment1.score else 0.0
 
     in_memory_hbs.append(_make_record(flagged=1))
 
-    result2 = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
-    dcrs2 = result2.reputation.dcrs if result2.reputation else 0.0
+    assessment2 = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    dcrs2 = assessment2.score.dcrs if assessment2.score else 0.0
 
     assert dcrs2 >= dcrs1
 
@@ -126,17 +125,17 @@ def test_monotonicity_adding_flag_never_decreases_dcrs(
 # Invariant: Human Safety
 # ---------------------------------------------------------------------------
 
-def test_human_with_no_violations_always_passes(
+def test_human_with_no_violations_always_low_score(
     in_memory_hbs: HistoricalBehaviorStore,
     read_action: Action,
     permitted_result: VerificationResult,
 ) -> None:
-    """A HUMAN actor with clean history must always pass (DCRS < 0.5)."""
+    """A HUMAN actor with clean history must always have low DCRS."""
     engine = DelegateReputationEngine(hbs=in_memory_hbs)
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.HUMAN)
-    assert result.permitted
-    assert result.reputation is not None
-    assert result.reputation.dcrs < 0.5
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.HUMAN)
+    assert assessment.score is not None
+    assert assessment.score.dcrs < 0.5
+    assert assessment.requires_human_arbitration is False
 
 
 # ---------------------------------------------------------------------------
@@ -175,12 +174,12 @@ def test_history_poisoning_dilution_is_limited_by_decay(
             confidence=1.0,
         ))
 
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
     # The old benign records are heavily decayed, so the recent flag still matters
-    assert result.reputation is not None
-    assert result.reputation.flagged_actions_90d >= 1
+    assert assessment.score is not None
+    assert assessment.score.flagged_actions_90d >= 1
     # DCRS should still reflect the penalty (base 0.6 + flag penalty ~0.3)
-    assert result.reputation.dcrs >= 0.6
+    assert assessment.score.dcrs >= 0.6
 
 
 # ---------------------------------------------------------------------------
@@ -202,11 +201,11 @@ def test_ndc_spoofing_detected_by_weighted_risk(
     for _ in range(5):
         in_memory_hbs.append(_make_record(flagged=1, ndc="DETERMINISTIC"))
 
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.DETERMINISTIC)
-    assert result.reputation is not None
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.DETERMINISTIC)
+    assert assessment.score is not None
     # 5 flags × 0.3 = 1.5 penalty, well above threshold
-    assert result.reputation.dcrs >= 1.0
-    assert not result.permitted
+    assert assessment.score.dcrs >= 1.0
+    assert assessment.requires_human_arbitration is True
 
 
 # ---------------------------------------------------------------------------
@@ -231,11 +230,10 @@ def test_threshold_probing_is_noisy(
     in_memory_hbs.append(_make_record(flagged=1))  # +0.3
     in_memory_hbs.append(_make_record(flagged=1))  # +0.3
 
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
-    assert result.reputation is not None
-    # DCRS = 0.6 (base) + 0.6 (flags) = 1.2 >= 1.0 → blocked
-    assert not result.permitted
-    assert result.kernel_result.requires_human_arbitration
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    assert assessment.score is not None
+    # DCRS = 0.6 (base) + 0.6 (flags) = 1.2 >= 1.0 → flagged
+    assert assessment.requires_human_arbitration is True
 
 
 # ---------------------------------------------------------------------------
@@ -262,7 +260,7 @@ def test_burst_attack_detected_by_guarded_store() -> None:
 # Adversarial: Resource Breadth Explosion
 # ---------------------------------------------------------------------------
 
-def test_resource_breadth_explosion_triggers_block(
+def test_resource_breadth_explosion_triggers_high_dcrs(
     in_memory_hbs: HistoricalBehaviorStore,
     read_action: Action,
     permitted_result: VerificationResult,
@@ -273,16 +271,16 @@ def test_resource_breadth_explosion_triggers_block(
     for i in range(55):
         in_memory_hbs.append(_make_record(resources=(f"resource-{i}",)))
 
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
-    assert result.reputation is not None
-    assert result.reputation.unique_resources_90d == 55
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    assert assessment.score is not None
+    assert assessment.score.unique_resources_90d == 55
     # 0.6 base + 0.2 breadth penalty = 0.8, still under 1.0
     # but let's push it further with some flags
     in_memory_hbs.append(_make_record(flagged=1))
-    result2 = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
-    assert result2.reputation is not None
-    assert result2.reputation.dcrs >= 1.0
-    assert not result2.permitted
+    assessment2 = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    assert assessment2.score is not None
+    assert assessment2.score.dcrs >= 1.0
+    assert assessment2.requires_human_arbitration is True
 
 
 # ---------------------------------------------------------------------------
@@ -316,11 +314,11 @@ def test_failed_attestation_history_accumulates(
             )
         )
 
-    result = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
-    assert result.reputation is not None
+    assessment = engine.evaluate(read_action, permitted_result, ndc=NDC.LLM_CLOSED)
+    assert assessment.score is not None
     # 3 failed attestations × 0.4 = 1.2 penalty
-    assert result.reputation.dcrs >= 1.0
-    assert not result.permitted
+    assert assessment.score.dcrs >= 1.0
+    assert assessment.requires_human_arbitration is True
 
 
 # ---------------------------------------------------------------------------
@@ -350,6 +348,7 @@ def test_tcb_deny_cannot_be_overridden_even_with_perfect_history(
         requires_human_arbitration=False,
     )
 
-    result = engine.evaluate(read_action, denied, ndc=NDC.LLM_CLOSED)
-    assert not result.permitted
-    assert result.reputation is None  # DRE should not even compute score
+    assessment = engine.evaluate(read_action, denied, ndc=NDC.LLM_CLOSED)
+    assert assessment.dcrs == 0.0
+    assert assessment.score is None  # DRE should not even compute score
+    assert assessment.risk_flags == ()

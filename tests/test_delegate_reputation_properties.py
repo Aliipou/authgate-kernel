@@ -73,7 +73,7 @@ denied_result_strategy = st.builds(
 
 
 # ---------------------------------------------------------------------------
-# Invariant 1: TCB Supremacy — DRE never overrides Deny → Permit
+# Invariant 1: TCB Supremacy — DRE is silent when kernel denies
 # ---------------------------------------------------------------------------
 
 @settings(max_examples=100, deadline=None)
@@ -87,12 +87,14 @@ def test_pbt_tcb_supremacy(
     ndc: NDC,
     base_result: VerificationResult,
 ) -> None:
-    """For ANY action and ANY NDC, if kernel says Deny, DRE must say Deny."""
+    """For ANY action and ANY NDC, if kernel says Deny, DRE returns empty assessment."""
     hbs = HistoricalBehaviorStore(":memory:")
     engine = DelegateReputationEngine(hbs=hbs, threshold=0.0)  # most aggressive DRE
-    result = engine.evaluate(action, base_result, ndc=ndc)
-    assert not result.permitted
-    assert result.reputation is None  # DRE should not compute score
+    assessment = engine.evaluate(action, base_result, ndc=ndc)
+    assert assessment.dcrs == 0.0
+    assert assessment.score is None
+    assert assessment.risk_flags == ()
+    assert assessment.requires_human_arbitration is False
     engine.close()
 
 
@@ -119,8 +121,8 @@ def test_pbt_monotonicity_with_bad_history(
 
     # Baseline DCRS with clean history
     result_clean = engine.evaluate(action, base_result, ndc=ndc)
-    assert result_clean.reputation is not None
-    dcrs_clean = result_clean.reputation.dcrs
+    assert result_clean.score is not None
+    dcrs_clean = result_clean.score.dcrs
 
     # Add bad records
     now = time.time()
@@ -141,8 +143,8 @@ def test_pbt_monotonicity_with_bad_history(
         ))
 
     result_bad = engine.evaluate(action, base_result, ndc=ndc)
-    assert result_bad.reputation is not None
-    dcrs_bad = result_bad.reputation.dcrs
+    assert result_bad.score is not None
+    dcrs_bad = result_bad.score.dcrs
 
     assert dcrs_bad >= dcrs_clean
     engine.close()
@@ -183,8 +185,8 @@ def test_pbt_decay_sanity(
         confidence=1.0,
     ))
     result_recent = engine.evaluate(action, base_result, ndc=NDC.LLM_CLOSED)
-    assert result_recent.reputation is not None
-    dcrs_recent = result_recent.reputation.dcrs
+    assert result_recent.score is not None
+    dcrs_recent = result_recent.score.dcrs
 
     # Clear and add one old flag (60 days ago)
     hbs2 = HistoricalBehaviorStore(":memory:")
@@ -204,8 +206,8 @@ def test_pbt_decay_sanity(
         confidence=1.0,
     ))
     result_old = engine2.evaluate(action, base_result, ndc=NDC.LLM_CLOSED)
-    assert result_old.reputation is not None
-    dcrs_old = result_old.reputation.dcrs
+    assert result_old.score is not None
+    dcrs_old = result_old.score.dcrs
 
     # Recent should be at least as high as old (decay reduces old penalties)
     assert dcrs_recent >= dcrs_old
@@ -214,7 +216,7 @@ def test_pbt_decay_sanity(
 
 
 # ---------------------------------------------------------------------------
-# Invariant 4: Human Safety — HUMAN NDC with clean history passes at threshold >= 0
+# Invariant 4: Human Safety — HUMAN NDC with clean history has low DCRS
 # ---------------------------------------------------------------------------
 
 @settings(max_examples=50, deadline=None)
@@ -228,14 +230,13 @@ def test_pbt_human_safety(
     base_result: VerificationResult,
     threshold: float,
 ) -> None:
-    """HUMAN NDC with no bad history should always pass at reasonable thresholds."""
+    """HUMAN NDC with no bad history should always have low DCRS."""
     hbs = HistoricalBehaviorStore(":memory:")
     engine = DelegateReputationEngine(hbs=hbs, threshold=threshold)
-    result = engine.evaluate(action, base_result, ndc=NDC.HUMAN)
-    assert result.permitted
-    assert result.reputation is not None
-    assert result.reputation.base_risk == 0.0
-    assert result.reputation.dcrs < threshold
+    assessment = engine.evaluate(action, base_result, ndc=NDC.HUMAN)
+    assert assessment.score is not None
+    assert assessment.score.base_risk == 0.0
+    assert assessment.score.dcrs < threshold
     engine.close()
 
 
@@ -257,9 +258,9 @@ def test_pbt_attestation_penalty_bounded(
     """Attestation penalty must always be within [0.0, 1.0]."""
     hbs = HistoricalBehaviorStore(":memory:")
     engine = DelegateReputationEngine(hbs=hbs)
-    result = engine.evaluate(action, base_result, ndc=ndc)
-    assert result.reputation is not None
-    penalty = result.reputation.attestation_penalty
+    assessment = engine.evaluate(action, base_result, ndc=ndc)
+    assert assessment.score is not None
+    penalty = assessment.score.attestation_penalty
     assert 0.0 <= penalty <= 1.0
     engine.close()
 
@@ -302,14 +303,14 @@ def test_pbt_dcrs_non_negative(
             confidence=1.0,
         ))
 
-    result = engine.evaluate(action, base_result, ndc=ndc)
-    assert result.reputation is not None
-    assert result.reputation.dcrs >= 0.0
+    assessment = engine.evaluate(action, base_result, ndc=ndc)
+    assert assessment.score is not None
+    assert assessment.score.dcrs >= 0.0
     engine.close()
 
 
 # ---------------------------------------------------------------------------
-# Invariant 7: Threshold monotonicity — higher threshold → more permissive
+# Invariant 7: Threshold monotonicity — higher threshold → fewer risk flags
 # ---------------------------------------------------------------------------
 
 @settings(max_examples=30, deadline=None)
@@ -351,14 +352,13 @@ def test_pbt_threshold_monotonicity(
     engine_low = DelegateReputationEngine(hbs=hbs, threshold=low_threshold)
     engine_high = DelegateReputationEngine(hbs=hbs, threshold=high_threshold)
 
-    result_low = engine_low.evaluate(action, base_result, ndc=ndc)
-    result_high = engine_high.evaluate(action, base_result, ndc=ndc)
+    assessment_low = engine_low.evaluate(action, base_result, ndc=ndc)
+    assessment_high = engine_high.evaluate(action, base_result, ndc=ndc)
 
-    # If strict (low) threshold permits, lenient (high) must also permit
-    # (contra-positive: if high blocks, low MAY block or permit)
-    if result_low.permitted:
-        assert result_high.permitted
-
+    # If strict (low) threshold does NOT flag, lenient (high) must also NOT flag
+    # (contra-positive: if high flags, low MAY flag or not)
+    if not assessment_low.requires_human_arbitration:
+        assert not assessment_high.requires_human_arbitration
 
     engine_low.close()
     engine_high.close()
