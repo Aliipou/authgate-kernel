@@ -1,5 +1,6 @@
 # authgate-kernel
 
+**[🟢 Live demo — verify a capability with the real compiled kernel, right in your browser](https://authgate-hub.vercel.app)**
 
 **A capability gate between any decision and any real-world action.**
 
