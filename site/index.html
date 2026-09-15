@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>authgate-kernel</title>
+<meta name="description" content="The authorization layer between any decision and any IO — a formally-scoped capability kernel, compiled to WASM and running live in your browser." />
+<script type="module">
+  import mermaid from "https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs";
+  mermaid.initialize({ startOnLoad: true, theme: "dark" });
+</script>
+<style>
+  :root {
+    --bg: #0f1419;
+    --panel: #161d27;
+    --panel-raised: #1c2530;
+    --text: #e7ecf1;
+    --muted: #8b98a8;
+    --accent: #3d8bfd;
+    --line: #2a3542;
+    --permit: #2ecc71;
+    --deny: #e05252;
+    --warn: #e0a852;
+    font-family: "SF Mono", ui-monospace, "Cascadia Code", Consolas, monospace;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: radial-gradient(1200px 600px at 10% -10%, #1b3a5f 0%, var(--bg) 55%);
+    color: var(--text);
+    font-family: "Segoe UI", system-ui, sans-serif;
+    line-height: 1.55;
+  }
+  main { max-width: 980px; margin: 0 auto; padding: 3rem 1.25rem 5rem; }
+  h1 { font-size: 2rem; margin: 0 0 0.4rem; letter-spacing: -0.02em; }
+  h2 { font-size: 1.25rem; margin: 3rem 0 1rem; color: var(--text); }
+  h3 { font-size: 1rem; margin: 1.5rem 0 0.6rem; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
+  p.lead { color: var(--muted); max-width: 42rem; margin: 0 0 1.5rem; font-size: 1.02rem; }
+  code, .mono { font-family: "SF Mono", ui-monospace, "Cascadia Code", Consolas, monospace; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .badges { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 1rem 0 1.5rem; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 0.3rem;
+    background: var(--panel-raised); border: 1px solid var(--line);
+    border-radius: 999px; padding: 0.25rem 0.7rem; font-size: 0.78rem; color: var(--muted);
+  }
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 12px;
+    padding: 1.25rem 1.4rem;
+    margin: 1rem 0;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  th, td { text-align: left; padding: 0.5rem 0.4rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .status-real { color: var(--permit); }
+  .status-gap { color: var(--warn); }
+
+  /* Demo */
+  #demo-status { display: inline-flex; align-items: center; gap: 0.5rem; font-size: 0.85rem; color: var(--muted); margin-bottom: 1rem; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); }
+  .dot.ok { background: var(--permit); }
+  .dot.err { background: var(--deny); }
+  .scenario-row { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+  button.scenario {
+    background: var(--panel-raised); color: var(--text); border: 1px solid var(--line);
+    border-radius: 8px; padding: 0.5rem 0.9rem; font-size: 0.85rem; cursor: pointer;
+  }
+  button.scenario:hover { border-color: var(--accent); }
+  textarea {
+    width: 100%; min-height: 220px; background: #0b0f14; color: var(--text);
+    border: 1px solid var(--line); border-radius: 8px; padding: 0.75rem;
+    font-size: 0.82rem; resize: vertical;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+  @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+  button#verify-btn {
+    background: var(--accent); color: white; border: none; border-radius: 8px;
+    padding: 0.65rem 1.4rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; margin-top: 0.75rem;
+  }
+  button#verify-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  #result { margin-top: 1rem; }
+  .decision {
+    display: inline-block; font-weight: 700; padding: 0.3rem 0.8rem; border-radius: 6px; font-size: 0.95rem;
+  }
+  .decision.permit { background: rgba(46,204,113,0.15); color: var(--permit); border: 1px solid var(--permit); }
+  .decision.deny { background: rgba(224,82,82,0.15); color: var(--deny); border: 1px solid var(--deny); }
+  ul.violations { margin: 0.6rem 0 0; padding-left: 1.2rem; color: var(--deny); font-size: 0.88rem; }
+  ul.warnings { margin: 0.6rem 0 0; padding-left: 1.2rem; color: var(--warn); font-size: 0.88rem; }
+  .result-meta { margin-top: 0.6rem; font-size: 0.8rem; color: var(--muted); }
+  footer { margin-top: 3rem; color: var(--muted); font-size: 0.85rem; border-top: 1px solid var(--line); padding-top: 1.5rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>authgate-kernel</h1>
+  <p class="lead">The authorization layer between any decision and any IO. An actor presents a signed capability chain; the kernel verifies it's valid, non-expired, and traceable to a trust root — deterministically, structurally, with no LLM call inside the gate.</p>
+
+  <div class="badges">
+    <span class="badge">Rust TCB</span>
+    <span class="badge">#![forbid(unsafe_code)]</span>
+    <span class="badge">PolyForm Noncommercial 1.0.0</span>
+    <span class="badge"><a href="https://github.com/Aliipou/authgate-kernel" style="color:inherit">github.com/Aliipou/authgate-kernel</a></span>
+  </div>
+
+  <div class="panel">
+    <p style="margin:0 0 0.5rem"><strong>This isn't a mockup.</strong> The panel below runs <code>authgate_kernel.wasm</code> — the actual Rust TCB (<code>engine.rs</code>, <code>dag.rs</code>, <code>wire.rs</code>), compiled with <code>wasm-pack</code>, running client-side in your browser right now. Every Permit/Deny below is the real kernel's output, not a scripted response.</p>
+  </div>
+
+  <h2>Live: verify a capability</h2>
+  <div id="demo-status"><span class="dot" id="wasm-dot"></span><span id="wasm-status">Loading the compiled kernel…</span></div>
+
+  <div class="scenario-row">
+    <button class="scenario" data-scenario="permit-direct">✅ Alice reads her own sales data</button>
+    <button class="scenario" data-scenario="permit-delegated">✅ Bot reads sales data (delegated by Alice)</button>
+    <button class="scenario" data-scenario="deny-no-claim">❌ Bot reads system config (no claim exists)</button>
+    <button class="scenario" data-scenario="deny-rogue">❌ Rogue bot (no owner) reads anything</button>
+    <button class="scenario" data-scenario="deny-sovereignty">❌ Action flagged as reducing human corrigibility</button>
+  </div>
+
+  <div class="grid-2">
+    <div>
+      <h3>Registry (claims)</h3>
+      <textarea id="registry-input" spellcheck="false"></textarea>
+    </div>
+    <div>
+      <h3>Action</h3>
+      <textarea id="action-input" spellcheck="false"></textarea>
+    </div>
+  </div>
+  <button id="verify-btn" disabled>Verify with the real kernel</button>
+
+  <div id="result"></div>
+
+  <h2>Architecture</h2>
+  <div class="panel">
+    <pre class="mermaid">
+flowchart TB
+  REQ[Agent / planner request]
+  CA[CanonicalAction<br/>actor, resource, rights, capability_proofs, binding_hash]
+  CG["CallGate.execute()"]
+  L1[L1: verify binding_hash]
+  L2["L2: for each capability — resource match, expiry, epoch, chain validation"]
+  L3[L3: root-signed revocations]
+  PERMIT[Decision::Permit]
+  DENY["Decision::Deny reason"]
+  AUDIT[AuditLog — SHA-256 hash-chained]
+
+  REQ --> CA --> CG --> L1 --> L2 --> L3
+  L3 -->|all invariants hold| PERMIT
+  L3 -->|any invariant fails| DENY
+  PERMIT --> AUDIT
+  DENY --> AUDIT
+    </pre>
+  </div>
+
+  <h2>Numbers that matter</h2>
+  <p class="lead">This project's own README refuses to round up. Same numbers here.</p>
+  <div class="panel">
+    <table>
+      <tbody>
+        <tr><td>Security-enforcing Rust LOC</td><td><code>engine.rs</code> 250 LOC; full path (<code>engine.rs</code>+<code>dag.rs</code>+<code>call_gate.rs</code>) ~934 LOC</td></tr>
+        <tr><td>TCB Rust tests</td><td class="status-real">141 passing</td></tr>
+        <tr><td>Python integration tests</td><td class="status-real">905 passing</td></tr>
+        <tr><td>Kani harnesses (bounded model checking)</td><td class="status-gap">19 written — 0 ever run (Kani not installed; harnesses are <code>#[cfg(kani)]</code> so a plain build never compiles them either)</td></tr>
+        <tr><td>Lean 4 theorems</td><td class="status-gap">16 declared — 5 of 6 files fail to compile</td></tr>
+        <tr><td>Wire boundary attack classes</td><td class="status-real">18 (WA-1…WA-18), 37 pytest assertions</td></tr>
+        <tr><td>Concurrent verify() stress test</td><td class="status-real">1,000 calls via ThreadPoolExecutor, 200 concurrent audit appends</td></tr>
+        <tr><td>Python verify() latency</td><td class="status-real">p50 ≈ 9.7µs (10-claim registry), 17.4µs (1,000-claim)</td></tr>
+        <tr><td>TLA+ invariants</td><td class="status-gap">10 declared — TLC has never successfully run against the spec</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h2>What it does not do</h2>
+  <div class="panel">
+    <table>
+      <thead><tr><th>Not this</th><th>Why</th></tr></thead>
+      <tbody>
+        <tr><td>Alignment</td><td>Alignment is about values. This kernel is about typed authority.</td></tr>
+        <tr><td>Intent verification</td><td>The kernel does not parse or interpret natural language.</td></tr>
+        <tr><td>Ethics enforcement</td><td>Ethical reasoning requires semantic content — this is structural.</td></tr>
+        <tr><td>Side-channel defense</td><td>Timing attacks, covert channels — out of scope by design.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <footer>
+    Built by <a href="https://github.com/Aliipou">Ali Pourrahim</a> ·
+    <a href="https://github.com/Aliipou/authgate-kernel">Source</a> ·
+    <a href="https://github.com/Aliipou/authgate-kernel/blob/main/README.md">Full README</a> ·
+    <a href="https://github.com/Aliipou/authgate-kernel/blob/main/formal/INCOMPLETENESS.md">Formal-verification gaps, stated plainly</a>
+    <p>Source-available under PolyForm Noncommercial 1.0.0. Production/commercial use requires a separate license.</p>
+  </footer>
+</main>
+<script type="module" src="./app.js"></script>
+</body>
+</html>
