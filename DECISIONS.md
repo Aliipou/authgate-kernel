@@ -124,3 +124,47 @@ passed, 2 failed).
 
 **Revisit when:** N/A — this makes the test immune to further clock drift by
 construction.
+
+## 2026-09-16 — Close the consent-semantics gap with an untrusted veto, document why the God→Human gap should stay open
+
+**Context:** PHILOSOPHY/COVERAGE_MATRIX.md names two gaps: row 8 (Consent
+Logic) reports `informed`/`voluntary`/`competent`/`not-deceived` as required
+by the theory but not computed; row 20 (`God -> Human`) reports the
+ontological root as not modeled. Asked to work through documented gaps and
+close what's actually closeable.
+
+**Decision:**
+- Added `extensions/consent_semantics.py`: `semantic_consent_veto`, the same
+  architecture as the sibling `decision-os-min` project's `semantic_veto`
+  (reused defenses line for line) — an optional, untrusted judge composed
+  outside `kernel/`, veto-only, fail-closed on every error path, contributing
+  no evidence. Closes row 8's actual computational gap without putting
+  semantic vocabulary in the TCB (TCB_DISCIPLINE Rule 2). Row 8 stays
+  **Partial** on purpose — a judge's permit is not a mechanical guarantee.
+- Did **not** attempt to close row 20 the same way. Wrote
+  `PHILOSOPHY/GOD_HUMAN_BOUNDARY.md` instead, arguing the two gaps are
+  different in kind: row 8 is a coverage gap (a judgeable predicate nobody
+  computed yet); row 20 is a category boundary (`Person(h) -> OwnedByGod(h)`
+  is not the kind of claim any formal system, this one included, can verify
+  from within itself — the general-purpose version of this is already stated
+  in `formal/lean4/FreedomKernel/Incompleteness.lean`'s "Axiom Soundness"
+  section for A1–A7; this file makes the same argument explicit one level up,
+  for the root those axioms protect). Marked row 20 "Documented gap,
+  permanently" rather than leaving it looking like unfinished work.
+
+**Reason:** Comprehensiveness for a system that also has to stay
+non-contradictory means treating mechanically-checkable claims, judgeable-
+but-not-provable claims, and undefended axioms as three different categories
+and being honest about which is which — not writing code against the third
+category to make the coverage table look more finished than the system
+actually is.
+
+**Trade-offs accepted:** `semantic_consent_veto` has no timeout of its own
+(this codebase has no single host applying `evaluator_timeout_s` uniformly
+the way decision-os-min's `DecisionOS`/`Governor`/`AgentHost` do) — a caller
+wiring it into a real-time pipeline must bound the judge call themselves.
+Documented in `docs/CONSENT_SEMANTICS.md` rather than solved here.
+
+**Revisit when:** If this codebase grows a single composition host analogous
+to decision-os-min's, give `semantic_consent_veto` the same timeout
+enforcement rather than leaving it caller-responsibility.

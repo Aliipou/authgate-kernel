@@ -62,7 +62,7 @@ What the engineering encodes, honestly stated:
 
 | Tier | In the theory | In the kernel | Status |
 |---|---|---|---|
-| `God -> Human` | `Person(h) -> OwnedByGod(h)` — ontological root | **not modeled** in the TCB | Documented gap — the kernel begins one level down, with the human as the authority root. See [`COVERAGE_MATRIX.md`](COVERAGE_MATRIX.md). |
+| `God -> Human` | `Person(h) -> OwnedByGod(h)` — ontological root | **not modeled** in the TCB | Documented gap, permanently — the kernel begins one level down, with the human as the authority root. This is a category boundary, not an oversight: see [`GOD_HUMAN_BOUNDARY.md`](GOD_HUMAN_BOUNDARY.md) and [`COVERAGE_MATRIX.md`](COVERAGE_MATRIX.md). |
 | `Human <-> Human` | no human owns another | no claim type lets one human own a human; consent grantor must be `HUMAN` | Enforced structurally |
 | `Human -> Machine` | every machine has a human owner | `OwnershipRegistry.register_machine()` + verifier **A4** (`UNOWNED_MACHINE`) | Enforced |
 | `Machine <-> Machine` | delegated rights only, attenuated | `registry.delegate()` attenuation invariants | Enforced |
@@ -81,7 +81,7 @@ what it cannot.
 | **Axioms** (آکسیوم‌ها A1..A7) | [`kernel/verifier.py`](../src/authgate/kernel/verifier.py), [`AXIOMATIC_FOUNDATION.md`](../AXIOMATIC_FOUNDATION.md), `formal/lean4/` |
 | **Rights Ontology** | [`kernel/entities.py`](../src/authgate/kernel/entities.py) — `ResourceType`, `RightsClaim` |
 | **Ownership Registry** | [`kernel/registry.py`](../src/authgate/kernel/registry.py) |
-| **Consent Logic** (`valid_consent`) | [`kernel/consent.py`](../src/authgate/kernel/consent.py), [`kernel/consent_registry.py`](../src/authgate/kernel/consent_registry.py) |
+| **Consent Logic** (`valid_consent`) | [`kernel/consent.py`](../src/authgate/kernel/consent.py), [`kernel/consent_registry.py`](../src/authgate/kernel/consent_registry.py) (structural predicates), [`extensions/consent_semantics.py`](../src/authgate/extensions/consent_semantics.py) (informed/voluntary/competent/not-deceived, via optional untrusted judge) |
 | **Freedom Verifier** | [`kernel/verifier.py`](../src/authgate/kernel/verifier.py) — `FreedomVerifier` |
 | **Runtime Enforcement** | [`kernel/call_gate.py`](../src/authgate/kernel/call_gate.py) |
 | **Divine Justice** (عدل within rights) | [`analysis/`](../src/authgate/analysis/) — coercion, constitutional_economy, sovereignty_metrics (as *constraints*, not a single optimizer) |
@@ -106,6 +106,10 @@ Full line-by-line evidence, with the matching book passages, is in
   philosophical question the engineering leaves open (see
   [`../AXIOMATIC_FOUNDATION.md`](../AXIOMATIC_FOUNDATION.md)).
 - It does **not** model the `God -> Human` tier; the human is the authority root.
+  This is not a to-do item — [`GOD_HUMAN_BOUNDARY.md`](GOD_HUMAN_BOUNDARY.md) argues
+  why no formal system, this one included, could model it without a category
+  error, the same way `Incompleteness.lean` already documents for axiom
+  soundness generally.
 
 These limits are the point. The theory's own test is whether a guidance system can be
 written as a *finite, non-contradictory, executable* system for a machine that has no
