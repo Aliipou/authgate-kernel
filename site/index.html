@@ -164,12 +164,12 @@ flowchart TB
         <tr><td>Security-enforcing Rust LOC</td><td><code>engine.rs</code> 250 LOC; full path (<code>engine.rs</code>+<code>dag.rs</code>+<code>call_gate.rs</code>) ~934 LOC</td></tr>
         <tr><td>TCB Rust tests</td><td class="status-real">141 passing</td></tr>
         <tr><td>Python integration tests</td><td class="status-real">905 passing</td></tr>
-        <tr><td>Kani harnesses (bounded model checking)</td><td class="status-gap">19 written — 0 ever run (Kani not installed; harnesses are <code>#[cfg(kani)]</code> so a plain build never compiles them either)</td></tr>
-        <tr><td>Lean 4 theorems</td><td class="status-gap">16 declared — 5 of 6 files fail to compile</td></tr>
+        <tr><td>Kani harnesses (bounded model checking)</td><td class="status-real">19 proved (bounded), CI-verified via <code>formal.yml</code></td></tr>
+        <tr><td>Lean 4 theorems</td><td class="status-gap">Partial — TCB/Temporal/MultiAgent proved; <code>Scope.lean</code>: 2 <code>sorry</code>; 2 crypto axioms in <code>Proofs.lean</code></td></tr>
         <tr><td>Wire boundary attack classes</td><td class="status-real">18 (WA-1…WA-18), 37 pytest assertions</td></tr>
         <tr><td>Concurrent verify() stress test</td><td class="status-real">1,000 calls via ThreadPoolExecutor, 200 concurrent audit appends</td></tr>
         <tr><td>Python verify() latency</td><td class="status-real">p50 ≈ 9.7µs (10-claim registry), 17.4µs (1,000-claim)</td></tr>
-        <tr><td>TLA+ invariants</td><td class="status-gap">10 declared — TLC has never successfully run against the spec</td></tr>
+        <tr><td>TLA+ / TLC</td><td class="status-real">Safety model checked, CI-verified via <code>formal.yml</code> (<code>formal/tlc_run.log</code>)</td></tr>
       </tbody>
     </table>
   </div>
