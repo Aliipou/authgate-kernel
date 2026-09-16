@@ -88,23 +88,31 @@ mod tests {
 
     #[test]
     fn accept_rejects_backward_jump() {
+        // Relative to the clock's own real-wall-clock anchor, not a hardcoded
+        // absolute timestamp — SessionClock::new() anchors `last` to
+        // SystemTime::now(), so a fixed past timestamp here would start
+        // failing the moment real time passed it (it did: this test used to
+        // hardcode 1_700_000_000, which is now in the past).
         let mut clock = SessionClock::new();
-        clock.accept(1_700_000_000).expect("first accept");
-        let err = clock.accept(1_699_999_999).unwrap_err();
+        let t0 = clock.last();
+        clock.accept(t0 + 1).expect("first accept");
+        let err = clock.accept(t0).unwrap_err();
         assert_eq!(
             err,
             ClockError::BackwardJump {
-                previous: 1_700_000_000,
-                supplied: 1_699_999_999,
+                previous: t0 + 1,
+                supplied: t0,
             }
         );
     }
 
     #[test]
     fn accept_allows_equal_and_forward() {
+        // Same fix: relative to the real anchor, not a hardcoded absolute value.
         let mut clock = SessionClock::new();
-        assert_eq!(clock.accept(100).unwrap(), 100);
-        assert_eq!(clock.accept(100).unwrap(), 100);
-        assert_eq!(clock.accept(101).unwrap(), 101);
+        let t0 = clock.last();
+        assert_eq!(clock.accept(t0).unwrap(), t0);
+        assert_eq!(clock.accept(t0).unwrap(), t0);
+        assert_eq!(clock.accept(t0 + 1).unwrap(), t0 + 1);
     }
 }

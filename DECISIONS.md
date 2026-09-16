@@ -97,3 +97,30 @@ builds that never needed it.
 
 **Revisit when:** If `entities.rs`/`registry.rs`/`verifier.rs` (the "v1"
 Python-facing API) ever need to be reachable from a non-Python build target.
+
+## 2026-09-16 — Fix a time-bomb test in `session_clock.rs`
+
+**Context:** After merging `with-legitimacy` to `main`, `cargo test --release`
+showed 2 failures: `accept_rejects_backward_jump` and
+`accept_allows_equal_and_forward`. Both called `SessionClock::new()` (which
+anchors `last` to real `SystemTime::now()`) and then immediately called
+`.accept()` with a hardcoded absolute past timestamp (`100`, `1_700_000_000`
+— November 2023) as if `last` started at 0. That passed only while real wall
+time stayed behind those hardcoded values; it doesn't anymore (it's 2026).
+
+**Decision:** Rewrote both tests to anchor to `clock.last()` (the real value
+`SessionClock::new()` actually produces) and assert relative offsets from it,
+instead of hardcoded absolute Unix timestamps. Production code
+(`session_clock.rs`'s `accept`/`now`) was not touched — the backward-jump
+rejection logic is correct; only the tests were time-bombed.
+
+**Reason:** This is a test-design bug, not a product bug, and the fix
+preserves the exact semantics under test (reject strictly-backward, accept
+equal/forward) without depending on the wall clock never passing a fixed
+point. Verified: `cargo test --release` — 300 passed, 0 failed (was 298
+passed, 2 failed).
+
+**Trade-offs accepted:** None.
+
+**Revisit when:** N/A — this makes the test immune to further clock drift by
+construction.
