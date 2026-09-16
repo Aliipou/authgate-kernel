@@ -2,6 +2,8 @@
 
 The `tcb/` module is the entire security kernel. Everything outside it is untrusted.
 
+**Related (crate root, NOT in TCB):** `seccomp.rs` (Linux syscall allowlists), `session_clock.rs` (monotonic caller-side clock). Enforced in CI via `seccomp.yml` and documented in `TCB_DISCIPLINE.md`.
+
 ## Public API
 
 ```rust

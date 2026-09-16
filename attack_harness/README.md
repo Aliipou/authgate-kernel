@@ -2,6 +2,8 @@
 
 Black-box attack harness for the authgate-kernel TCB. Probes the kernel from the outside using crafted inputs; never reads source code or internal state.
 
+**CI:** mutation/sequence/canonicalization via main CI; simulation (231 scenarios) via `adversarial-simulation` job; seccomp kill-test via `.github/workflows/seccomp.yml`.
+
 ## What this is
 
 A systematic battery of adversarial tests covering 7 orthogonal attack classes. Each test constructs a structurally invalid or malformed action, calls the Python oracle (which mirrors Rust TCB behavior), and asserts the result is Deny. A "violation" means the kernel returned Permit for an invalid input.
@@ -46,6 +48,7 @@ Simulation engine:       231 scenarios — 0 violations
 | `canonicalization_attacks.py` | 5 tests for the canonical binding hash gate (Layer 1) |
 | `sequence_attacks.py` | 5 tests for SequenceContext composition safety |
 | `attack_tree_coverage.py` | 21 tests drawn from the full AT-1 through AT-7 attack tree |
+| `../tests/test_seccomp_adversarial.py` | Linux seccomp: `execve` killed under read-only allowlist (CI) |
 
 ## Running the harness
 

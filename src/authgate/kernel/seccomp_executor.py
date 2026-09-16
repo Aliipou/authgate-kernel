@@ -55,41 +55,46 @@ class ExecutionResult:
 
 # ─── Seccomp filter (Linux only) ──────────────────────────────────────────────
 
-# Minimal syscall allowlist for a tool subprocess:
-# read, write, close, exit_group, fstat, mmap, mprotect, munmap, brk, access,
-# open/openat (for reading files), lseek, getdents64, stat, lstat, newfstatat
-# This permits file I/O but blocks: socket, execve, clone, fork, ptrace, etc.
+# Rights bitmask — mirrors authgate-kernel/src/tcb/types.rs and WASM host imports.
+RIGHT_READ = 1 << 0
+RIGHT_WRITE = 1 << 1
+RIGHT_SPAWN = 1 << 4
+RIGHT_NETWORK = 1 << 5
 
+SYSCALL_EXECVE_X86_64 = 59
+SYSCALL_SOCKET_X86_64 = 41
+
+_BASE_X86_64 = [
+    0, 1, 3, 4, 5, 6, 8, 9, 10, 11, 12, 21, 39, 60, 63, 72, 73, 78, 79,
+    107, 217, 228, 231, 257, 262,
+]
+
+
+def allowlist_for_rights(rights: int, arch: str = "x86_64") -> list[int]:
+    """
+    Derive seccomp allowlist from capability rights — same mapping as WASM sandbox.
+
+    Read-only rights block execve and socket; RIGHT_NETWORK adds socket syscalls;
+    RIGHT_SPAWN adds clone/fork/execve. Keep in sync with authgate-kernel/src/seccomp.rs.
+    """
+    if arch != "x86_64":
+        return list(_BASE_X86_64)
+
+    syscalls = list(_BASE_X86_64)
+    if rights & (RIGHT_READ | RIGHT_WRITE):
+        syscalls.append(2)  # open
+    if rights & RIGHT_NETWORK:
+        syscalls.extend([
+            SYSCALL_SOCKET_X86_64, 42, 43, 44, 45, 46, 47, 49, 50, 51, 52, 54, 55,
+        ])
+    if rights & RIGHT_SPAWN:
+        syscalls.extend([56, 57, SYSCALL_EXECVE_X86_64])
+    return sorted(set(syscalls))
+
+
+# Default read-only profile (backward compatible with pre-rights-mapping callers).
 _SECCOMP_ALLOWLIST = {
-    "x86_64": [
-        0,   # read
-        1,   # write
-        2,   # open
-        3,   # close
-        4,   # stat
-        5,   # fstat
-        6,   # lstat
-        8,   # lseek
-        9,   # mmap
-        10,  # mprotect
-        11,  # munmap
-        12,  # brk
-        21,  # access
-        60,  # exit
-        231, # exit_group
-        257, # openat
-        262, # newfstatat
-        217, # getdents64
-        39,  # getpid
-        79,  # getcwd
-        78,  # gettimeofday
-        228, # clock_gettime
-        107, # sysinfo
-        63,  # uname
-        16,  # ioctl (needed for terminal detection)
-        72,  # fcntl (for file flags)
-        73,  # flock
-    ],
+    "x86_64": allowlist_for_rights(RIGHT_READ),
 }
 
 

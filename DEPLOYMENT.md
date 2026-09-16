@@ -54,7 +54,28 @@ Risk: a memory-safety bug in orchestration code is in the same process as the ga
 
 ### Distributed (future)
 
-Multi-node with consensus-backed revocation. See `formal/distributed/`.
+Multi-node with consensus-backed revocation is an **explicit non-goal** for v1 — see [NON_GOALS.md](NON_GOALS.md). Python experiments live in `src/authgate/distributed/`.
+
+---
+
+## WASM sandbox (feature `sandbox`)
+
+Linux CI builds and tests the WASM sandbox (`.github/workflows/sandbox.yml`).
+
+**Windows local dev:** `cargo build --features sandbox` may fail with missing `kernel32.lib`. Install the Windows 10 SDK (10.0.22621 or later) via Visual Studio Build Tools, or rely on Linux CI / WSL for sandbox work — do not block merges on Windows SDK availability.
+
+---
+
+## Seccomp (Linux tool execution)
+
+Use `SeccompCallGate` or `SeccompExecutor.auto()` when running Python tool functions:
+
+```python
+from authgate.kernel.seccomp_executor import SeccompCallGate
+gate = SeccompCallGate(verifier)  # capability gate + seccomp subprocess
+```
+
+Requires `libseccomp2` on the host. Adversarial tests: `tests/test_seccomp_adversarial.py` (CI: `.github/workflows/seccomp.yml`).
 
 ---
 

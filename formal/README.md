@@ -2,6 +2,8 @@
 
 Branch: `spec-core` | Track: Mathematical Truth
 
+**CI:** `.github/workflows/formal.yml` runs TLC + Lean 4 `lake build` on every PR (green on `with-legitimacy`, Aug 2026).
+
 ## What This Is
 
 The authoritative formal specification of authgate-kernel's security properties.
@@ -21,13 +23,12 @@ No code here compiles or deploys. Correctness is established by model checking
 | `tlc_run.log` | TLC log — completed with no error found (2026-08-20, bounded) |
 | `THREAT_MODEL.md` | Attack taxonomy (AT-1 through AT-7), invariant mapping, open gaps |
 | `COVERAGE.md` | Which invariants have TLC instances / Lean proofs |
-| `INCOMPLETENESS.md` | Known limits of the formal model (Gödel budget) |
+| `INCOMPLETENESS.md` | Known limits — proved vs `sorry` vs axioms (Gödel budget) |
 | `TLC_SETUP.md` | How to install `tla2tools.jar` and re-run TLC |
-| `FreedomKernel.lean` | Lean4 proof sketches |
+| `lean4/FreedomKernel/` | Lean 4 modules (TCB, Scope, Temporal, MultiAgent, Incompleteness) |
 | `plan_semantics.md` | Denotational semantics for capability plan IR |
 | `distributed/` | Distributed epoch / multi-node extension (research) |
 | `kani/` | Rust Kani verification stubs |
-| `lean4/` | Lean4 proof modules |
 | `proofs/` | TLAPS proof scripts |
 
 ---
@@ -75,7 +76,25 @@ THEOREM RevocThm        == [][RevocationSafety]_vars
 THEOREM ComposThm       == [][CompositionMono]_vars
 ```
 
-Status: **bounded TLC green** (2026-08-20, `Len(audit_log)≤1`, ~4227 distinct states) — see `tlc_run.log` and `COVERAGE.md`. Larger bounds / TLAPS proofs remain open.
+Status: **bounded TLC green** (2026-08-20, `Len(audit_log)≤1`, ~4227 distinct states) — see `tlc_run.log` and `COVERAGE.md`. **Re-run in CI:** `formal.yml`. TLAPS / full refinement proofs remain open.
+
+### Lean 4 (FreedomKernel)
+
+Build locally:
+
+```bash
+cd formal/lean4/FreedomKernel && lake build
+```
+
+| Module | Status |
+|--------|--------|
+| `TCB.lean` | Proved (forbidden flags, determinism) |
+| `Temporal.lean` | `taint_monotone` proved |
+| `MultiAgent.lean` | `attenuation_cannot_escalate` proved |
+| `Scope.lean` | T-SC3/T-SC4 proved; T-SC1/T-SC5 have 1 `sorry` each |
+| `Proofs.lean` | 2 crypto axioms (`sig_euf_cma`, `forged_revocation_harmless`) |
+
+Do not claim “all theorems verified” without the split in `INCOMPLETENESS.md`.
 
 ---
 

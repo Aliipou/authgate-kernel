@@ -19,6 +19,7 @@ it does not belong in this kernel.
 - **Score ethics** — there is no ethics score, behavioral score, or alignment metric
 - **Replace behavioral alignment research** — this kernel is a necessary structural precondition, not a sufficient alignment solution
 - **Operate without a human owner** — the system requires an explicit ownership graph
+- **Provide multi-node Rust distributed consensus** — single-node MCP/agent gating is the target; Python `distributed_kernel.py` experiments exist for epoch propagation research only, not TCB guarantees across nodes (see `spec/` if multi-node becomes a product requirement)
 
 ---
 

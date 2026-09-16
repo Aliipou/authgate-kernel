@@ -29,6 +29,10 @@ def normalize (path : String) : String :=
   if path.endsWith "/" then normalize path.dropRight 1 else path
 termination_by path.length
 
+lemma normalize_no_trailing (path : String) (h : ¬ path.endsWith "/") :
+    normalize path = path := by
+  simp [normalize, h]
+
 -- The core predicate: does path C fall within scope P?
 def scopeContains (P C : String) : Bool :=
   if hasTraversal P || hasTraversal C then false
@@ -48,11 +52,14 @@ theorem scope_contains_reflexive (P : String) (h : hasTraversal P = false) :
     scopeContains P P = true := by
   simp [scopeContains, h]
   split_ifs with hempty
-  · simp
-  · simp [normalize]
-    -- C == normalize(P) branch: when P = normalize(P), P == normalize(P) holds.
-    -- We use decide for ground-truth string operations over the abstract model.
-    sorry  -- Requires induction on normalize; admitted pending String library support
+  · rfl
+  · by_cases hslash : P.endsWith "/"
+    · -- Trailing-slash paths: P.startsWith (normalize P ++ "/") holds by construction.
+      right
+      simp [normalize, hslash]
+      sorry  -- String.startsWith lemma for normalize trailing strip (1 admit)
+    · left
+      simp [normalize_no_trailing P hslash]
 
 -- ── Theorem T-SC2: Root scope contains everything ────────────────────────────
 -- scope_contains("", C) is True for all C without traversal.
@@ -132,12 +139,7 @@ theorem scope_contains_antisymmetric
 --   T-SC4: Prefix-implies-containment (structural prefix namespace property)
 --   T-SC5: Antisymmetric (up to normalization)
 --
--- The two 'sorry' placeholders (T-SC1, T-SC5) require induction over the
--- String.startsWith / normalize interaction. They are axiomatically sound
--- and provable by inspection of the Python implementation; admitted here
--- pending Lean 4 String library maturity.
---
--- The security-critical theorems (T-SC3: traversal rejection, T-SC4: prefix containment)
--- are fully proved without sorry.
+-- T-SC1: Reflexive — non-trailing paths proved; trailing-slash branch has one sorry
+-- T-SC5: Antisymmetric — one sorry (String prefix library)
 
 end FreedomKernel.Scope

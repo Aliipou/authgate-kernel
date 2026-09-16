@@ -2,6 +2,31 @@
 
 Architectural decision records. See CLAUDE.md §7 for the format.
 
+## 2026-08-21 — Rename FDK → legitimacy; keep decision-os composition
+
+**Context:** FDK as a product/theory brand was closed. Freedom Formal (skill A1–A5)
+is the research legitimacy engine. We needed one name and one composition model
+without folding norms into the AuthGate TCB.
+
+**Decision:**
+- Rename the seam module to `authgate.integrations.legitimacy` (FDK kept as
+  re-export shim).
+- Keep **decision-os composition**: lattice meet; legitimacy is DENY-only and
+  never grants; AuthGate CallGate alone decides authority (TCB unchanged).
+- Default legitimacy engine on legitimacy-enabled branches: Freedom Formal
+  (`decide_freedom_formal` / `enforce_freedom_formal`).
+- Branch line: `main` = AuthGate without legitimacy required;
+  `with-legitimacy` / `research/freedom-fullscope` = AuthGate + legitimacy seam.
+
+**Reason:** One product brand (AuthGate), one optional veto plugin (legitimacy),
+replaceable evaluator behind the existing PolicyDecision contract.
+
+**Trade-offs accepted:** Extra branch/docs surface; FDK name remains as shim
+until external callers migrate.
+
+**Revisit when:** Real deployments show legitimacy false-positives dominate, or
+a subset of checks deserves a proven TCB bit (still not a full Rust FDK port).
+
 ## 2026-06-18 — FDK↔AuthGate boundary: a JSON contract, not shared code
 
 **Context:** FDK (Freedom Decision Kernel) and AuthGate both touch

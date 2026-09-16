@@ -18,6 +18,10 @@ mod semantic_gate_redteam;
 /// Capability-constrained WASM tool executor. Enable with `--features sandbox`.
 #[cfg(feature = "sandbox")]
 pub mod sandbox;
+/// Rights-derived seccomp allowlists for Linux subprocess isolation (NOT in TCB).
+pub mod seccomp;
+/// Monotonic session clock helper for caller-side time sourcing (NOT in TCB).
+pub mod session_clock;
 pub mod capability;
 mod crypto;
 pub mod engine;

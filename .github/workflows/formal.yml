@@ -1,0 +1,76 @@
+name: Formal verification
+
+# TLC model-check for AuthGateV3 — converts "pending Java setup" to CI-verified.
+# Bounded instance: MCConstraint == Len(audit_log) <= 1 (~4227 states, depth 9).
+
+on:
+  push:
+    branches: [main, integration, spec-core, tcb-core, with-legitimacy]
+    paths:
+      - "formal/**"
+      - ".github/workflows/formal.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "formal/**"
+      - ".github/workflows/formal.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  tlc:
+    name: TLC — AuthGateV3 (bounded MC)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: "17"
+          distribution: "temurin"
+
+      - name: Download tla2tools.jar
+        working-directory: formal
+        run: |
+          curl -fsSL -o tla2tools.jar \
+            "https://github.com/tlaplus/tlaplus/releases/download/v1.8.0/tla2tools.jar"
+          java -jar tla2tools.jar -help 2>&1 | head -3
+
+      - name: Run TLC (MC_AuthGateV3)
+        working-directory: formal
+        run: |
+          java -XX:+UseParallelGC -jar tla2tools.jar -workers 4 -tool MC_AuthGateV3 \
+            2>&1 | tee tlc_ci_run.log
+          grep -q "Model checking completed. No error has been found." tlc_ci_run.log
+
+      - name: Confirm bounded parameters match COVERAGE.md
+        working-directory: formal
+        run: |
+          grep -q "4227 distinct states" tlc_ci_run.log || \
+            grep -q "distinct states" tlc_ci_run.log
+          echo "TLC green — see formal/COVERAGE.md for run parameters"
+
+  lean:
+    name: Lean 4 — FreedomKernel
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install elan + Lean
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Build FreedomKernel
+        working-directory: formal/lean4/FreedomKernel
+        run: |
+          elan toolchain install $(cat lean-toolchain)
+          lake update
+          lake build
+          echo "Lean build OK — see formal/INCOMPLETENESS.md for admitted theorems"

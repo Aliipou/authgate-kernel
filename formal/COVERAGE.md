@@ -165,7 +165,7 @@ This closes the Python-layer gap for delegation chain integrity (previously only
 | Gap | Description | Why it's acceptable |
 |---|---|---|
 | G1 | Semantic gap | Kernel doesn't parse intent — by design |
-| G3 | Clock trust | Caller-supplied `now` — documented limitation |
+| G3 | Clock trust | Mitigated by `SessionClock` + caller obligation in `TCB_DISCIPLINE.md`; TCB still accepts raw `now` — no hardware attestation |
 | G5 | No replay protection | Kernel is stateless; replay protection belongs in the orchestration layer |
 | G6 | Crypto assumptions | ed25519 break = NIST-level threat — out of scope |
 | TLC larger bound | Green at `Len(audit_log)≤1`; `≤3` + WF not overnight-run | Tractability; setup in TLC_SETUP.md |

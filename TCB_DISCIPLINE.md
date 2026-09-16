@@ -148,6 +148,31 @@ it is rejected. No exceptions.
 
 ---
 
+## Clock integrity (caller obligation)
+
+The TCB accepts `now` as a **caller-supplied Unix second** at the `verify()` /
+`CallGate::execute()` boundary. A compromised or externally-spoofed wall clock
+can bypass expiry and epoch checks (invariants I3/I4) if the caller forwards it
+unchallenged.
+
+**Required practice:**
+
+1. **Do not** pass timestamps from untrusted inputs (HTTP headers, agent JSON,
+   remote peers) directly as `now`.
+2. **Do** source time from a session-local monotonic anchor:
+   `authgate_kernel::session_clock::SessionClock` (Rust) or
+   `time.monotonic()`-elapsed estimates at the adapter layer (Python).
+3. **Do** reject backward jumps within a session — use
+   `SessionClock::accept()` before forwarding a wall-clock value to the gate.
+
+Regression test: `authgate-kernel/src/session_clock.rs` (`now_is_monotonic_within_session`,
+`accept_rejects_backward_jump`).
+
+This is a **deployment obligation**, not a TCB guarantee — the gate cannot
+detect clock tampering without a trusted time source (TPM, NTP attestation, etc.).
+
+---
+
 ## When in doubt
 
 Delete the code.
