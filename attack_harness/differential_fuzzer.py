@@ -340,7 +340,7 @@ class TestPythonInvariants:
 # ─── II. Differential tests (Python vs Rust) ──────────────────────────────────
 
 try:
-    from authgate import _BACKEND as _RUST_BACKEND
+    from authgate.kernel import _BACKEND as _RUST_BACKEND
     _RUST_AVAILABLE = (_RUST_BACKEND == "rust")
 except ImportError:
     _RUST_AVAILABLE = False
@@ -353,7 +353,20 @@ _DIFF_SKIP = pytest.mark.skipif(
 
 
 def _rust_verify_from_action(act: dict) -> tuple[bool, str]:
-    """Call Rust verify via the Python API that uses authgate_kernel."""
+    """Call Rust verify via the Python API that uses authgate_kernel.
+
+    `_py_verify`'s wire-format model uses an abstract logical clock
+    (`expiry`/`now` are plain ints from the caller, e.g. expiry=500,
+    now=1000 means "expired"). The claims API this calls into
+    (RightsClaim/FreedomVerifier) has no injectable clock -- it checks
+    `expires_at` against real `time.time()`. So "expiry"/"timestamp" are
+    translated into a real past/future wall-clock deadline relative to
+    *now*, not passed through as raw numbers -- passing them through
+    unconverted would make every claim expire instantly (nonsense) or
+    never expire (silently skips INV-4 entirely, which is what the
+    original version of this function did).
+    """
+    import time
     from authgate.kernel.entities import AgentType, Entity, Resource, ResourceType, RightsClaim
     from authgate.kernel.registry import OwnershipRegistry
     from authgate.kernel.verifier import Action, FreedomVerifier
@@ -364,6 +377,11 @@ def _rust_verify_from_action(act: dict) -> tuple[bool, str]:
     res_bytes   = act["resource_hash"]
     res_name    = res_bytes.hex()[:16]
     rights      = act["required_rights"]
+    caps        = act["caps"]
+    cap         = caps[0] if caps else {}
+    cap_epoch   = cap.get("epoch", 0)
+    is_expired  = cap.get("expiry", 9999) < act["timestamp"]
+    expires_at  = (time.time() - 1.0) if is_expired else None  # None = never expires
 
     alice = Entity("alice", AgentType.HUMAN)
     bot   = Entity(actor_name, AgentType.MACHINE)
@@ -372,15 +390,21 @@ def _rust_verify_from_action(act: dict) -> tuple[bool, str]:
     reg = OwnershipRegistry()
     reg.register_machine(bot, alice)
     reg.add_claim(RightsClaim(
+        # alice must be able to delegate whatever READ/WRITE subset `rights`
+        # asks for regardless of whether RIGHT_DELEGATE is in `rights` --
+        # delegation plumbing isn't itself under test here, only whether the
+        # resulting bot claim's expiry/epoch/rights are enforced correctly.
         alice, res,
         can_read=(rights & RIGHT_READ) != 0,
         can_write=(rights & RIGHT_WRITE) != 0,
-        can_delegate=(rights & RIGHT_DELEGATE) != 0,
+        can_delegate=True,
     ))
     reg.delegate(RightsClaim(
         bot, res,
         can_read=(rights & RIGHT_READ) != 0,
         can_write=(rights & RIGHT_WRITE) != 0,
+        epoch=cap_epoch,
+        expires_at=expires_at,
     ), delegated_by=alice)
 
     v = FreedomVerifier(reg)
@@ -389,9 +413,21 @@ def _rust_verify_from_action(act: dict) -> tuple[bool, str]:
         actor=bot,
         resources_read=[res] if (rights & RIGHT_READ) else [],
         resources_write=[res] if (rights & RIGHT_WRITE) else [],
+        min_epoch=act["min_epoch"],
     )
     result = v.verify(action)
     return result.permitted, "; ".join(result.violations)
+
+
+#: `_rust_verify_from_action` goes through the claims API (RightsClaim /
+#: FreedomVerifier), whose `Action` can only *request* READ and WRITE
+#: (`resources_read`/`resources_write`) -- there is no generic
+#: "required_rights" bitmask check like `_py_verify`'s wire-format model
+#: has. DELEGATE/EXECUTE/SPAWN/NETWORK/MODEL_INVOKE/POLICY_MODIFY-only caps
+#: have no representable action to request on the claims side, so they're
+#: out of scope for this differential comparison (not a bug to route
+#: around -- the two models cover different things outside READ/WRITE).
+rw_rights_st = st.integers(min_value=1, max_value=(RIGHT_READ | RIGHT_WRITE))
 
 
 class TestDifferential:
@@ -399,12 +435,14 @@ class TestDifferential:
     Compares Python verify() vs Rust verify() for identical inputs.
     Skipped automatically if Rust build is not available.
     Every divergence is a security gap.
+
+    Scoped to READ/WRITE rights -- see `rw_rights_st` above for why.
     """
 
     @_DIFF_SKIP
     @settings(max_examples=1000, suppress_health_check=[HealthCheck.too_slow])
     @given(actor=actor_st, resource=resource_st,
-           rights=st.sampled_from(RIGHTS_LIST),
+           rights=st.sampled_from([RIGHT_READ, RIGHT_WRITE, RIGHT_READ | RIGHT_WRITE]),
            epoch=epoch_st, expiry=expiry_st)
     def test_diff_basic_permit_deny_match(self, actor, resource, rights, epoch, expiry):
         """DIFF-1: Python and Rust agree on permit/deny for valid inputs."""
@@ -423,10 +461,9 @@ class TestDifferential:
 
     @_DIFF_SKIP
     @settings(max_examples=500, suppress_health_check=[HealthCheck.too_slow])
-    @given(actor=actor_st, resource=resource_st, rights=rights_st)
+    @given(actor=actor_st, resource=resource_st, rights=rw_rights_st)
     def test_diff_expired_cap_both_deny(self, actor, resource, rights):
         """DIFF-2: Both layers deny expired caps."""
-        assume(rights > 0)
         cap = _make_cap(actor, resource, rights, expiry=500)  # expired
         act = _make_action(actor, resource, rights, caps=[cap], timestamp=1000)
 
@@ -439,11 +476,10 @@ class TestDifferential:
 
     @_DIFF_SKIP
     @settings(max_examples=500, suppress_health_check=[HealthCheck.too_slow])
-    @given(actor=actor_st, resource=resource_st, rights=rights_st,
+    @given(actor=actor_st, resource=resource_st, rights=rw_rights_st,
            cap_epoch=st.integers(min_value=0, max_value=4))
     def test_diff_stale_epoch_both_deny(self, actor, resource, rights, cap_epoch):
         """DIFF-3: Both layers deny stale epoch caps."""
-        assume(rights > 0)
         cap = _make_cap(actor, resource, rights, epoch=cap_epoch)
         act = _make_action(actor, resource, rights, min_epoch=5, caps=[cap])
 
