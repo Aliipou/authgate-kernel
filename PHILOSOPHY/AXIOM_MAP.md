@@ -23,6 +23,13 @@ suggest.** This file states precisely where.
 | **Ext-only** | Implemented in `extensions/` or `analysis/` (Python, outside the TCB), no proof. |
 | **Gap** | Not modeled. |
 
+**2026-09-16 correction:** every "Lean✓"/"Lean-stub" mark below was, until
+this date, unverified by CI regardless of what it said — the Lean library's
+`lake build` target was misconfigured (no `@[default_target]`) and had
+nothing to build, so the "Lean 4 — FreedomKernel" CI check had been passing
+by checking nothing. Fixed (see `DECISIONS.md`); the marks below are now
+what an actual `lake build` confirms, not what CI silently assumed.
+
 ## The map
 
 | Book element | Code | Formal artifact | Honest status |
@@ -36,7 +43,7 @@ suggest.** This file states precisely where.
 | **Epoch revocation** | `registry` epoch, `engine` epoch gate | Lean `Temporal.lean` (`epoch_gate_total`, `stale_epoch_implies_deny`) | **Lean✓** |
 | **A3** human property rights / ontology | `entities.ResourceType`, `RightsClaim` | — | **Code-only** |
 | **A2** no human owns another human | structural: no human→human ownership edge exists | — | **Code-only** (by construction) |
-| **A1** `Person → OwnedByGod` (ontological root) | the human principal is the trust root | — | **Gap** — the divine tier is deliberately not modeled in the TCB |
+| **A1** `Person → OwnedByGod` (ontological root) | the human principal is the trust root | `OntologicalRoot.lean` states it as an explicit Lean `axiom` (not proved — see [`GOD_HUMAN_BOUNDARY.md`](GOD_HUMAN_BOUNDARY.md) for why no formal system can) and **proves** two real theorems from it: `no_human_owns_human`, `no_machine_owns_human` — rows A2 and A6 above are consequences of this one axiom, checked by Lean, not two more independent assumptions | **Lean✓ for what follows from the axiom; the axiom itself is a permanent, documented Gap, not a proof target** |
 | **Consent object** (informed/voluntary/specific/competent) | `kernel/consent.py`, `consent_registry.py` (Python) | — | **Ext-only, and partial** — *specific/revocable/expiry/human-grantor* enforced; *informed/voluntary/competent/not-deceived are semantic and NOT computed*. **Absent from the Rust TCB entirely** |
 | **Justice constraint** (maximize justice within rights) | `analysis/coercion.py`, `constitutional_economy.py` | — | **Ext-only**, no proof. No `DivineJustice()` optimizer |
 | **Guidance function** (human→machine rule updates) | `extensions/synthesis.py` | — | **Ext-only** |
@@ -65,6 +72,6 @@ Put plainly: AuthGate today is a **Rights *Verification* Kernel** (proven, narro
 
 ## What is NOT claimed
 
-- Not claimed: that the Lean/Kani proofs cover the *whole* kernel. They cover the listed invariants, bounded (Kani) or shallow-but-real (flag-blocking Lean). `Scope.lean` is mostly `admit`/`sorry`. The Python layer is unproven.
+- Not claimed: that the Lean/Kani proofs cover the *whole* kernel. They cover the listed invariants, bounded (Kani) or shallow-but-real (flag-blocking Lean). `Scope.lean` is now fully proved, zero `sorry` (closed 2026-09-16 — see `formal/INCOMPLETENESS.md`), but the Python layer outside these five theorems is unproven.
 - Not claimed: that property-rights axioms are *superior* to Constitutional AI, deontic logic, or other formal-ethics systems. That is an open thesis, not a result.
 - Not claimed: that flag-enforcement is coercion-detection. It is not.

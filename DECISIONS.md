@@ -168,3 +168,169 @@ Documented in `docs/CONSENT_SEMANTICS.md` rather than solved here.
 **Revisit when:** If this codebase grows a single composition host analogous
 to decision-os-min's, give `semantic_consent_veto` the same timeout
 enforcement rather than leaving it caller-responsibility.
+
+## 2026-09-16 — Fix the Lean4 CI job that was never actually checking anything
+
+**Context:** Asked to fill the God→Human documented gap (row 20 of
+COVERAGE_MATRIX.md) with a real formal artifact — declare it as an
+explicit Lean axiom (the same way `Incompleteness.lean` already declares
+axiom soundness as out of scope) and derive what follows from it. Running
+`lake build` to verify found the toolchain couldn't even download
+(`C:` drive at 233MB free) — after the user freed space, it built, but
+`lake build FreedomKernel` (the actual library target, not the bare
+default) failed with `no such file or directory: Scope.lean`.
+
+**What was actually wrong, found by insisting on a real build instead of
+trusting the green "Lean 4 — FreedomKernel" GitHub Actions badge:**
+`lakefile.lean`'s `lean_lib «FreedomKernel»` had no `@[default_target]`
+and a `roots := #[`FreedomKernel]` restriction that excluded every other
+file in the package from the library's module set. `lake build` (bare,
+exactly what CI runs) therefore had *nothing* to build, printed "Build
+completed successfully", and exited 0 — every single time, for as long as
+that config existed. `lake check-build` (which explicitly checks for a
+configured default target) confirmed it: exit 1, no output. **The Lean4
+CI job has been silently checking nothing, possibly since this file was
+first added — every "Lean4 partial: TCB/Temporal/MultiAgent proved, N
+sorry" claim in this project's docs (including ones this session itself
+wrote onto the live demo page earlier today, trusting that same CI
+badge) was unverified.**
+
+**Decision:**
+1. Fixed `lakefile.lean`: added `@[default_target]` and listed every
+   actual file (`FreedomKernel, Scope, TCB, Temporal, MultiAgent,
+   Incompleteness, OntologicalRoot`) as a root, since they sit flat in
+   the package directory, not nested under a `FreedomKernel/` subfolder
+   the way the old single-root config assumed.
+2. Fixed `FreedomKernel.lean`'s imports to match (bare names —
+   `import Scope`, not `import FreedomKernel.Scope`).
+3. With the target now real, `lake build` surfaced genuine compile
+   errors — not `sorry` placeholders, actual type errors and a removed
+   Lean4 core lemma name — in `MultiAgent.lean` (`Authority` needed
+   `abbrev` not `def`, so `Membership` didn't resolve), `TCB.lean`
+   (`Bool.eq_false_iff_ne_true.mpr` no longer exists in this toolchain —
+   rewrote via `cases`/`simp`), `Temporal.lean` (`split_ifs` is a
+   Mathlib-only tactic, not core Lean4 — rewrote via `split <;> omega`),
+   and `Scope.lean` (a real `path.dropRight 1` precedence bug parsed as
+   `normalize` applied to a partially-applied function — a genuine type
+   error — plus `lemma` used instead of `theorem`, another Mathlib-only
+   spelling). All fixed; `MultiAgent`/`TCB`/`Temporal` now build with
+   zero `sorry`.
+4. `Scope.lean` needed a deeper rewrite: its operations
+   (`hasTraversal`/`normalize`/`scopeContains`) were built on
+   `String.splitOn`/`endsWith`/`startsWith`, which go through
+   byte-position `Substring` internals this toolchain has no lemma
+   library for without Mathlib (confirmed by reading the toolchain
+   source directly — no `Init/Data/String/Lemmas.lean`-equivalent file
+   exists). Rewrote every operation over `List Char` instead (a custom
+   `splitOnChar` matching Python's `str.split` exactly, `normalizeL` via
+   `List.dropWhile`, prefix checks via `List.isPrefixOf`), which reduces
+   cleanly under `decide` and has real lemma support
+   (`List.isPrefixOf_iff_prefix`, `List.IsPrefix.length_le`,
+   `List.dropWhile_cons_of_pos/neg`, ...). 4 of 5 theorems (T-SC1
+   non-trailing case, T-SC2, T-SC3, T-SC4, plus `normalizeL_no_trailing`
+   and the new `dropWhile_slash_reverse_prefix` helper) now fully proved,
+   zero `sorry` — genuinely, checked by `lake build`, not asserted.
+5. `scope_contains_antisymmetric` (T-SC5) keeps 3 `sorry`s: `normalizeL`
+   idempotence (provable the same way as the helper above, just not
+   carried out) for the two exact-match sub-cases, and — found while
+   trying to close the "both proper prefixes" sub-case via `omega` on
+   lengths alone — that argument is **not actually valid**: `omega`
+   produced a real arithmetic counterexample to the length-only
+   constraints. The real proof needs comparing the two prefixes of the
+   same list structurally (which of two prefixes of one list is the
+   shorter), not just their lengths. Left honest, not forced through
+   with an argument that doesn't hold.
+
+**Also fixed:** the live `authgate-hub` demo page and README both had a
+"Lean4: TCB/Temporal/MultiAgent proved" claim from before this fix,
+itself resting on the vacuous CI check — updated mid-session to say
+"being fixed live" the moment the vacuous check was found, then to the
+final accurate numbers once the real fix landed.
+
+**Reason:** A CI badge is only as trustworthy as what it actually runs.
+This project's own culture (TCB_DISCIPLINE.md, the `Incompleteness.lean`
+precedent, `COVERAGE_MATRIX.md`'s own "reported honestly" legend) already
+says exactly this about the *content* of proofs; it turned out to apply
+to the *pipeline* checking them too.
+
+**Trade-offs accepted:** None — every fix here removes a false claim or
+adds a genuinely-checked one; nothing got weaker.
+
+**Revisit when:** Someone wants T-SC5 fully closed — needs (a) a short
+`normalizeL` idempotence lemma (same induction technique as
+`dropWhile_slash_reverse_prefix`) and (b) a real "two prefixes of one
+list are comparable" argument for the proper-prefixes sub-case, which
+`List` may already have library support for under a different name than
+was searched for here.
+
+*(Closed the same day — see the next entry.)*
+
+## 2026-09-16 — Close T-SC5: prove `scope_contains_antisymmetric` fully, zero `sorry`
+
+**Context:** The previous entry's "Revisit when" — the antisymmetry theorem
+still had 3 `sorry`s. `List.prefix_or_prefix_of_prefix` (found via `exact?`)
+closed the "two prefixes of one list are comparable" half of that revisit
+item quickly, plus `normalizeL_idempotent` (the other half) and
+`prefix_antisym_easy_branch`, bringing the count to 3 → 1 in one pass. The
+remaining branch split into two symmetric "crossed" prefix orderings that
+`omega` confirmed were not pure length contradictions (a real counterexample
+existed for the length-only argument), matching what the previous entry
+already suspected.
+
+**Decision:** Prove the two crossed-ordering branches are actually
+*impossible*, not just hard to compare. The key new lemma,
+`normalizeL_slash_suffix`, decomposes any `List Char` as its normalized
+form (`normalizeL`) plus a run of trailing `'/'` characters — built by
+splitting `chars.reverse` with `List.takeWhile_append_dropWhile` and
+showing (by induction) that the `takeWhile` half is entirely `'/'`. With
+that in hand, a "crossed" branch (say `normQ ++ ['/'] <+: normP`, combined
+with the original scope-containment fact `normP ++ ['/'] <+: Q.data`)
+reduces to: cancel the shared `normQ` prefix from both sides
+(`append_prefix_cancel`), observe what's left must itself be a prefix of an
+all-`'/'` list and therefore *is* one (`prefix_replicate_eq`), then peel
+that run back onto `normP` — which now provably ends in `'/'`,
+contradicting `normP`'s own already-normalized status
+(`normalizeL_no_trailing_slash`). Both crossed branches are instances of
+one lemma, `crossed_contradiction`, called once with `(P, Q)` and once with
+`(Q, P)` swapped.
+
+**Verification discipline used throughout:** every new lemma was proved and
+`#print axioms`-checked standalone via `lake env lean` on a scratch file
+before being pasted into `Scope.lean` — the same workflow that caught the
+earlier `simp`/`rw` self-reference bugs (`rw [h]` rewriting a hypothesis's
+own pattern inside itself when a variable like `chars` appears both as the
+rewrite target and nested inside a larger subterm on the same side of the
+goal — hit repeatedly this session, e.g. `rw [hrev]` turning `chars` into a
+double-`dropWhile` mess because `chars` also occurs inside `chars.reverse`
+in the same goal). Fixed each time by switching to `calc`/explicit `have`
+chains that never let a rewrite see its own pattern twice, rather than
+`conv`, which parsed inconsistently in a couple of spots here.
+
+**Result:** All 25 Lean theorems in this library — `TCB`, `Temporal`,
+`MultiAgent`, `Incompleteness`, `OntologicalRoot`, and now every theorem in
+`Scope.lean` including antisymmetry — build with zero `sorry`, confirmed by
+`rm -rf .lake/build && lake build` from clean. `formal/INCOMPLETENESS.md`,
+`PHILOSOPHY/AXIOM_MAP.md`, `README.md`, and `site/index.html` updated to
+stop describing `Scope.lean` as partially admitted.
+
+**Reason:** The user asked, repeatedly and explicitly, for every remaining
+theorem to be proved rather than left as a documented gap — and unlike the
+`God → Human` ontological axiom (`PHILOSOPHY/GOD_HUMAN_BOUNDARY.md`), T-SC5
+was a genuine coverage gap, not a category-different one: a checkable
+predicate about list structure that nothing had actually checked yet, the
+same shape gap that `semantic_consent_veto` closed for row 8. It was
+closeable the honest way, so it should be closed.
+
+**Trade-offs accepted:** None — six small, single-purpose lemmas
+(`takeWhile_slash_eq_replicate`, `normalizeL_slash_suffix`,
+`prefix_replicate_eq`, `append_prefix_cancel`,
+`endsWithSlash_of_replicate_suffix`, `append_right_cancel_slash`,
+`replicate_succ_right`, `crossed_contradiction`) added to `Scope.lean`,
+each proved independently and used once or twice; no shortcuts, no new
+axioms, no `Mathlib` dependency.
+
+**Revisit when:** Nothing outstanding in this file. If `scope_contains`'s
+Python implementation (`authgate.kernel.entities.scope_contains`) ever
+changes shape, re-check these theorems still mirror it — they were proved
+against the current spec comment at the top of `Scope.lean`, not generated
+from the Python source.

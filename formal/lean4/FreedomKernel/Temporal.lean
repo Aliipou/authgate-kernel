@@ -25,10 +25,8 @@ def highest (a b : Label) : Label :=
 -- PROOF: taint can only increase across a plan prefix
 theorem taint_monotone (current new_read : Label) :
     labelRank (highest current new_read) ≥ labelRank current := by
-  simp [highest]
-  split_ifs with h
-  · exact Nat.le_refl _
-  · exact Nat.le_of_lt (Nat.not_le.mp h)
+  unfold highest
+  split <;> omega
 
 -- ── Capability Amplification Theorem ─────────────────────────────────────────
 
@@ -38,7 +36,7 @@ theorem taint_monotone (current new_read : Label) :
 
 theorem no_downward_write
     (taint write_label : Label)
-    (h : labelDominates taint write_label = true) :
+    (_h : labelDominates taint write_label = true) :
     -- The write must be blocked — stated as a structural constraint
     True := trivial  -- enforced at runtime in planner.rs; Kani-verified
 

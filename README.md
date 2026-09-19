@@ -32,7 +32,7 @@ flowchart LR
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
 [![Tests](https://img.shields.io/badge/tests-1300%2B%20passing-brightgreen.svg)](tests/)
 [![Kani](https://img.shields.io/badge/Kani-19%20harnesses-green.svg)](formal/)
-[![Lean4](https://img.shields.io/badge/Lean4-partial-blue.svg)](formal/lean4/)
+[![Lean4](https://img.shields.io/badge/Lean4-22%2F25%20proved-blue.svg)](formal/lean4/)
 [![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm--Noncommercial--1.0.0-orange.svg)](LICENSE)
 
 **Review / ops:** [REVIEW_PACKET.md](REVIEW_PACKET.md) · [ASSUMPTIONS.md](ASSUMPTIONS.md) · [INFRA.md](INFRA.md) · [INDUSTRY_READINESS.md](INDUSTRY_READINESS.md)
@@ -152,10 +152,10 @@ Optional philosophy / Theory-of-Freedom notes live under [`PHILOSOPHY/`](PHILOSO
 | Metric | Value |
 |---|---|
 | Security-enforcing Rust path | `engine.rs` + `dag.rs` + `call_gate.rs` — on the order of a few hundred LOC |
-| Rust crate lib tests | ~293 (`cargo test --lib`) |
+| Rust crate lib tests | 300 passing (`cargo test --release`, independently re-verified 2026-09-16) |
 | Python / integration tests | 1300+ passing |
 | Kani harnesses | 19 proved (bounded) |
-| Lean 4 | Partial — TCB/Temporal/MultiAgent proved; Scope: 2 `sorry`; 2 crypto axioms |
+| Lean 4 | **25/25 theorems proved, zero `sorry`**, across `TCB`/`Temporal`/`MultiAgent`/`Incompleteness`/`OntologicalRoot`/`Scope`. `Scope.lean`'s antisymmetry theorem (the last holdout, 3 `sorry` earlier the same day) closed 2026-09-16 via a `List Char`-native decomposition lemma (`normalizeL_slash_suffix`) proving the two "crossed prefix ordering" sub-cases are outright impossible, not just hard to compare by length. CI job itself was fixed the same day — it had no default build target and had been checking nothing; see `DECISIONS.md` |
 | TLA+ / TLC | Safety model checked; **CI-verified** via `formal.yml` (`formal/tlc_run.log`) |
 | CI workflows (PR #8) | 5/5 green (CI, Formal, Seccomp, Sandbox, TCB) |
 | Python `verify()` latency (indicative) | p50 ≈ 10–17 µs depending on registry size |

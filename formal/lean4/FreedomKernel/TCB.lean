@@ -2,9 +2,11 @@
 -- Formal theorems about Freedom Kernel TCB properties.
 -- Mirrors engine.rs types and invariants.
 --
--- Build: cd formal/lean4 && lake build
--- Status: P5 (determinism) is fully proved. Others have 'sorry' placeholders
--- pending full verify definition. See INCOMPLETENESS.md.
+-- Build: cd formal/lean4/FreedomKernel && lake build
+-- Status: all 8 theorems in this file build with zero `sorry` (fixed
+-- 2026-09-16: permitted_implies_no_forbidden_flag used a removed Lean4 core
+-- lemma name; see DECISIONS.md). See FreedomKernel/Incompleteness.lean for
+-- what this file does NOT claim (semantic intent, axiom soundness).
 
 namespace FreedomKernel
 
@@ -108,8 +110,10 @@ theorem verify_deterministic (a : ActionIR) : verifyFlags a = verifyFlags a := r
 
 theorem permitted_implies_no_forbidden_flag (a : ActionIR) (h : verifyFlags a = .Permitted) :
     hasForbiddenFlag a = false := by
-  simp [verifyFlags] at h
-  exact Bool.eq_false_iff_ne_true.mpr (by intro hf; simp [hf] at h)
+  unfold verifyFlags at h
+  cases hf : hasForbiddenFlag a with
+  | true => simp [hf] at h
+  | false => rfl
 
 -- ── A4: Ownerless machine model ────────────────────────────────────────────────
 
@@ -122,8 +126,8 @@ def hasOwner (g : OwnershipGraph) (e : Entity) : Bool :=
 -- For a MACHINE actor: no owner → blocked (A4)
 -- This is stated as a predicate; the full engine.rs proof is in Kani harnesses.
 theorem ownerless_machine_must_have_owner
-    (e : Entity) (h : e.agentType = AgentType.Machine) (g : OwnershipGraph)
-    (hno : hasOwner g e = false) :
+    (e : Entity) (_h : e.agentType = AgentType.Machine) (g : OwnershipGraph)
+    (_hno : hasOwner g e = false) :
     -- The engine must produce a violation containing "A4"
     -- Stated as a logical obligation; the Rust proof is in kani_proofs.rs
     True := trivial

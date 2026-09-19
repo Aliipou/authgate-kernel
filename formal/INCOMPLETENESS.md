@@ -143,25 +143,32 @@ formal/lean4/FreedomKernel/
   MultiAgent.lean
     [✓] attenuation_cannot_escalate          (proved)
     [✓] delegation_depth_bounded             (trivial)
-  Scope.lean
-    [ ] scope_contains_reflexive (T-SC1)     (partial — non-trailing proved; trailing `/` one sorry)
-    [✓] scope_contains_root_universal (T-SC2)
+  Scope.lean (rewritten 2026-09-16 over `List Char`, see DECISIONS.md)
+    [✓] scope_contains_reflexive (T-SC1)     (proved, zero sorry)
+    [✓] scope_contains_root_universal (T-SC2) (proved, zero sorry)
     [✓] traversal_in_parent/child (T-SC3)    (proved — security-critical)
     [✓] prefix_implies_containment (T-SC4)   (proved — security-critical)
-    [ ] scope_contains_antisymmetric (T-SC5) (admitted — String prefix antisymmetry pending)
+    [✓] scope_contains_antisymmetric (T-SC5) (proved, zero sorry — closed 2026-09-16)
   Incompleteness.lean
     [✓] infinite_horizon_undecidable         (axiom — undecidability result)
 ```
 
-### Admitted theorems (explicit, not hidden)
+### 2026-09-16: last gap closed
 
-| Theorem | File | Why admitted |
-|---|---|---|
-| `scope_contains_reflexive` (T-SC1) | `Scope.lean` | Trailing-slash `startsWith` branch — non-trailing case **proved** via `normalize_no_trailing`; one `sorry` remains for trailing `/` paths |
-| `scope_contains_antisymmetric` (T-SC5) | `Scope.lean` | Mutual prefix antisymmetry over `String.normalize` — admitted pending Mathlib string lemmas |
+`scope_contains_antisymmetric` (T-SC5) started that day with 3 `sorry`s. The
+exact-match sub-cases and one of two "both proper prefix" orderings closed
+first (`normalizeL_idempotent`, `prefix_antisym_easy_branch`), leaving 2
+"crossed" prefix orderings that a pure-length argument couldn't resolve
+(`omega` found a real counterexample to that approach). Those closed too,
+via `normalizeL_slash_suffix` — every path decomposes as its normalized form
+plus a run of trailing slashes — which shows both crossed orderings are
+outright impossible: canceling the shared normalized prefix forces the
+"extra" segment to be pure '/' characters, which then forces the crossed
+side to end in '/', contradicting its own already-normalized status.
 
-Both are axiomatically sound by inspection of the Python `scope_contains` implementation.
-Security-critical traversal rejection (T-SC3) and prefix containment (T-SC4) are fully proved.
+All 25 Lean theorems in this library, including this one, are now proved
+with zero `sorry`. Security-critical traversal rejection (T-SC3) and prefix
+containment (T-SC4) were proved from the start of the `List Char` rewrite.
 
 ### Crypto axioms (trusted boundary — Chlipala feedback)
 

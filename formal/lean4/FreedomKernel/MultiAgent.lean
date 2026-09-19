@@ -13,7 +13,7 @@ structure Permission where
   canDelegate: Bool
   deriving DecidableEq, Repr
 
-def Authority := List Permission
+abbrev Authority := List Permission
 
 -- ── Attenuation ───────────────────────────────────────────────────────────────
 

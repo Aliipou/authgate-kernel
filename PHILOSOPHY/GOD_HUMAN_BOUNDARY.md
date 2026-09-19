@@ -8,6 +8,17 @@ placeholder for future work, and how it differs in kind from a row like
 Consent Logic (row 8), which genuinely was closeable and now is (see
 [`../docs/CONSENT_SEMANTICS.md`](../docs/CONSENT_SEMANTICS.md)).
 
+**Update:** `formal/lean4/FreedomKernel/OntologicalRoot.lean` now exists and
+states this axiom explicitly in Lean, with two real theorems derived from it
+(`no_human_owns_human`, `no_machine_owns_human` — rows A2/A6 of
+`AXIOM_MAP.md`, previously two separate independent assumptions, are now one
+axiom applied twice). This does **not** change anything argued below: the
+axiom itself is declared, not proved, and Lean makes no claim it verified the
+axiom — only that *if* it holds, the two theorems follow. Formally stating an
+axiom and proving its consequences is exactly what "declared, inspectable,
+not defended" (the conclusion of this file) looks like as a checked
+artifact, not a retraction of it.
+
 ## Two different kinds of gap
 
 Row 8 (Consent Logic) was a gap in *coverage*: the theory names a checkable
