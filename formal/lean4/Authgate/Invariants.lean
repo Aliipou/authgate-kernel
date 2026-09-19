@@ -46,7 +46,7 @@ def SufficientRights (a : CanonicalAction) (cap : CapProof) : Prop :=
 -- Every node in an accepted chain has a valid signature from its claimed issuer.
 -- The actual signature oracle (IsValidSig) is axiomatized from ed25519 security.
 def ValidSignature (cap : CapProof) : Prop :=
-  IsValidSig cap.issuerKey cap.sigBytes (cap.subject.repr.toList)  -- simplified
+  IsValidSig cap.issuerKey cap.sigBytes (cap.subject.repr.toList.map Char.toNat)  -- simplified
 
 -- ─── INV-REVOCATION ─────────────────────────────────────────────────────────
 -- Only root-signed revocation proofs affect permit/deny decisions.
@@ -54,7 +54,7 @@ def ValidSignature (cap : CapProof) : Prop :=
 -- This prevents denial-of-service via forged revocation proofs.
 opaque RootKey : PrincipalId
 def ValidRevocation (rev : RevProof) : Prop :=
-  IsValidSig RootKey rev.sigBytes (rev.targetHash.repr.toList)  -- simplified
+  IsValidSig RootKey rev.sigBytes (rev.targetHash.repr.toList.map Char.toNat)  -- simplified
 
 -- ─── INV-PERMIT-REQUIRES-ALL ────────────────────────────────────────────────
 -- The master safety theorem: Permit implies ALL nine conditions hold for every

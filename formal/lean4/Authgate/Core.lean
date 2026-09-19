@@ -40,7 +40,8 @@ structure CapProof where
   issuer    : Option PrincipalId  -- None = root-issued
   sigBytes  : List Nat
   issuerKey : PrincipalId
-  deriving Repr
+  -- No `deriving Repr`: `rights : Rights` (a `Finset`) has no computable
+  -- `Repr` instance, and this type isn't printed/`#eval`'d anywhere.
 
 -- A revocation notice.
 structure RevProof where
@@ -58,7 +59,7 @@ structure CanonicalAction where
   revocations    : List RevProof
   now            : Timestamp
   minEpoch       : Epoch
-  deriving Repr
+  -- No `deriving Repr`: `requiredRights : Rights` is a `Finset` (see CapProof).
 
 -- The decision type.
 inductive Decision where

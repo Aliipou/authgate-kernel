@@ -28,7 +28,7 @@ theorem attenuation_transitive
 theorem rights_sufficiency_correct
     (cap : CapProof) (required : Rights)
     (h : required ⊆ cap.rights)
-    : SufficientRights ⟨0, 0, required, 0, 0, none, [], 0⟩ cap := by
+    : SufficientRights ⟨0, 0, required, [], [], 0, 0⟩ cap := by
   exact h
 
 -- ─── Lemma: Epoch gate is a total order check ────────────────────────────────
@@ -38,7 +38,7 @@ theorem rights_sufficiency_correct
 theorem epoch_gate_total
     (cap_epoch min_epoch : Epoch)
     : cap_epoch < min_epoch ∨ min_epoch ≤ cap_epoch := by
-  exact Nat.lt_or_ge cap_epoch min_epoch |>.symm.imp id id
+  exact Nat.lt_or_ge cap_epoch min_epoch
 
 -- ─── Lemma: Epoch gate subsumes revocation list for epoch-bounded proofs ─────
 -- A proof from epoch e < min_epoch is denied without consulting any revocation list.
@@ -47,7 +47,6 @@ theorem stale_epoch_implies_deny
     (a : CanonicalAction) (cap : CapProof)
     (h : cap.epoch < a.minEpoch)
     : ¬ FreshEpoch a cap := by
-  simp [FreshEpoch]
   exact Nat.not_le.mpr h
 
 -- ─── Lemma: Subject binding is a strict equality check ───────────────────────
@@ -68,13 +67,38 @@ axiom sig_euf_cma
     (h : IsValidSig key sig msg)
     : True  -- placeholder; real statement requires key/sig types
 
--- ─── Admitted: Invalid revocation does not affect permit ─────────────────────
--- If ¬ValidRevocation(rev), then rev does not contribute to a Deny decision.
--- This is the "forged revocation ignored" property — proved by engine.rs code review
--- (the `continue` on invalid sig), admitted here pending code-to-spec correspondence.
-axiom forged_revocation_harmless
-    (rev : RevProof)
-    (h : ¬ ValidRevocation rev)
-    : True  -- placeholder
+-- ─── Theorem: Invalid revocation does not affect Layer 3's decision ──────────
+-- Models authgate-kernel/src/tcb/engine.rs Layer 3 (lines 90-104):
+--   for rev in &action.revocation_proofs {
+--       if !verify_revocation_sig(rev, root_key) { continue; }
+--       for cap in &action.capability_proofs {
+--           if cap.proof_hash == rev.target_proof_hash { return Deny(...); }
+--       }
+--   }
+-- `capHash` stands in for the Rust `CapabilityProof.proof_hash` field, which
+-- Core.lean's `CapProof` does not carry explicitly (kept abstract rather than
+-- widening the shared struct and touching every other proof in this file).
+-- `RevocationDenies` is that loop's Deny condition, stated as a Prop.
+def RevocationDenies
+    (revocations : List RevProof) (caps : List CapProof) (capHash : CapProof → Nat) : Prop :=
+  ∃ rev ∈ revocations, ValidRevocation rev ∧ ∃ cap ∈ caps, rev.targetHash = capHash cap
+
+-- "Attackers cannot forge a revocation of a valid capability, nor can they
+-- deny service by injecting garbage revocation proofs (those are simply
+-- skipped)" — the engine.rs comment above the loop, now a machine-checked
+-- property: prepending an invalid-signature revocation to the list can never
+-- change whether Layer 3 denies.
+theorem forged_revocation_harmless
+    (capHash : CapProof → Nat) (revocations : List RevProof) (caps : List CapProof)
+    (rev : RevProof) (h : ¬ ValidRevocation rev)
+    : RevocationDenies (rev :: revocations) caps capHash
+        ↔ RevocationDenies revocations caps capHash := by
+  constructor
+  · rintro ⟨r, hr, hvalid, cap, hcap, heq⟩
+    rcases List.mem_cons.mp hr with rfl | hr'
+    · exact absurd hvalid h
+    · exact ⟨r, hr', hvalid, cap, hcap, heq⟩
+  · rintro ⟨r, hr, hvalid, cap, hcap, heq⟩
+    exact ⟨r, List.mem_cons_of_mem _ hr, hvalid, cap, hcap, heq⟩
 
 end Authgate.Proofs
