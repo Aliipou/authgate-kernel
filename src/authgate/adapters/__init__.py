@@ -8,6 +8,7 @@ agent never sees the tool execute.
 Available adapters:
     openai_agents   — OpenAI function-calling / tool-use pipeline
     anthropic       — Anthropic tool-use pipeline
+    grok            — xAI Grok function-calling pipeline (OpenAI-compatible wire format)
     langchain       — LangChain tool wrapper
     autogen         — Microsoft AutoGen ConversableAgent
 
@@ -16,12 +17,14 @@ All adapters share one contract:
 """
 from authgate.adapters.anthropic import AnthropicKernelAdapter
 from authgate.adapters.autogen import AutoGenKernelAdapter
+from authgate.adapters.grok import GrokKernelMiddleware
 from authgate.adapters.langchain import FreedomTool, kernel_gate
 from authgate.adapters.openai_agents import OpenAIKernelMiddleware
 
 __all__ = [
     "OpenAIKernelMiddleware",
     "AnthropicKernelAdapter",
+    "GrokKernelMiddleware",
     "FreedomTool",
     "kernel_gate",
     "AutoGenKernelAdapter",

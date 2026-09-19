@@ -3,7 +3,7 @@ authgate-kernel — capability-security gate for autonomous agents.
 
 Architecture:
   kernel/     — minimal formal gate (FreedomVerifier, CallGate, AuditLog)
-  adapters/   — framework adapters (OpenAI, Anthropic, LangChain, AutoGen)
+  adapters/   — framework adapters (OpenAI, Anthropic, Grok, LangChain, AutoGen)
   extensions/ — heuristic layers (manipulation detection, synthesis, compass)
   authority/  — AuthoritySource adapters (human delegation, market oracle stubs)
 
@@ -16,6 +16,7 @@ __version__ = "1.0.0"
 __schema_version__ = "1.0.0"   # capability proof schema; bump on breaking semantic change
 from authgate.adapters.anthropic import AnthropicKernelAdapter
 from authgate.adapters.autogen import AutoGenKernelAdapter
+from authgate.adapters.grok import GrokKernelMiddleware
 from authgate.adapters.langchain import FreedomTool, kernel_gate
 from authgate.adapters.openai_agents import OpenAIKernelMiddleware
 from authgate.errors import (
@@ -119,6 +120,7 @@ __all__ = [
     # Stage 3: framework adapters
     "OpenAIKernelMiddleware",
     "AnthropicKernelAdapter",
+    "GrokKernelMiddleware",
     "FreedomTool",
     "kernel_gate",
     "AutoGenKernelAdapter",

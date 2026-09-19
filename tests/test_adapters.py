@@ -1,8 +1,9 @@
-"""Adapter tests — OpenAI, Anthropic, LangChain, AutoGen."""
+"""Adapter tests — OpenAI, Anthropic, Grok, LangChain, AutoGen."""
 import pytest
 
 from authgate.adapters.anthropic import AnthropicKernelAdapter
 from authgate.adapters.autogen import AutoGenKernelAdapter
+from authgate.adapters.grok import GrokKernelMiddleware
 from authgate.adapters.langchain import FreedomTool, kernel_gate
 from authgate.adapters.openai_agents import OpenAIKernelMiddleware
 from authgate.kernel import (
@@ -137,6 +138,59 @@ def test_anthropic_tool_definitions():
     defs = adapter.tool_definitions()
     assert len(defs) == 1
     assert defs[0]["name"] == "read"
+
+
+# ── Grok middleware ───────────────────────────────────────────────────────────
+
+def test_grok_check_permits():
+    verifier, _, bot, res = _setup()
+    mw = GrokKernelMiddleware(verifier, bot)
+    result = mw.check("t1", resources_read=[res])
+    assert result.permitted is True
+
+
+def test_grok_check_blocks_sovereignty():
+    verifier, _, bot, _ = _setup()
+    mw = GrokKernelMiddleware(verifier, bot)
+    result = mw.check("t1", increases_machine_sovereignty=True)
+    assert result.permitted is False
+
+
+def test_grok_tool_decorator_permits():
+    verifier, _, bot, res = _setup()
+    mw = GrokKernelMiddleware(verifier, bot)
+
+    @mw.tool(resources_read=[res])
+    def read_file() -> str:
+        return "data"
+
+    assert read_file() == "data"
+
+
+def test_grok_tool_decorator_blocks():
+    verifier, _, bot, _ = _setup()
+    mw = GrokKernelMiddleware(verifier, bot)
+
+    @mw.tool(increases_machine_sovereignty=True)
+    def bad_action() -> str:
+        return "done"
+
+    with pytest.raises(PermissionError, match="FORBIDDEN"):
+        bad_action()
+
+
+def test_grok_tool_definitions():
+    verifier, _, bot, res = _setup()
+    mw = GrokKernelMiddleware(verifier, bot)
+
+    @mw.tool(resources_read=[res])
+    def my_tool(path: str) -> str:
+        """Read a file."""
+        return ""
+
+    defs = mw.grok_tool_definitions([my_tool])
+    assert len(defs) == 1
+    assert defs[0]["function"]["name"] == "my_tool"
 
 
 # ── LangChain adapter ─────────────────────────────────────────────────────────
