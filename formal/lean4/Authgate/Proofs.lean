@@ -1,9 +1,14 @@
 -- Proofs.lean — Machine-checked proofs of authgate-kernel invariants.
 --
--- Status: Proofs of the pure logical properties (epoch, rights, attenuation) are
--- complete. Proofs involving the cryptographic oracle (INV-SIGCHAIN, INV-REVOCATION)
--- are stated as axioms reducible to ed25519 security — those are left as admitted
--- pending integration of a Lean 4 ed25519 verification library.
+-- Status (2026-09-19, actually machine-checked via `lake build Authgate` for
+-- the first time — this file had no lakefile before, so it was never built):
+-- Proofs of the pure logical properties (epoch, rights, attenuation) and of
+-- INV-REVOCATION's "forged revocation is harmless" property are complete
+-- (see `forged_revocation_harmless`, which models engine.rs Layer 3 rather
+-- than being admitted). `sig_euf_cma`, the cryptographic-oracle axiom for
+-- INV-SIGCHAIN, is a genuine ed25519 hardness assumption — those aren't
+-- proved in a general-purpose proof assistant, only assumed or reduced to
+-- another assumption; it stays an axiom pending a Lean 4 ed25519 library.
 
 import Authgate.Core
 import Authgate.Invariants
