@@ -39,7 +39,7 @@ hex                = "0.4"
 subtle             = "2"
 zeroize            = { version = "1", features = ["derive"] }
 wasm-bindgen       = { version = "0.2", optional = true }
-wasmtime           = { version = "25",  optional = true }
+wasmtime           = { version = "49",  optional = true }
 
 # getrandom (pulled in transitively by rand_core/ed25519-dalek) refuses to
 # build for wasm32-unknown-unknown unless told which randomness source to

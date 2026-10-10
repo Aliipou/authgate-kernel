@@ -2,9 +2,11 @@
 
 **[🟢 Live demo — verify a capability with the real compiled kernel, right in your browser](https://authgate-hub.vercel.app)**
 
-**A capability gate between any decision and any real-world action.**
+**A capability-verification kernel: given an action and a set of signed capabilities, it deterministically returns Permit or Deny.**
 
-If an agent, planner, or service wants to read a file, call an API, or move money, AuthGate checks one structural question first:
+> **Scope.** AuthGate decides *whether a presented action is covered by a valid, signed, non-revoked capability*. It does not, by itself, stop an action that bypasses the gate: that requires the process-isolation layer, which is a separate, partial mitigation with documented residuals. It does not infer intent, detect truth, or align model behaviour. See [NON_GOALS.md](NON_GOALS.md), [THREAT_MODEL.md](THREAT_MODEL.md) and [ASSUMPTIONS.md](ASSUMPTIONS.md) before relying on it.
+
+If an agent, planner, or service routes a request to read a file, call an API, or move money through the gate, AuthGate checks one structural question first:
 
 > Does this actor hold a valid, signed, non-revoked capability for this resource and these rights?
 
@@ -27,7 +29,7 @@ flowchart LR
 
 ![Verification evidence](docs/figures/verification_stack.png)
 
-[![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg?branch=with-legitimacy)](https://github.com/Aliipou/authgate-kernel/actions)
+[![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Aliipou/authgate-kernel/actions)
 [![Formal](https://img.shields.io/badge/formal-TLC%2BLean%20CI-green.svg)](.github/workflows/formal.yml)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
 [![Tests](https://img.shields.io/badge/tests-1300%2B%20passing-brightgreen.svg)](tests/)

@@ -89,7 +89,7 @@ The kill-test disposition above stands. Additional artifacts landed for review:
 
 - `ASSUMPTIONS.md` — explicit Ed25519 axiom / proved-vs-open table
 - Bounded TLC run of AuthGateV3 — no error found (`formal/tlc_run.log`)
-- `REVIEW_PACKET.md`, `CHATGPT_REVIEW_BRIEF.md` — packaging for external readers
+- `REVIEW_PACKET.md` — packaging for external readers
 - `FREEDOM_THEORY_POSITION.md`, `MCP_STANDARDIZATION.md` — positioning notes (do not alter the STATUS kill-tests)
 - **Infra-ready HTTP verifier** — defined in `INFRA.md`: **zero open engineering gaps** + required CI green; includes admin-gated `/machine`+`/claim`, attenuating `/delegate`, `/readyz`+`/metrics`, Docker/compose, formal/seccomp/sandbox CI
 - **Landed on `main`** (2026-08-20): CI + TCB + Sandbox green; obsolete branches (`feat/theory-gaps`, `infra/ready`, …) deleted
