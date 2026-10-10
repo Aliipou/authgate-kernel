@@ -115,7 +115,7 @@ Maintain **versioned registry JSON** in git (encrypted) or Vault KV v2 with vers
 
 ## 5. Post-incident
 
-1. File GitHub security advisory if TCB affected ([SECURITY.md](SECURITY.md)).
+1. File GitHub security advisory if TCB affected ([SECURITY.md](../SECURITY.md)).
 2. Update [FINDINGS.md](FINDINGS.md) if new attack class discovered.
 3. Add adversarial scenario to `attack_harness/` before closing ticket.
 4. Re-score [DEPLOYMENT_READINESS.md](DEPLOYMENT_READINESS.md) F4 when postmortem complete.

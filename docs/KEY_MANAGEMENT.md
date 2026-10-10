@@ -9,7 +9,7 @@ This guide shows how to wire industry-standard key stores to the verifier sideca
 
 | Key | Purpose | Rotation |
 |-----|---------|----------|
-| **Root Ed25519** | Signs capability proofs | [key_rotation.py](src/authgate/key_rotation.py) + epoch bump |
+| **Root Ed25519** | Signs capability proofs | [key_rotation.py](../src/authgate/key_rotation.py) + epoch bump |
 | **Admin token** | Registry mutation (`AUTHGATE_ADMIN_TOKEN`) | Rotate via secret operator; restart pod |
 | **Verifier signing key** | Signs audit/verification attestations | Same as root or separate; mount read-only |
 

@@ -54,7 +54,7 @@ Risk: a memory-safety bug in orchestration code is in the same process as the ga
 
 ### Distributed (future)
 
-Multi-node with consensus-backed revocation is an **explicit non-goal** for v1 — see [NON_GOALS.md](NON_GOALS.md). Python experiments live in `src/authgate/distributed/`.
+Multi-node with consensus-backed revocation is an **explicit non-goal** for v1 — see [NON_GOALS.md](../NON_GOALS.md). Python experiments live in `src/authgate/distributed/`.
 
 ---
 

@@ -2,8 +2,8 @@
 
 ## What “infra-ready” means here
 
-**Infra-ready = zero open items in [Engineering gaps](README.md#engineering-gaps).**  
-All listed gaps must be closed, scoped to a documented non-goal, or moved to [Explicit limitations](README.md#explicit-limitations). Claims like “deployable sidecar” apply only when that table has no open rows and required CI workflows are green on `main`.
+**Infra-ready = zero open items in [Engineering gaps](../README.md#engineering-gaps).**  
+All listed gaps must be closed, scoped to a documented non-goal, or moved to [Explicit limitations](../README.md#explicit-limitations). Claims like “deployable sidecar” apply only when that table has no open rows and required CI workflows are green on `main`.
 
 **Industry maturity tiers** (T1–T4): see [INDUSTRY_READINESS.md](INDUSTRY_READINESS.md). Engineering-complete (T2) = gaps closed + CI green. Production infra-ready (T4) adds KMS/DR/migration docs and field evidence.
 

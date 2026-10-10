@@ -400,4 +400,4 @@ Attestation properties:
 | INV-CATASTROPHIC: catastrophic capabilities require human principal | `registry.rs` at `add_claim()` | Not TCB |
 | INV-FLAGS: sovereignty flags produce unconditional block | `engine.rs` guard [1] | TCB |
 
-Invariants enforced outside the TCB depend on `registry.rs` and `authority_graph.rs` being correct. These components are tested but not formally verified. See [`formal/INCOMPLETENESS.md`](formal/INCOMPLETENESS.md).
+Invariants enforced outside the TCB depend on `registry.rs` and `authority_graph.rs` being correct. These components are tested but not formally verified. See [`formal/INCOMPLETENESS.md`](../formal/INCOMPLETENESS.md).

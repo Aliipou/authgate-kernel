@@ -6,7 +6,7 @@ Its single purpose is to re-couple the kernel to the theory it was built from �
 named element of the theory at the exact code that realizes it.
 
 The `main` branch deliberately keeps the trusted core (TCB) free of theological and
-philosophical vocabulary (see [`../TCB_DISCIPLINE.md`](../TCB_DISCIPLINE.md)). That is
+philosophical vocabulary (see [`../TCB_DISCIPLINE.md`](../docs/TCB_DISCIPLINE.md)). That is
 correct engineering: the gate must be auditable without believing the theory. This
 branch does **not** undo that discipline. It adds a *reading layer* on top, so the
 lineage from theory to implementation is explicit and checkable.
@@ -78,13 +78,13 @@ what it cannot.
 
 | نظریه آزادی component | Engineering artifact |
 |---|---|
-| **Axioms** (آکسیوم‌ها A1..A7) | [`kernel/verifier.py`](../src/authgate/kernel/verifier.py), [`AXIOMATIC_FOUNDATION.md`](../AXIOMATIC_FOUNDATION.md), `formal/lean4/` |
+| **Axioms** (آکسیوم‌ها A1..A7) | [`kernel/verifier.py`](../src/authgate/kernel/verifier.py), [`AXIOMATIC_FOUNDATION.md`](../docs/AXIOMATIC_FOUNDATION.md), `formal/lean4/` |
 | **Rights Ontology** | [`kernel/entities.py`](../src/authgate/kernel/entities.py) — `ResourceType`, `RightsClaim` |
 | **Ownership Registry** | [`kernel/registry.py`](../src/authgate/kernel/registry.py) |
 | **Consent Logic** (`valid_consent`) | [`kernel/consent.py`](../src/authgate/kernel/consent.py), [`kernel/consent_registry.py`](../src/authgate/kernel/consent_registry.py) (structural predicates), [`extensions/consent_semantics.py`](../src/authgate/extensions/consent_semantics.py) (informed/voluntary/competent/not-deceived, via optional untrusted judge) |
 | **Freedom Verifier** | [`kernel/verifier.py`](../src/authgate/kernel/verifier.py) — `FreedomVerifier` |
 | **Runtime Enforcement** | [`kernel/call_gate.py`](../src/authgate/kernel/call_gate.py) |
-| **Divine Justice** (عدل within rights) | [`analysis/`](../src/authgate/analysis/) — coercion, constitutional_economy, sovereignty_metrics (as *constraints*, not a single optimizer) |
+| **Divine Justice** (عدل within rights) | [`analysis/`](../src/authgate/analysis) — coercion, constitutional_economy, sovereignty_metrics (as *constraints*, not a single optimizer) |
 | **Guidance Function** (هدایت) | [`extensions/synthesis.py`](../src/authgate/extensions/synthesis.py) — `SynthesisEngine`, `HARD_INVARIANTS` |
 | **Mahdavi Compass** (قطب‌نمای مهدوی) | [`extensions/compass.py`](../src/authgate/extensions/compass.py) — literal `MahdaviCompass`/`FinalState` |
 | **Conflict by ownership clarification, not dialectic** | [`extensions/resolver.py`](../src/authgate/extensions/resolver.py) |
@@ -104,7 +104,7 @@ Full line-by-line evidence, with the matching book passages, is in
   as `main` keeps them.
 - It does **not** assert the axioms A1..A7 are *the correct* axioms — that remains a
   philosophical question the engineering leaves open (see
-  [`../AXIOMATIC_FOUNDATION.md`](../AXIOMATIC_FOUNDATION.md)).
+  [`../AXIOMATIC_FOUNDATION.md`](../docs/AXIOMATIC_FOUNDATION.md)).
 - It does **not** model the `God -> Human` tier; the human is the authority root.
   This is not a to-do item — [`GOD_HUMAN_BOUNDARY.md`](GOD_HUMAN_BOUNDARY.md) argues
   why no formal system, this one included, could model it without a category

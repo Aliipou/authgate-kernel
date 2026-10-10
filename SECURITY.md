@@ -16,7 +16,7 @@
 The kernel makes narrow, mechanically verified claims about a specific
 ~200-line Rust function (`engine.rs`). Every claim below is backed by
 either a Kani bounded model-checking harness or a Lean 4 proof with no
-`sorry`. See [`formal/`](formal/) for the artifacts.
+`sorry`. See [`formal/`](formal) for the artifacts.
 
 | Property | Mechanism |
 |---|---|
