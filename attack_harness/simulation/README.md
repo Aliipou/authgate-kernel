@@ -1,4 +1,4 @@
-# AuthGate Adversarial Simulation
+# Sluicegate Adversarial Simulation
 
 Systematically generates and runs **231 adversarial scenarios** across all 7 attack classes. Used as ground-truth for what the Rust TCB must enforce.
 

@@ -1,10 +1,12 @@
-# authgate-kernel
+# Sluicegate
 
 **[🟢 Live demo — verify a capability with the real compiled kernel, right in your browser](https://authgate-hub.vercel.app)**
 
-**A capability gate between any decision and any real-world action.**
+**A capability-verification kernel: given an action and a set of signed capabilities, it deterministically returns Permit or Deny.**
 
-If an agent, planner, or service wants to read a file, call an API, or move money, AuthGate checks one structural question first:
+> **Scope.** Sluicegate decides *whether a presented action is covered by a valid, signed, non-revoked capability*. It does not, by itself, stop an action that bypasses the gate: that requires the process-isolation layer, which is a separate, partial mitigation with documented residuals. It does not infer intent, detect truth, or align model behaviour. See [NON_GOALS.md](NON_GOALS.md), [THREAT_MODEL.md](THREAT_MODEL.md) and [ASSUMPTIONS.md](ASSUMPTIONS.md) before relying on it.
+
+If an agent, planner, or service routes a request to read a file, call an API, or move money through the gate, Sluicegate checks one structural question first:
 
 > Does this actor hold a valid, signed, non-revoked capability for this resource and these rights?
 
@@ -12,13 +14,13 @@ No valid proof → the action does not run. Same inputs always yield the same Pe
 
 Not a LangChain plugin. Not model-specific. The product is a **wire format** plus a **verify function**. Framework adapters are convenience glue — when a framework goes away, the contract stays. See [POSITIONING.md](POSITIONING.md).
 
-**Constitution (book + philosopher edition):** [Aliipou/freedom-theory](https://github.com/Aliipou/freedom-theory). This repo is **authority** (AuthGate TCB). It does not replace the legitimacy floor. Start there for A1–A7; start here for signed capability proofs.
+**Constitution (book + philosopher edition):** [Aliipou/freedom-theory](https://github.com/Aliipou/freedom-theory). This repo is **authority** (Sluicegate TCB). It does not replace the legitimacy floor. Start there for A1–A7; start here for signed capability proofs.
 
 **Deployable verifier API:** [INFRA.md](INFRA.md) — Docker Compose, `/readyz`, admin-gated registry mutation, attenuating `/delegate`.
 
 ```mermaid
 flowchart LR
-  D[Decision maker] --> G[CallGate / AuthGate]
+  D[Decision maker] --> G[CallGate / Sluicegate]
   G -->|Permit| IO[Tool / IO]
   G -->|Deny| A[Hash-chained audit]
 ```
@@ -27,13 +29,13 @@ flowchart LR
 
 ![Verification evidence](docs/figures/verification_stack.png)
 
-[![CI](https://github.com/Aliipou/authgate-kernel/actions/workflows/ci.yml/badge.svg?branch=with-legitimacy)](https://github.com/Aliipou/authgate-kernel/actions)
+[![CI](https://github.com/Aliipou/sluicegate/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Aliipou/sluicegate/actions)
 [![Formal](https://img.shields.io/badge/formal-TLC%2BLean%20CI-green.svg)](.github/workflows/formal.yml)
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
 [![Tests](https://img.shields.io/badge/tests-1300%2B%20passing-brightgreen.svg)](tests/)
 [![Kani](https://img.shields.io/badge/Kani-19%20harnesses-green.svg)](formal/)
 [![Lean4](https://img.shields.io/badge/Lean4-25%2F25%20proved-blue.svg)](formal/lean4/)
-[![License: PolyForm Noncommercial 1.0.0](https://img.shields.io/badge/License-PolyForm--Noncommercial--1.0.0-orange.svg)](LICENSE)
+[![License: Apache 2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 **Review / ops:** [REVIEW_PACKET.md](REVIEW_PACKET.md) · [ASSUMPTIONS.md](ASSUMPTIONS.md) · [INFRA.md](INFRA.md) · [INDUSTRY_READINESS.md](INDUSTRY_READINESS.md)
 
@@ -43,7 +45,7 @@ flowchart LR
 
 **Engineering gap audit — closed.** All items from the original gap list are resolved or explicitly scoped (see [Engineering gaps](#engineering-gaps)). No open rows remain.
 
-**CI — all green** on branch `with-legitimacy` ([PR #8](https://github.com/Aliipou/authgate-kernel/pull/8) → `main`):
+**CI — all green** on branch `with-legitimacy` ([PR #8](https://github.com/Aliipou/sluicegate/pull/8) → `main`):
 
 | Workflow | What it verifies |
 |----------|------------------|
@@ -73,7 +75,7 @@ Autonomous systems increasingly decide *and* act. The decision step (LLM, planne
 
 That leaves a predictable failure mode: an actor executes IO without a cryptographically checkable proof that it was allowed to. Prompt framing, framework bugs, or a compromised sub-agent should not be able to invent authority.
 
-AuthGate puts a small, deterministic gate on that arrow:
+Sluicegate puts a small, deterministic gate on that arrow:
 
 ```text
 [Any decision-maker]  →  CallGate (verify capability proof)  →  [Any IO]
@@ -112,7 +114,7 @@ This is the same family of idea as capability-based OS security (seL4, CHERI), a
 
 ## How it compares (honestly)
 
-AuthGate is **not** “a better OPA.” General policy engines already answer *“is this principal allowed to do this action on this resource right now?”* Cedar is formally verified as a policy language; Zanzibar / OpenFGA scale relationship-based access; OPA’s Rego is highly expressive. We do not claim to replace those systems for service mesh, cloud IAM, or classic ABAC.
+Sluicegate is **not** “a better OPA.” General policy engines already answer *“is this principal allowed to do this action on this resource right now?”* Cedar is formally verified as a policy language; Zanzibar / OpenFGA scale relationship-based access; OPA’s Rego is highly expressive. We do not claim to replace those systems for service mesh, cloud IAM, or classic ABAC.
 
 What we *do* claim, based on a written comparative evaluation ([COMPARATIVE_EVALUATION.md](COMPARATIVE_EVALUATION.md), kill-tests in [WHY_NOT_OPA.md](WHY_NOT_OPA.md) / [WHY_NOT_DLP.md](WHY_NOT_DLP.md)):
 
@@ -125,9 +127,9 @@ What we *do* claim, based on a written comparative evaluation ([COMPARATIVE_EVAL
 | **Object-capability OS (Capsicum, EROS)** | Strong confinement theory | Process/OS layer — not a portable JSON gate for LLM tool calls |
 | **Sandboxes (gVisor, Firecracker)** | Isolate processes/VMs | Isolation ≠ typed authority for which *agent action* may run |
 
-**AuthGate’s practical niche:** a small, auditable **authority check at the agent↔tool boundary** — signed proofs, attenuation, epoch revoke, hash-chained decisions — with a path toward purpose/flow controls layered on capabilities. That is narrower than “replace enterprise IAM,” and stronger than “another LangChain middleware.”
+**Sluicegate’s practical niche:** a small, auditable **authority check at the agent↔tool boundary** — signed proofs, attenuation, epoch revoke, hash-chained decisions — with a path toward purpose/flow controls layered on capabilities. That is narrower than “replace enterprise IAM,” and stronger than “another LangChain middleware.”
 
-If you only need Rego policies for a REST API, use OPA. If you need relationship tuples at global scale, use OpenFGA. If you need a capability gate in front of agent tools with cryptographic proofs and a tiny verified core, evaluate AuthGate.
+If you only need Rego policies for a REST API, use OPA. If you need relationship tuples at global scale, use OpenFGA. If you need a capability gate in front of agent tools with cryptographic proofs and a tiny verified core, evaluate Sluicegate.
 
 ---
 
@@ -372,14 +374,10 @@ If yes, keep it out. TCB changes need an invariant justification, proof or model
 
 ## License
 
-**Source-available** under the [PolyForm Noncommercial License 1.0.0](LICENSE) — see also [NOTICE](NOTICE).
+[Apache License 2.0](LICENSE), including its express patent grant — see also [NOTICE](NOTICE).
 
-| Use | Status |
-|---|---|
-| Evaluation / research / education | Allowed |
-| Internal non-commercial testing | Allowed |
-| Redistribution (non-commercial, with attribution) | Allowed |
-| Production / commercial / SaaS / resale | Requires a commercial license |
-| Patent rights | Reserved |
+Versions published before 2026-10-10 (under the former name *authgate-kernel*) were released under the PolyForm Noncommercial License 1.0.0 and remain under that license. Contributions are accepted under the [Developer Certificate of Origin](CONTRIBUTING.md#developer-certificate-of-origin-dco).
 
-For production or commercial use, contact **Ali Pourrahim — Alipourrahim.ap@gmail.com**.
+## Name
+
+Sluicegate was called *AuthGate* / *authgate-kernel* until 2026-10-10. Python package, crate and module identifiers (`authgate`, `authgate-kernel`) and wire-format tags are **unchanged for now** to avoid breaking signed artifacts; they will be renamed in a separate, versioned release.

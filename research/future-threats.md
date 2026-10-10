@@ -39,7 +39,7 @@ No human explicitly delegates — authority emerges from market mechanism
 In this world, `actor → cap → resource` becomes too narrow: authority flows from competitive market dynamics, not from a delegation tree.
 
 **Failure mode:**  
-AuthGate becomes a bottleneck or is bypassed entirely because every market-granted authority would require manual registry updates. Systems that pre-grant authority at task-acceptance time would operate outside the kernel.
+Sluicegate becomes a bottleneck or is bypassed entirely because every market-granted authority would require manual registry updates. Systems that pre-grant authority at task-acceptance time would operate outside the kernel.
 
 **Mitigation (if scenario occurs):**  
 The capability model could be extended with **capability leases** that are issued by a smart contract or market oracle rather than a human principal. The TCB only needs to verify that a proof chain exists — it doesn't need to know whether the chain was created by human delegation or market mechanism, as long as the chain is signed and revocable.
@@ -113,7 +113,7 @@ All authority traces back to a sovereign human principal.
 `OwnershipRegistry`: every machine must have exactly one human owner. Chain validation in `dag.rs` traces to a root key.
 
 **Invalidating scenario:**  
-AuthGate is deployed as **shared infrastructure** across organizations. Multiple independent trust roots exist, and their authority claims can conflict or overlap:
+Sluicegate is deployed as **shared infrastructure** across organizations. Multiple independent trust roots exist, and their authority claims can conflict or overlap:
 - Company A grants Bot-X access to Resource-R
 - Company B also has a claim on Resource-R
 - Bot-X presents proof chains from both A and B — which takes precedence?
@@ -131,7 +131,7 @@ The single-root assumption breaks. The kernel either:
 - This is a Phase 4 problem (distributed authority systems) — do not introduce it into the TCB prematurely
 - **Current document status:** `malicious trust root is out of scope` — this is correct and honest for now
 
-**Status:** Low risk for single-org deployments (which is the current deployment model). Medium risk when AuthGate is used as shared infrastructure. This is the boundary where "production-grade single-org" ends and "global infrastructure" begins. Do not try to solve this before single-org is proven.
+**Status:** Low risk for single-org deployments (which is the current deployment model). Medium risk when Sluicegate is used as shared infrastructure. This is the boundary where "production-grade single-org" ends and "global infrastructure" begins. Do not try to solve this before single-org is proven.
 
 ---
 
@@ -265,7 +265,7 @@ This is not a future threat — it is a permanent design discipline challenge.
 
 The purpose of this document is to prevent **axiom-implementation confusion**: treating a current engineering choice as a permanent philosophical truth.
 
-AuthGate's axioms (Self-Ownership, Consent, Attenuation, Revocation, Exit, Auditability) are philosophical claims that do not depend on capability security being the correct implementation.
+Sluicegate's axioms (Self-Ownership, Consent, Attenuation, Revocation, Exit, Auditability) are philosophical claims that do not depend on capability security being the correct implementation.
 
 If any assumption above is invalidated:
 - Change the implementation

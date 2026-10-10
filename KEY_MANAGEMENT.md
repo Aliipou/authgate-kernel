@@ -1,6 +1,6 @@
 # Key Management — Production Integration Guide
 
-AuthGate does **not** embed a KMS. Trust roots and signing keys are **operator-supplied**.
+Sluicegate does **not** embed a KMS. Trust roots and signing keys are **operator-supplied**.
 This guide shows how to wire industry-standard key stores to the verifier sidecar.
 
 ---

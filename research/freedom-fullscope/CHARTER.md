@@ -3,7 +3,7 @@
 **Branch:** `research/freedom-fullscope`  
 **Rule:** Does not merge into `main` / TCB without an explicit product decision.  
 **Goal:** Encode Freedom Formal skill A1–A5 as **enforceable solutions** (no GAP),
-red-team them, and measure when they catch cases AuthGate authority alone misses.
+red-team them, and measure when they catch cases Sluicegate authority alone misses.
 
 ## Solutions (computable reductions)
 
@@ -26,7 +26,7 @@ See [DIFFERENCE_REPORT.md](DIFFERENCE_REPORT.md).
 
 ## Composition (locked 2026-08-21)
 
-- **Not** merged into AuthGate TCB.
+- **Not** merged into Sluicegate TCB.
 - Seam: `authgate.integrations.legitimacy` (FDK name = compat shim).
 - Decision-os lattice meet: legitimacy DENY-only → then CallGate.
 - Branches: `main` without legitimacy required; `with-legitimacy` wires the meet;

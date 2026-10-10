@@ -1,7 +1,7 @@
-# How different could AuthGate become?
+# How different could Sluicegate become?
 
 **Branch:** `research/freedom-fullscope`  
-**Question:** If we keep the Freedom Formal extras (skill A1–A5 as structural solutions) in front of the capability gate, how different is the product from today’s AuthGate?
+**Question:** If we keep the Freedom Formal extras (skill A1–A5 as structural solutions) in front of the capability gate, how different is the product from today’s Sluicegate?
 
 ---
 
@@ -16,7 +16,7 @@
 | Overlap with OPA/Cedar | High on pure authz | Lower: extras are not what OPA ships |
 | Merge to `main`? | — | Only if market evidence says these denies are load-bearing |
 
-Capability AuthGate stays a **narrow gate**. Fullscope becomes a **two-stage stack**: legitimacy (Freedom Formal) → authority (AuthGate). Same IO, different politics and deny surface.
+Capability Sluicegate stays a **narrow gate**. Fullscope becomes a **two-stage stack**: legitimacy (Freedom Formal) → authority (Sluicegate). Same IO, different politics and deny surface.
 
 ---
 
@@ -24,7 +24,7 @@ Capability AuthGate stays a **narrow gate**. Fullscope becomes a **two-stage sta
 
 - Rust TCB invariants (binding, identity, expiry, epoch, resource, attenuation) — untouched on this branch.
 - Wire format / CallGate still answers capability questions.
-- Extras are DENY-only: they never grant authority AuthGate refused.
+- Extras are DENY-only: they never grant authority Sluicegate refused.
 - Framework adapters can stay conveniences.
 
 ---
@@ -43,7 +43,7 @@ FULLSCOPE: Action → FreedomFormal(A1–A5) → Deny? stop
 
 An action can be **cryptographically authorized and still blocked**. That is the entire delta.
 
-### 2. New deny classes (AuthGate alone misses these)
+### 2. New deny classes (Sluicegate alone misses these)
 
 From the scenario catalog (`unique_need_scenarios`):
 
@@ -57,7 +57,7 @@ From the scenario catalog (`unique_need_scenarios`):
 | S6 | Act under Is/Ought gap with no guide | A5 | Caps don’t require a guide channel |
 | S8 | Sensitive act with audit unbound | A2 | Audit-as-policy ≠ Ma'ad-style mandatory Ans |
 
-**Overlap (not a unique win):** S7 ownerless machine — AuthGate A4 already covers this.
+**Overlap (not a unique win):** S7 ownerless machine — Sluicegate A4 already covers this.
 
 ### 3. Product / market shape
 
@@ -84,7 +84,7 @@ It does **not** become different on: classic ReBAC, cloud IAM, or “is principa
 ### 5. Three futures (honest)
 
 1. **Quarantine (recommended default)**  
-   Keep on `research/freedom-fullscope`. AuthGate `main` stays capability-first. Difference = optional legitimacy sidecar for experiments.
+   Keep on `research/freedom-fullscope`. Sluicegate `main` stays capability-first. Difference = optional legitimacy sidecar for experiments.
 
 2. **Productize as sidecar**  
    Ship `FreedomFormalEvaluator` as DENY-only pre-gate (Python/API), never in Rust TCB. Difference = new API + deny reasons; security claims stay with CallGate.

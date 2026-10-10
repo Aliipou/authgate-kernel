@@ -78,3 +78,13 @@ pytest
 
 If you are adding a new feature that lives in `extensions/`, add tests in `tests/`.
 If you believe something belongs in the TCB, open an issue first — do not open a PR directly.
+
+## Developer Certificate of Origin (DCO)
+
+Contributions are accepted under the project license ([Apache-2.0](LICENSE)) and must be signed off to certify the [Developer Certificate of Origin 1.1](https://developercertificate.org/):
+
+```
+git commit -s -m "your message"
+```
+
+This adds a `Signed-off-by: Your Name <you@example.com>` line. By signing off you certify that you wrote the contribution or have the right to submit it under this license. No copyright assignment is requested.

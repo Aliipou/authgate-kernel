@@ -1,11 +1,11 @@
-# Kill-test #2: does AuthGate's one survivor beat DLP + Lineage + PBAC + IFC?
+# Kill-test #2: does Sluicegate's one survivor beat DLP + Lineage + PBAC + IFC?
 
-> `WHY_NOT_OPA.md` killed AuthGate against the *authorization* incumbents (OPA/Cedar/Zanzibar)
+> `WHY_NOT_OPA.md` killed Sluicegate against the *authorization* incumbents (OPA/Cedar/Zanzibar)
 > on everything except **one** thread: purpose-as-*flow* (data read for A, used for B), which
 > point-in-time policy engines structurally can't see. But that thread lives in the
 > **data-governance** space, which is *also* decades old. So the survivor must be re-killed here.
 > The discipline (the one FDK kept fumbling): the question is **not** "could agent data-flow be
-> important?" — it obviously could — it is **"what does AuthGate solve that the combination
+> important?" — it obviously could — it is **"what does Sluicegate solve that the combination
 > DLP + Data Classification + Data Lineage + Purpose-Based Access Control + IFC does not?"**
 > If the answer is "nothing," the last survivor dies too.
 
@@ -41,14 +41,14 @@ where their assumptions don't fit.
 > CallGate *blocks* (not just logs) any subsequent tool call that would move it to a sink
 > inconsistent with that purpose.**
 
-AuthGate is unusually positioned for exactly this, because it already has the three pieces *in one
+Sluicegate is unusually positioned for exactly this, because it already has the three pieces *in one
 runtime*: capability provenance (the DAG), the IFC extension (`NonInterferenceChecker`,
 `SecurityLattice`), and the **CallGate** as the enforcement point at every tool invocation. The
 existing stack has the pieces *in different products at different layers* (DLP at egress,
 lineage in the warehouse, PBAC at the DB, IFC in a compiler) — none of them at the agent's
 per-action boundary, and none of them carrying the *capability/purpose* label.
 
-So the honest candidate answer to "why AuthGate vs the data-governance stack?": **it enforces
+So the honest candidate answer to "why Sluicegate vs the data-governance stack?": **it enforces
 purpose as a flow property at the agent's tool boundary, with the label derived from the
 capability the data was read under — a place and a binding the incumbents don't cover.**
 
@@ -70,12 +70,12 @@ capability the data was read under — a place and a binding the incumbents don'
 
 | Claim | Probability |
 |---|---|
-| AuthGate as a "new security paradigm" | low |
-| AuthGate as a useful **Agent Governance** product | **notable** |
-| AuthGate as a **complementary capability** on agentic-AI systems | **most likely** |
+| Sluicegate as a "new security paradigm" | low |
+| Sluicegate as a useful **Agent Governance** product | **notable** |
+| Sluicegate as a **complementary capability** on agentic-AI systems | **most likely** |
 
 This is **more promising than FDK** for a non-philosophical reason: FDK chased a *philosophical*
-question already tested for centuries; AuthGate chases a *practical 2026* question — *"what do
+question already tested for centuries; Sluicegate chases a *practical 2026* question — *"what do
 autonomous agents do with data after they're granted access?"* — that genuinely sharpens as agents
 get stronger. The problem is real and current; the open question is solvability/differentiation,
 not relevance.
@@ -92,9 +92,9 @@ Find **three real agent scenarios** where:
 Candidates: support-PII → marketing email; data consented for inference → training set;
 tenant-A data → tenant-B tool; a "summarize then send" that launders PII through the model. For
 each, the killing question is **risk #1/#2/#3 above**. If all three collapse into "ship an
-output-DLP + audit log," **close AuthGate** and keep the body of work as a portfolio. If even one
+output-DLP + audit log," **close Sluicegate** and keep the body of work as a portfolio. If even one
 holds — a real agent purpose-violation that *only* capability+IFC-in-the-loop catches, with sound
-label propagation — then AuthGate has its single, real, defensible reason to exist, in **agent
+label propagation — then Sluicegate has its single, real, defensible reason to exist, in **agent
 data governance**, and that is worth building.
 
 *Kill-test #2, not a pitch. Engineering: Ali Pourrahim. "Could matter" is not "does matter" — the

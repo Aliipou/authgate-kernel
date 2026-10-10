@@ -19,8 +19,8 @@ produces **self-justifying security** — the most dangerous failure mode.
 ## Branch Map
 
 ```
-main  (ground truth — AuthGate authority only; legitimacy NOT required)
- ├── with-legitimacy  Optional decision-os meet: legitimacy ∨ AuthGate
+main  (ground truth — Sluicegate authority only; legitimacy NOT required)
+ ├── with-legitimacy  Optional decision-os meet: legitimacy ∨ Sluicegate
  │     DENY-only legitimacy (Freedom Formal) → PolicyDecision → CallGate
  │     Does NOT change Rust TCB; merges ideas to main only as opt-in API
  │

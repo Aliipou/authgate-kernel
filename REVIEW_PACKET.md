@@ -1,4 +1,4 @@
-# REVIEW_PACKET — AuthGate kernel + decision-os-min
+# REVIEW_PACKET — Sluicegate kernel + decision-os-min
 
 **Audience:** external reviewers (formal methods, capability security, AuthZEN).  
 **Date:** 2026-08-20  
@@ -30,7 +30,7 @@ Please try to break these claims specifically:
 5. **Generality.** Is the result only true inside our own scenarios? (Heljanko)
 6. **TCB boundary.** Does `INCOMPLETENESS.md` understate what callers will assume? (Jung)
 
-Runnable suites (AuthGate kernel first):
+Runnable suites (Sluicegate kernel first):
 
 ```text
 # this repo

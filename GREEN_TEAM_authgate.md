@@ -1,6 +1,6 @@
-# Green Team: the strongest honest defense of AuthGate against its kill-tests
+# Green Team: the strongest honest defense of Sluicegate against its kill-tests
 
-> Mandate: mount the best *honest* defense of AuthGate against `WHY_NOT_OPA.md`,
+> Mandate: mount the best *honest* defense of Sluicegate against `WHY_NOT_OPA.md`,
 > `WHY_NOT_DLP.md`, `LABEL_PROPAGATION.md`, `STATUS.md` — and check for **premature closure**.
 > Two claims are adjudicated separately. No manufactured defense: where the defense fails, it is
 > conceded. Where the red-team declared a corpse prematurely, that is contested.
@@ -13,11 +13,11 @@ stands or falls on them.
 
 ---
 
-## Claim (a): "AuthGate solves an AUTHORIZATION problem OPA/Cedar/Zanzibar/ABAC inherently cannot."
+## Claim (a): "Sluicegate solves an AUTHORIZATION problem OPA/Cedar/Zanzibar/ABAC inherently cannot."
 
 ### Best honest defense
 
-I tried four angles to find an authorization scenario only AuthGate handles:
+I tried four angles to find an authorization scenario only Sluicegate handles:
 
 1. **Purpose at request time.** `context.purpose == granted_purpose` is one Rego/Cedar line.
    Not AuthGate-only. Conceded.
@@ -25,27 +25,27 @@ I tried four angles to find an authorization scenario only AuthGate handles:
    models the consent≠permission gap natively. Conceded.
 3. **Delegation-chain attenuation + signatures.** Capability DAGs and Zanzibar both validate the
    chain. The *root-legitimacy* question (did the grantor have the real-world right?) is
-   non-computable inside **any** access-control system — a shared gap AuthGate does not close.
+   non-computable inside **any** access-control system — a shared gap Sluicegate does not close.
    Conceded.
-4. **The structural reframe** — "all four incumbents are point-in-time deciders; AuthGate reasons
+4. **The structural reframe** — "all four incumbents are point-in-time deciders; Sluicegate reasons
    over a *plan/sequence*." This is the only angle with teeth, and it is **not an authorization
    claim**. A point-in-time decider asked the same (subject, action, resource, context) tuple
-   returns the same verdict AuthGate's kernel does. The sequence reasoning that differs lives
+   returns the same verdict Sluicegate's kernel does. The sequence reasoning that differs lives
    entirely in the **IFC extension** (`check_plan` accumulating read-labels across actions) — i.e.
    it is *flow* control, which belongs to claim (b), not authorization.
 
 ### Verdict on (a): **CONFIRMED (kill is robust)**
 
-There is no real authorization scenario only AuthGate handles. Cedar is formally verified;
-Zanzibar scales with native revocation; ABAC/Rego express any context predicate. AuthGate's kernel
+There is no real authorization scenario only Sluicegate handles. Cedar is formally verified;
+Zanzibar scales with native revocation; ABAC/Rego express any context predicate. Sluicegate's kernel
 is a competent capability authorizer but offers **no authorization capability the incumbents lack**.
-The honest defense of (a) fails, and a failed defense confirms the red-team. AuthGate must **not**
+The honest defense of (a) fails, and a failed defense confirms the red-team. Sluicegate must **not**
 be pitched as a better authorization engine. The red-team's authorization kill is correct and
 robust.
 
 ---
 
-## Claim (b): "AuthGate's purpose-bound information-flow control for agents solves something DLP + Data-Lineage + PBAC + IFC inherently cannot."
+## Claim (b): "Sluicegate's purpose-bound information-flow control for agents solves something DLP + Data-Lineage + PBAC + IFC inherently cannot."
 
 This is where the defense is real, and where I contest **premature closure**. The red-team
 (`WHY_NOT_DLP.md`) itself reaches only the verdict "*candidate gap, threatened by 3 risks,
@@ -64,7 +64,7 @@ The "DLP with extra steps" dismissal collapses four different mechanisms into on
 | Data Lineage | warehouse / ETL, batch | column provenance | observe, design-time, after the fact |
 | PBAC / Hippocratic DB | the *read* (query time) | declared purpose at access | block the read only — blind after |
 | Classic IFC (JIF/FlowCaml) | language level / compile time | static program labels | block, but needs a *known program* |
-| **AuthGate CallGate** | **every agent tool-call, runtime, in-loop** | **the capability/purpose the datum was read under** | **block at the step** |
+| **Sluicegate CallGate** | **every agent tool-call, runtime, in-loop** | **the capability/purpose the datum was read under** | **block at the step** |
 
 The CallGate occupies a cell **no incumbent occupies**: the agent's per-action boundary, at
 runtime, with the label bound to the *capability* (not the content, not the column, not a static
@@ -139,7 +139,7 @@ premature closure this review was asked to check for.
   1966; IFC: Denning 1976) at a new boundary — engineering value, not new science. Conceded.
 - The thread is **not empty**: DeepMind CaMeL, dual-LLM/planner-executor, agent taint-tracking are
   moving into exactly this space. So even a surviving (b) faces a *third* kill-test — "what does
-  AuthGate add over CaMeL?" — whose honest answer is "a deployable runtime gate + capability DAG +
+  Sluicegate add over CaMeL?" — whose honest answer is "a deployable runtime gate + capability DAG +
   audit," i.e. product/engineering, not a new idea. Conceded.
 - The `check_plan` implementation is *plan-level coarse taint over labeled resources*; it is **not
   yet** wired to derive the label from the read-capability at the live CallGate, nor does it carry
@@ -162,12 +162,12 @@ status — and that closing it now would be premature — is the green team's ho
 ## Per-claim verdicts
 
 - **(a) Authorization-only capability → CONFIRMED.** The defense fails honestly: no authorization
-  scenario is AuthGate-only. The red-team's authorization kill is robust. Do not pitch AuthGate as
+  scenario is AuthGate-only. The red-team's authorization kill is robust. Do not pitch Sluicegate as
   an authorization engine.
 - **(b) Capability-bound runtime IFC at the agent boundary → UNDECIDED.** The gap is structurally
   distinct from DLP/lineage/PBAC/IFC and the "DLP-renamed" verdict is premature; but the
   label-creep risk is unresolved and only the empirical Gate-2 experiment can decide product vs.
   DLP-renamed vs. close. Genuinely open — not closed.
 
-*Green Team (defense), AuthGate kill-tests. Engineering: Ali Pourrahim. A failed defense confirms
+*Green Team (defense), Sluicegate kill-tests. Engineering: Ali Pourrahim. A failed defense confirms
 the red-team; an UNDECIDED verdict means the question is genuinely open, not closed.*

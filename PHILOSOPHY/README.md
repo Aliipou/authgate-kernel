@@ -15,7 +15,7 @@ lineage from theory to implementation is explicit and checkable.
 
 The public explanatory edition of the book (English + Persian, philosopher path,
 fair justification) is **[Aliipou/freedom-theory](https://github.com/Aliipou/freedom-theory)**.
-This folder is the AuthGate *trace*; that repo is the *text*.
+This folder is the Sluicegate *trace*; that repo is the *text*.
 
 ---
 

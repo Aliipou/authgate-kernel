@@ -6,19 +6,19 @@ Architectural decision records. See CLAUDE.md §7 for the format.
 
 **Context:** FDK as a product/theory brand was closed. Freedom Formal (skill A1–A5)
 is the research legitimacy engine. We needed one name and one composition model
-without folding norms into the AuthGate TCB.
+without folding norms into the Sluicegate TCB.
 
 **Decision:**
 - Rename the seam module to `authgate.integrations.legitimacy` (FDK kept as
   re-export shim).
 - Keep **decision-os composition**: lattice meet; legitimacy is DENY-only and
-  never grants; AuthGate CallGate alone decides authority (TCB unchanged).
+  never grants; Sluicegate CallGate alone decides authority (TCB unchanged).
 - Default legitimacy engine on legitimacy-enabled branches: Freedom Formal
   (`decide_freedom_formal` / `enforce_freedom_formal`).
-- Branch line: `main` = AuthGate without legitimacy required;
-  `with-legitimacy` / `research/freedom-fullscope` = AuthGate + legitimacy seam.
+- Branch line: `main` = Sluicegate without legitimacy required;
+  `with-legitimacy` / `research/freedom-fullscope` = Sluicegate + legitimacy seam.
 
-**Reason:** One product brand (AuthGate), one optional veto plugin (legitimacy),
+**Reason:** One product brand (Sluicegate), one optional veto plugin (legitimacy),
 replaceable evaluator behind the existing PolicyDecision contract.
 
 **Trade-offs accepted:** Extra branch/docs surface; FDK name remains as shim
@@ -27,11 +27,11 @@ until external callers migrate.
 **Revisit when:** Real deployments show legitimacy false-positives dominate, or
 a subset of checks deserves a proven TCB bit (still not a full Rust FDK port).
 
-## 2026-06-18 — FDK↔AuthGate boundary: a JSON contract, not shared code
+## 2026-06-18 — FDK↔Sluicegate boundary: a JSON contract, not shared code
 
-**Context:** FDK (Freedom Decision Kernel) and AuthGate both touch
+**Context:** FDK (Freedom Decision Kernel) and Sluicegate both touch
 ownership/consent concepts and risked overlapping. We needed the two to compose
-into one product — `Request → Planner → FDK → AuthGate → TCB → Execution` —
+into one product — `Request → Planner → FDK → Sluicegate → TCB → Execution` —
 without coupling them or duplicating responsibility.
 
 **Decision:** Split responsibility cleanly and connect them through a single
@@ -39,7 +39,7 @@ serialisable contract:
 - **FDK** answers *"is this action legitimate?"* and emits a `PolicyDecision`
   (`spec/policy_decision.schema.json`): `verdict` ∈ {ALLOW, DENY, DEFER},
   `action_id`, `reasons`, `axiom_trace`, `fail_closed`.
-- **AuthGate** answers *"can this actor execute it?"* (capability + scope +
+- **Sluicegate** answers *"can this actor execute it?"* (capability + scope +
   signature + TCB) and consumes the contract via `authgate.integrations.fdk`.
 - The seam (`enforce_legitimacy`) runs the `CallGate` **only** on an explicit
   ALLOW bound to the same `action_id`; everything else (DENY, DEFER,
@@ -49,7 +49,7 @@ serialisable contract:
 
 **Reason:** A shared schema (not shared code) keeps each side independently
 deployable, testable, and replaceable, and removes the production-ambiguity of
-two systems both claiming ownership logic. AuthGate stays the single source of
+two systems both claiming ownership logic. Sluicegate stays the single source of
 truth for authority; FDK only *interprets* legitimacy. Ambiguity is the enemy in
 production — this draws the line where it belongs.
 

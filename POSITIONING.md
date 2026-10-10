@@ -2,7 +2,7 @@
 
 > **Canonical ecosystem positioning:** [`contracts-spec/POSITIONING.md`](https://github.com/Aliipou/contracts-spec/blob/feat/composition-contract-and-adr/POSITIONING.md)
 > (local: `../contracts-spec/POSITIONING.md`). This document is authoritative only for
-> **AuthGate project-specific** scope and implementation context.
+> **Sluicegate project-specific** scope and implementation context.
 
 > "If you define authgate as 'a product for LangChain/OpenAI/CrewAI,' it dies
 > when those frameworks change. If you define it as 'the authorization layer
@@ -29,7 +29,7 @@ The shape of the system is:
        produces an Action (typed, signed, scoped)
        ↓
    ┌───────────────┐
-   │   AuthGate    │   ← "Does this actor hold a valid capability proof for this resource?"
+   │   Sluicegate    │   ← "Does this actor hold a valid capability proof for this resource?"
    └───────────────┘
        ↓
    Permit or Deny
@@ -103,17 +103,17 @@ This is the contract that survives.
 Two ways to die:
 
 ### Death by framework binding
-"AuthGate is the security layer for [framework X]."
+"Sluicegate is the security layer for [framework X]."
 → When framework X dies or changes, authgate dies or breaks.
 
 ### Death by model binding
-"AuthGate works with [model family Y]."
+"Sluicegate works with [model family Y]."
 → When models change architecture, authgate looks legacy.
 
 One way to survive:
 
 ### Survival by abstraction at the right layer
-"AuthGate verifies authority between any decision and any IO."
+"Sluicegate verifies authority between any decision and any IO."
 → When frameworks change, the contract holds. When models change, the
    contract holds. When AGI arrives, the contract holds more strongly
    because the question "does this actor hold authority?" becomes more
@@ -123,7 +123,7 @@ One way to survive:
 
 ## The architect's question, re-stated
 
-> "What does AuthGate actually protect against?"
+> "What does Sluicegate actually protect against?"
 
 Not GPT. Not Claude. Not LangChain.
 
@@ -133,7 +133,7 @@ It protects this:
 Decision  →  Action  →  Real-world IO
 ```
 
-Any architecture with that chain needs something like AuthGate at the arrow.
+Any architecture with that chain needs something like Sluicegate at the arrow.
 The chain exists today. The chain will exist in 5 years. The chain will exist
 in 10 years.
 

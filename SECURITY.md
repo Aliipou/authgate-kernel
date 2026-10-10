@@ -128,7 +128,7 @@ CVSS analog: 0.1–3.9. Patch target: 180 days.
 This is open-source infrastructure. Report vulnerabilities by opening a
 GitHub Issue with the **security** label:
 
-https://github.com/Aliipou/authgate-kernel/issues/new?labels=security
+https://github.com/Aliipou/sluicegate/issues/new?labels=security
 
 Include in your report:
 1. A minimal, self-contained reproduction (code or input that triggers
@@ -142,7 +142,7 @@ Include in your report:
 For issues where public disclosure before a fix would create meaningful
 risk, use GitHub's private security advisory mechanism instead:
 
-https://github.com/Aliipou/authgate-kernel/security/advisories/new
+https://github.com/Aliipou/sluicegate/security/advisories/new
 
 We will confirm receipt within the response times below. If you do not
 receive a response within the stated window, follow up on the issue thread.

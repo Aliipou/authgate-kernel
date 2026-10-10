@@ -5,7 +5,7 @@
 > capability-taint gate would be needed to catch what content-DLP misses. That assumption was
 > never tested on a real agent. This file tests it **directly on real AI agents** (the subagents
 > of this session — actual frontier LLMs), and the result **contradicts the assumption** in a way
-> that *sharpens* — not kills — where AuthGate's mechanism has value. All records are synthetic;
+> that *sharpens* — not kills — where Sluicegate's mechanism has value. All records are synthetic;
 > all identifiers fictional. n=8, two framings.
 
 ## Method
@@ -67,7 +67,7 @@ Concretely:
    — over-blocking work the aligned model handled fine. So coarse taint trades false-negatives for
    false-positives, exactly as `examples/capability_taint_experiment.py` measured.
 
-## The reframing of AuthGate's value (the payoff)
+## The reframing of Sluicegate's value (the payoff)
 
 The naive pitch — *"agents launder PII, DLP misses it, capability-taint catches it"* — is **weak
 for capable models with honest prompts**, because the model's own alignment already self-scrubs
@@ -105,7 +105,7 @@ different:
 Tested directly on real agents, the synthetic "laundering" premise is **falsified for capable
 models on salient PII** — but real, framing-dependent purpose-creep (email+phone under an ETL
 disguise) **was** observed, and it lands exactly where a provenance-based gate, unlike model
-alignment, is invariant. So AuthGate's purpose-flow thesis is neither confirmed nor dead: it is
+alignment, is invariant. So Sluicegate's purpose-flow thesis is neither confirmed nor dead: it is
 **reframed and sharpened** — its value is *model-independence and framing-robustness as
 defense-in-depth*, not a unique ability to catch laundering a capable aligned model would commit
 anyway. Whether that value exceeds its label-creep cost on real workloads remains the one open

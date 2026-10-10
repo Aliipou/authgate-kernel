@@ -2,7 +2,7 @@
 
 **Discipline (Chlipala):** for every security-relevant claim, state exactly one of
 *proved* / *explicit assumption* / *no formal counterpart*. Partial coverage is
-stated as partial. This file is the single honesty table for AuthGate / FDK /
+stated as partial. This file is the single honesty table for Sluicegate / FDK /
 decision-os-min outreach.
 
 **Updated:** 2026-08-20
@@ -32,7 +32,7 @@ Status-table row (do not upgrade without evidence):
 | Component | Implementation | Verified? | Role in claims |
 |---|---|---|---|
 | Decision signing (`decision-os-min`, `decision-kernel-core`) | `cryptography` Ed25519 | **No** | AXIOM |
-| AuthGate Rust TCB signatures | project crypto provider | **No** (Kani/Lean treat sig as oracle) | AXIOM |
+| Sluicegate Rust TCB signatures | project crypto provider | **No** (Kani/Lean treat sig as oracle) | AXIOM |
 | Target replacement | HACL* / Fiat Ed25519 | planned | removes axiom |
 
 ---

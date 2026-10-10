@@ -2,7 +2,7 @@
 
 **Branch:** spec-core  
 **Threat addressed:** A1 from future-threats.md  
-**Question:** If the world moves to Goal Markets / Reputation Systems / Economic Contracts / Multi-Agent Swarms, does AuthGate break?
+**Question:** If the world moves to Goal Markets / Reputation Systems / Economic Contracts / Multi-Agent Swarms, does Sluicegate break?
 
 ---
 

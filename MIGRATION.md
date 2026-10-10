@@ -1,6 +1,6 @@
 # Migration Guide — Registry & Schema Versions
 
-AuthGate wire schemas use `schema_version` in JSON envelopes. This guide covers
+Sluicegate wire schemas use `schema_version` in JSON envelopes. This guide covers
 registry format upgrades and proof re-issuance after kernel version bumps.
 
 ---

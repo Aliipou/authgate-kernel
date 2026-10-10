@@ -5,13 +5,21 @@ All notable changes to Freedom Kernel are documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased] — Renamed to Sluicegate; relicensed to Apache-2.0 (2026-10-10)
+
+- Project renamed from *AuthGate / authgate-kernel* to **Sluicegate**. Repository: `Aliipou/sluicegate` (history starts from a clean snapshot; the previous history stays at `Aliipou/authgate-kernel`).
+- License changed from PolyForm Noncommercial 1.0.0 to **Apache-2.0**. Earlier releases keep their original license.
+- Contributions: DCO sign-off (see CONTRIBUTING.md).
+- Identifiers (`authgate` Python package, `authgate-kernel` crate, TLA+ `AuthGateV3`, header/env names, wire-format tags) are intentionally unchanged in this step.
+- wasmtime 25 -> 49.0.2; advisory ignore list reduced to the two pyo3 items with review dates.
+
 ## [Unreleased]
 
 ### Added
 
-**FDK → AuthGate boundary seam** — consume a Freedom Decision Kernel legitimacy
+**FDK → Sluicegate boundary seam** — consume a Freedom Decision Kernel legitimacy
 verdict before the capability gate, connecting the two products into
-`Request → Planner → FDK → PolicyDecision → AuthGate → TCB → Execution`.
+`Request → Planner → FDK → PolicyDecision → Sluicegate → TCB → Execution`.
 - `authgate.integrations.fdk.enforce_legitimacy()` — runs the `CallGate` ONLY on
   an explicit FDK `ALLOW` bound to the same `action_id`; fail-closed on DENY,
   DEFER, `fail_closed`, malformed payload, or id mismatch. Imports no FDK code —

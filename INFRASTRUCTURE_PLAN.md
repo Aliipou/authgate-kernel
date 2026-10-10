@@ -174,10 +174,10 @@ Each adapter needs: integration tests against real framework, documented limitat
 
 ## Phase IV — Standard (2–5 years)
 
-**Goal:** AuthGate is the default way to gate agent tool calls. Other tools implement the interface.
+**Goal:** Sluicegate is the default way to gate agent tool calls. Other tools implement the interface.
 
 ### IV-1: Stable wire format
-The `CanonicalAction` wire format becomes a published standard, not just an internal struct. Other systems can produce `CanonicalAction` JSON and AuthGate can verify it.
+The `CanonicalAction` wire format becomes a published standard, not just an internal struct. Other systems can produce `CanonicalAction` JSON and Sluicegate can verify it.
 
 ### IV-2: Cross-runtime capability transport
 Portable `CapabilityProof` format — a proof issued by a Rust runtime can be verified by a Python runtime and vice versa. Currently only works within the same binary.

@@ -1,14 +1,14 @@
 AUTHORSHIP AND OWNERSHIP NOTICE
 ================================
 
-Project:   authgate-kernel
+Project:   Sluicegate (formerly authgate-kernel)
 Author:    Ali Pourrahim (https://github.com/Aliipou)
 Contact:   Alipourrahim.ap@gmail.com
-Copyright: © 2026 Ali Pourrahim. All rights reserved.
+Copyright: © 2026 Ali Pourrahim
 
 Statement of independent authorship
 ------------------------------------
-authgate-kernel — a capability-constrained authorization kernel for
+Sluicegate (formerly authgate-kernel) — a capability-constrained authorization kernel for
 agent tool execution — was conceived, designed, and implemented by
 the Author as an independent personal work.
 
@@ -33,10 +33,7 @@ and its public publication record at:
 
 Use and attribution
 --------------------
-Use of this work is governed by the LICENSE file in this repository
-(PolyForm Noncommercial License 1.0.0). Noncommercial use — research,
-educational, evaluation, and internal non-commercial testing — is
-permitted with attribution. Commercial use, production deployment,
-resale, and SaaS offerings require a separate commercial license from
-the Author. Attribution to the Author must never be removed or
-misrepresented.
+Licensed under the Apache License, Version 2.0 (see LICENSE), including
+its express patent grant. Redistributions must retain this NOTICE file.
+The name "Sluicegate" and the Author's name are not licensed for use as
+trademarks or to imply endorsement (Apache-2.0 §6).

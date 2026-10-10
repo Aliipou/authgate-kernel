@@ -28,7 +28,7 @@ that gap matters more than the unreproduced verification table.
 
 The honest differentiation, as far as I can tell, is:
 
-| | Cedar | AuthGate |
+| | Cedar | Sluicegate |
 |---|---|---|
 | Decides | whether a policy permits a request | whether a signed capability authorises this action |
 | Trust model | policy evaluated by a trusted engine | capability chain cryptographically verified, no trusted evaluator |
@@ -120,7 +120,7 @@ structured denial.
 This is the most concrete "we want this, please build it" evidence anywhere in the
 research, and it costs one comment.
 
-> I have an implementation of roughly this. AuthGate is a capability kernel that gates
+> I have an implementation of roughly this. Sluicegate is a capability kernel that gates
 > tool execution: every call must present a signed capability bound to that exact
 > resource, rights attenuate when delegated and never widen, revocation is epoch-based,
 > and denials are structured rather than exceptions. There is already a CrewAI adapter.

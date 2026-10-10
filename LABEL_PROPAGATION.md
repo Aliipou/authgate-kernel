@@ -1,13 +1,13 @@
-# The one question that decides AuthGate: can purpose labels survive an LLM?
+# The one question that decides Sluicegate: can purpose labels survive an LLM?
 
-> Everything else is settled. FDK closed; lock-in frozen; AuthGate's authorization claim absorbed
+> Everything else is settled. FDK closed; lock-in frozen; Sluicegate's authorization claim absorbed
 > by OPA/Cedar/Zanzibar; its survivor (purpose-as-flow) narrowed by `WHY_NOT_DLP.md` to
 > *capability-bound runtime IFC in the agent loop*. That survivor lives or dies on **one technical
 > question**, and this file tries to kill it:
 >
 > **Can a purpose/capability label attached to data at read-time be carried — usefully and
 > reliably — through an agent's execution (including LLM transformations) to the point of
-> egress?** If no → AuthGate is DLP with extra steps, and it closes like FDK. If *partially* yes
+> egress?** If no → Sluicegate is DLP with extra steps, and it closes like FDK. If *partially* yes
 > → it may be the first thing here genuinely worth building.
 
 ## Split the question, because the two halves have opposite answers
@@ -45,7 +45,7 @@ That is an **empirical** question with a measurable answer: on real agent traces
 - **Label-creep / false-positive rate:** how often does it block a *legitimate* action because
   everything got tainted?
 
-If TP is high and FP is tolerable (with a small, auditable declassifier set), AuthGate has a real
+If TP is high and FP is tolerable (with a small, auditable declassifier set), Sluicegate has a real
 reason to exist. If label-creep dominates, **it degrades to heuristic tainting ≈ DLP, and it
 closes.** Nobody yet knows which — and that, not philosophy, is the whole game.
 
@@ -56,18 +56,18 @@ Capability + flow-control for LLM agents is exactly where frontier work is movin
 data-flow for LLM agents with a capability-like model; there is active research on taint-tracking
 and permission systems for agents, the "dual-LLM"/planner-executor split, and agent-sandboxing.
 **Good:** this *validates the problem as real and current* (the opposite of FDK, which fought
-settled philosophy). **Bad:** AuthGate is not first or alone, so even the survivor must answer a
-third kill-test — *what does AuthGate add over CaMeL-style capability/flow approaches?* — likely
+settled philosophy). **Bad:** Sluicegate is not first or alone, so even the survivor must answer a
+third kill-test — *what does Sluicegate add over CaMeL-style capability/flow approaches?* — likely
 "a deployable runtime gate + capability DAG + audit," i.e. engineering/product, not a new idea.
 
 ## Probabilities (the user's, and the analysis supports them)
 
 | Claim | Probability |
 |---|---|
-| AuthGate as a new security paradigm | < 10% |
-| AuthGate as new fundamental research | 10–20% |
-| AuthGate as an Agent-Governance product | 40–60% |
-| AuthGate as a strong distributed-systems + security engineering showcase | 80%+ |
+| Sluicegate as a new security paradigm | < 10% |
+| Sluicegate as new fundamental research | 10–20% |
+| Sluicegate as an Agent-Governance product | 40–60% |
+| Sluicegate as a strong distributed-systems + security engineering showcase | 80%+ |
 
 More survivable than FDK by far — because the problem is a **real, new, 2026 agent problem**, not a
 centuries-old philosophical one.
@@ -76,11 +76,11 @@ centuries-old philosophical one.
 
 1. **Gate 1 (cheap, no code):** the three scenarios from `WHY_NOT_DLP.md` — do they survive
    risks #1–#2 (not catchable by output-DLP; not adequately handled by PBAC+logging)? If they
-   collapse, stop here and close AuthGate.
+   collapse, stop here and close Sluicegate.
 2. **Gate 2 (the decider, needs a minimal prototype):** implement *coarse capability-taint at the
    CallGate* (label = the capability a value was read under; conservative propagation per tool-step;
    a few declassifiers) and run it on real/realistic agent traces. **Measure true-positive vs
-   label-creep.** That single measurement decides whether AuthGate is a product or DLP-renamed.
+   label-creep.** That single measurement decides whether Sluicegate is a product or DLP-renamed.
 
 Note the honesty: settling this *does* eventually require code — but a *small experiment-prototype
 to measure label-creep*, not feature-building. Everything before that measurement is speculation,

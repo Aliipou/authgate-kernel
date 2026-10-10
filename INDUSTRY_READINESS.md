@@ -1,6 +1,6 @@
 # Industry Readiness — Maturity Tiers
 
-AuthGate uses **four cumulative tiers**. Each tier adds obligations; higher tiers inherit lower ones.
+Sluicegate uses **four cumulative tiers**. Each tier adds obligations; higher tiers inherit lower ones.
 Do not claim a tier without meeting every gate on that row.
 
 | Tier | Git branch | Audience | Gate |

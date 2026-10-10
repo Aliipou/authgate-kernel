@@ -15,16 +15,16 @@ Theory of Freedom
   → rights ontology
   → legitimacy / FDK
   → delegation / capability
-  → AuthGate execution
+  → Sluicegate execution
   → tools / MCP
 ```
 
 …or should freedom-theory remain an independent philosophical contribution while
-AuthGate is pitched as systems/security engineering?
+Sluicegate is pitched as systems/security engineering?
 
 ## Evidence that decided it
 
-1. **Kill-tests on AuthGate authorization** (`STATUS.md`, `WHY_NOT_OPA.md`) —
+1. **Kill-tests on Sluicegate authorization** (`STATUS.md`, `WHY_NOT_OPA.md`) —
    authorization is absorbed by Cedar / OPA / Zanzibar. The surviving industrial
    thesis is purpose/flow governance and **non-amplifying composition**, not a
    new moral theory.
@@ -40,7 +40,7 @@ AuthGate is pitched as systems/security engineering?
 |---|---|---|
 | Theory of Freedom (`freedom-theory-work`, `PHILOSOPHY/`) | Optional normative *interpretation* of why veto-only legitimacy exists | Academic / lineage only; never a product differentiator |
 | Legitimacy (ex-FDK; Freedom Formal engine) | Veto-only evaluator (DENY/DEFER); co-equal under lattice meet | Constraint input, not grant authority — see `authgate.integrations.legitimacy` |
-| AuthGate / decision-os-min | Authority, attenuation, PEP, audit | **Primary claim** — executable AE-1…AE-10 under non-amplification |
+| Sluicegate / decision-os-min | Authority, attenuation, PEP, audit | **Primary claim** — executable AE-1…AE-10 under non-amplification |
 | MCP | Standardization surface for tool mediation | Adoption path (not a new RFC) |
 
 Invariant that does **not** depend on the theory being true:
@@ -50,7 +50,7 @@ Invariant that does **not** depend on the theory being true:
 
 ## What this forbids in outreach
 
-- Pitching AuthGate as “the Theory of Freedom made executable” as the *main* hook.
+- Pitching Sluicegate as “the Theory of Freedom made executable” as the *main* hook.
 - Claiming philosophical correctness of A1–A7 as a security result.
 - Letting normative vocabulary outrun the ASSUMPTIONS table.
 

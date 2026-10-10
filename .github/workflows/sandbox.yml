@@ -8,7 +8,7 @@ name: Sandbox enforcement
 #   WASM instantiation — missing symbol, not a runtime policy check.
 #   If this test regresses, enforcement is broken.
 #
-# Runs on Linux only. The wasmtime dependency (v25) builds cleanly on
+# Runs on Linux only. The wasmtime dependency (v49) builds cleanly on
 # ubuntu-24.04 without Windows SDK. Windows build is blocked (kernel32.lib
 # not available) and tracked separately.
 
@@ -54,7 +54,7 @@ jobs:
 
       - name: Build with sandbox feature
         run: cargo build --features sandbox
-        # wasmtime v25 builds cleanly on ubuntu-24.04 — no system SDK required.
+        # wasmtime v49 builds cleanly on ubuntu-24.04 — no system SDK required.
         # Failure here = dependency or compilation regression; fix before merging.
 
       - name: Run sandbox enforcement tests

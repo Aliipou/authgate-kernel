@@ -56,7 +56,7 @@ That's it. We're not selling you AGI safety. We're selling you the answer to
 ```bash
 pip install authgate
 # or for development:
-git clone https://github.com/Aliipou/authgate-kernel
+git clone https://github.com/Aliipou/sluicegate
 cd authgate-kernel && pip install -e .
 ```
 
@@ -210,7 +210,7 @@ The first real deployment is worth more than the next 1000 GitHub stars.
 
 ## Contact
 
-Open an issue: https://github.com/Aliipou/authgate-kernel/issues
+Open an issue: https://github.com/Aliipou/sluicegate/issues
 Subject line: `[FIRST-ADOPTER] <your-context>`
 
 Or email if you want to keep it private: see SECURITY.md.

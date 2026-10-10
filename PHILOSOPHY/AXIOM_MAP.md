@@ -6,7 +6,7 @@ column the matrix omits — the **formal artifact** (the actual Lean theorem or 
 harness) and its **honest strength**. It exists to answer one question without
 spin:
 
-> When we say "AuthGate is the book's Freedom Verifier," is that a proven claim or
+> When we say "Sluicegate is the book's Freedom Verifier," is that a proven claim or
 > a conceptual resemblance — and *exactly how far* does the proof go?
 
 The answer is: **partly proven, and the proven part is narrower than the names
@@ -55,7 +55,7 @@ what an actual `lake build` confirms, not what CI silently assumed.
 
 **The load-bearing caveat — this is the whole thesis:** every "forbidden action" proof shows the kernel **obeys a flag** (`coerces=true ⇒ Blocked`). It does **not** show the kernel can **tell** that an action coerces, deceives, or seeks sovereignty. Those flags are **caller-set booleans** on the wire (`wire.rs L110–111`). So:
 
-> AuthGate proves **"if you label an action coercive, it is blocked."**
+> Sluicegate proves **"if you label an action coercive, it is blocked."**
 > It does **not** decide **"is this action coercive?"**
 
 That second question — detection — and the further question of **choosing the most legitimate among several permissible actions** (the Justice/Mahdavi selector) have **no formal content and no trusted-core implementation**. They live only as Python heuristics in `extensions/`.
@@ -68,7 +68,7 @@ Not in ownership, delegation, authority, or the verifier — those are built and
 2. **Coercion/deception detection** — turning the caller-set flags into something the kernel can *derive* from an action's intent, not its wording.
 3. **The Justice selector / Mahdavi compass** — ranking permissible actions toward least rights-violation. Prototype: the Python `extensions/compass.py` and the standalone Freedom Decision Kernel.
 
-Put plainly: AuthGate today is a **Rights *Verification* Kernel** (proven, narrow). The book's terminal aim is a **Rights-based *Decision* Kernel** (choosing the most legitimate action). The verification half is real; the decision half is not built, and nothing here should be read as claiming otherwise.
+Put plainly: Sluicegate today is a **Rights *Verification* Kernel** (proven, narrow). The book's terminal aim is a **Rights-based *Decision* Kernel** (choosing the most legitimate action). The verification half is real; the decision half is not built, and nothing here should be read as claiming otherwise.
 
 ## What is NOT claimed
 

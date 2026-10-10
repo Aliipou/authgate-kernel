@@ -113,7 +113,7 @@ when it should return Deny — that's a real finding.
 ## 7. How to run the attack harness yourself
 
 ```bash
-git clone https://github.com/Aliipou/authgate-kernel
+git clone https://github.com/Aliipou/sluicegate
 cd authgate-kernel
 
 # Python tests (no Rust needed)
@@ -162,7 +162,7 @@ Findings outside `src/tcb/` only count if they affect a TCB decision.
 1. **Confirm the finding is not in `FINDINGS.md`** already
 2. **Write a minimal reproducer** — a single Python or Rust file < 100 LOC
 3. **Open a private security advisory** on GitHub:
-   https://github.com/Aliipou/authgate-kernel/security/advisories/new
+   https://github.com/Aliipou/sluicegate/security/advisories/new
 4. Include:
    - Tier (CRITICAL/SEVERE/MEDIUM/LOW/INFO)
    - Affected file(s) and line(s)
@@ -223,7 +223,7 @@ The honest "no" answer is more valuable than 1000 passing tests.
 
 ## Contact
 
-- Security advisories: https://github.com/Aliipou/authgate-kernel/security/advisories
+- Security advisories: https://github.com/Aliipou/sluicegate/security/advisories
 - General questions: GitHub Issues
 - Maintainer: github.com/Aliipou
 

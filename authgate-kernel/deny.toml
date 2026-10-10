@@ -1,41 +1,16 @@
 [advisories]
 version = 2
 ignore = [
+  # RUSTSEC-2025-0020 — pyo3 <0.24.1 `PyString::from_object` buffer overflow.
+  # Reviewed 2026-10-10. NOT REACHABLE: this crate never calls `PyString::from_object`
+  # (grep src/ — zero uses). Fix needs pyo3 >=0.24.1, a multi-major Bound-API migration.
+  # Re-review when pyo3 is upgraded, or by 2027-01-10 at the latest.
   "RUSTSEC-2025-0020",
-  # RUSTSEC-2026-0177 — pyo3 <0.29 missing `Sync` bound on
-  # `PyCFunction::new_closure`. NOT APPLICABLE: this crate never calls
-  # `new_closure`/`new_closure_bound` (grep src/ — zero uses), so it cannot
-  # construct the affected closures. The fix (pyo3 >=0.29) is a multi-major API
-  # migration (0.22 -> 0.29 Bound-API changes) unjustified for an unused path.
-  # TODO: drop this when pyo3 is upgraded for other reasons.
+  # RUSTSEC-2026-0177 — pyo3 <0.29 missing `Sync` bound on `PyCFunction::new_closure`.
+  # Reviewed 2026-10-10. NOT REACHABLE: this crate never calls
+  # `new_closure`/`new_closure_bound` (grep src/ — zero uses). Fix needs pyo3 >=0.29.
+  # Re-review when pyo3 is upgraded, or by 2027-01-10 at the latest.
   "RUSTSEC-2026-0177",
-  # The advisories below are ALL transitive through wasmtime 25.0.3, which is
-  # pulled in ONLY by the optional, experimental `sandbox` feature (not built by
-  # default, not production — see TCB docs). They cannot be dropped without either
-  # upgrading wasmtime to >=43.0.1 (an 18-major-version jump that breaks the
-  # current sandbox.rs API usage) or removing the sandbox feature. TODO: upgrade
-  # wasmtime and delete this block when the WASM sandbox is finished.
-  "RUSTSEC-2024-0436",
-  "RUSTSEC-2025-0046",
-  "RUSTSEC-2025-0057",
-  "RUSTSEC-2025-0118",
-  "RUSTSEC-2026-0020",
-  "RUSTSEC-2026-0021",
-  "RUSTSEC-2026-0085",
-  "RUSTSEC-2026-0086",
-  "RUSTSEC-2026-0087",
-  "RUSTSEC-2026-0088",
-  "RUSTSEC-2026-0089",
-  "RUSTSEC-2026-0091",
-  "RUSTSEC-2026-0092",
-  "RUSTSEC-2026-0093",
-  "RUSTSEC-2026-0094",
-  "RUSTSEC-2026-0095",
-  "RUSTSEC-2026-0096",
-  # crossbeam-epoch via rayon/criterion/wasmtime — bump when wasmtime upgrades.
-  "RUSTSEC-2026-0204",
-  # wasmtime 25 store type-index mixup (optional sandbox feature only).
-  "RUSTSEC-2026-0222",
 ]
 
 [licenses]
@@ -51,8 +26,6 @@ allow = [
   "Unicode-DFS-2016",
   "OpenSSL",
   "Zlib",
-  # This project's own license (source-available, noncommercial).
-  "PolyForm-Noncommercial-1.0.0",
 ]
 
 [bans]

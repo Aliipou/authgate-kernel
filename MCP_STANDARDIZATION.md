@@ -1,7 +1,7 @@
 # Standardization path — MCP, not a new RFC
 
 **Decision date:** 2026-08-20  
-**Decision:** Standardize AuthGate’s external surface on **MCP** (Model Context
+**Decision:** Standardize Sluicegate’s external surface on **MCP** (Model Context
 Protocol) tool mediation. Do **not** draft a new IETF/OIDF RFC for the core
 authority profile until a second independent implementation exists and AuthZEN
 engagement is active.
@@ -34,7 +34,7 @@ engagement is active.
 
 ## Explicit non-goals
 
-- A new “AuthGate Protocol” RFC.
+- A new “Sluicegate Protocol” RFC.
 - Replacing Cedar/OPA as the policy language inside enterprises.
 - Claiming MCP standardization is complete because we have an adapter skeleton.
 

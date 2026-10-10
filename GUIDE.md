@@ -27,7 +27,7 @@
 
 ```bash
 # From source (recommended for production — pin the commit hash)
-git clone https://github.com/Aliipou/authgate-kernel
+git clone https://github.com/Aliipou/sluicegate
 cd authgate-kernel
 pip install -e ".[dev]"
 

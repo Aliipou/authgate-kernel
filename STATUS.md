@@ -1,13 +1,13 @@
-# AuthGate status — disposition (2026-06-20)
+# Sluicegate status — disposition (2026-06-20)
 
 Same discipline applied to FDK, applied here: kill the idea first; keep only what survives. Three
 kill-tests were run (`WHY_NOT_OPA.md`, `WHY_NOT_DLP.md`, `LABEL_PROPAGATION.md`). This is where
-AuthGate honestly stands.
+Sluicegate honestly stands.
 
 ## What collapsed
 
 - **Authorization.** OPA / Cedar (formally verified) / Zanzibar (ReBAC, native revocation) / ABAC
-  already solve "is this actor allowed to do this?" AuthGate is **not** a better authorization
+  already solve "is this actor allowed to do this?" Sluicegate is **not** a better authorization
   engine, and should not be pitched as one. (`WHY_NOT_OPA.md`)
 - **Revocation, relationship graphs, purpose-at-request-time** — all expressible in the incumbents.
 
@@ -25,7 +25,7 @@ agents.* Not "a new authorization model" — an enforcement layer that binds dat
 purpose it was obtained under, **independently of whether the model itself can be trusted to.**
 
 **What the real-agent test (`REAL_AGENT_TEST.md`) changed.** The original pitch — *agents leak
-PII, AuthGate stops it* — was **falsified on real agents**: capable aligned models self-defend
+PII, Sluicegate stops it* — was **falsified on real agents**: capable aligned models self-defend
 (0/8 SSN leaks; 5/5 refused under honest framing). But the same models leaked email+phone 2/3 of
 the time when the cross-purpose move was **disguised as a formatting task** — a classic *policy-
 robustness failure* (behavior depends on framing / prompt / model). So the legitimate question is
@@ -38,7 +38,7 @@ surviving, defensible thesis.
 enough for them?"* This must be killed or confirmed by customer evidence, not code: find teams
 deploying autonomous agents on sensitive data who have *experienced* a framing-robustness leak and
 do **not** consider their existing governance stack sufficient. If they don't exist (or Purview
-suffices), AuthGate closes like FDK. If they do, there is a product.
+suffices), Sluicegate closes like FDK. If they do, there is a product.
 
 ## What it reduces to (one buildable, measurable experiment)
 
@@ -55,8 +55,8 @@ label-creep → a real Agent-Governance product. Label-creep dominates → DLP w
 
 ## Disposition
 
-- **AuthGate authorization** → archived as "absorbed by incumbents."
-- **AuthGate + purpose/flow control** → the one open thread. **A 2–4 week sprint, no more:**
+- **Sluicegate authorization** → archived as "absorbed by incumbents."
+- **Sluicegate + purpose/flow control** → the one open thread. **A 2–4 week sprint, no more:**
   Gate 1 (no code) — three real agent scenarios survive "not output-DLP-catchable" and "not
   PBAC+logging-enough"; Gate 2 (the decider, a *minimal* prototype) — coarse capability-taint on
   the CallGate, run on real agent traces, **measure true-positive vs label-creep.** That number
@@ -75,8 +75,8 @@ advantage is **systems engineering**, not normative theory. Spend energy accordi
 |---|---|
 | FDK as a theory | **closed** |
 | Lock-in Analytics | **frozen** (needs real migration data) |
-| AuthGate authorization | **absorbed by OPA/Cedar/Zanzibar** |
-| AuthGate + purpose/flow control | **the one live thread — one experiment from a verdict** |
+| Sluicegate authorization | **absorbed by OPA/Cedar/Zanzibar** |
+| Sluicegate + purpose/flow control | **the one live thread — one experiment from a verdict** |
 
 *Engineering: Ali Pourrahim. Kept honest: "could matter" is not "does matter"; only the label-creep
 measurement on real agent traces converts this thesis from plausible to proven — or closes it.*
@@ -89,7 +89,7 @@ The kill-test disposition above stands. Additional artifacts landed for review:
 
 - `ASSUMPTIONS.md` — explicit Ed25519 axiom / proved-vs-open table
 - Bounded TLC run of AuthGateV3 — no error found (`formal/tlc_run.log`)
-- `REVIEW_PACKET.md`, `CHATGPT_REVIEW_BRIEF.md` — packaging for external readers
+- `REVIEW_PACKET.md` — packaging for external readers
 - `FREEDOM_THEORY_POSITION.md`, `MCP_STANDARDIZATION.md` — positioning notes (do not alter the STATUS kill-tests)
 - **Infra-ready HTTP verifier** — defined in `INFRA.md`: **zero open engineering gaps** + required CI green; includes admin-gated `/machine`+`/claim`, attenuating `/delegate`, `/readyz`+`/metrics`, Docker/compose, formal/seccomp/sandbox CI
 - **Landed on `main`** (2026-08-20): CI + TCB + Sandbox green; obsolete branches (`feat/theory-gaps`, `infra/ready`, …) deleted
@@ -100,7 +100,7 @@ The kill-test disposition above stands. Additional artifacts landed for review:
 Disposition unchanged; **engineering evidence upgraded:**
 
 - **All original engineering gaps closed** — WASM sandbox CI, seccomp adversarial CI, TLC+Lean CI, CLI smoke; see README [Engineering gaps](README.md#engineering-gaps)
-- **CI 5/5 green** on `with-legitimacy` ([PR #8](https://github.com/Aliipou/authgate-kernel/pull/8)): CI, Formal, Seccomp, Sandbox, TCB Test Suite
+- **CI 5/5 green** on `with-legitimacy` ([PR #8](https://github.com/Aliipou/sluicegate/pull/8)): CI, Formal, Seccomp, Sandbox, TCB Test Suite
 - **New modules:** `seccomp.rs`, `session_clock.rs`; Lean FreedomKernel lake build fixed (Lean 4.14)
 - **Formal honesty:** 2 Lean `sorry` (Scope T-SC1/T-SC5), 2 crypto axioms — not “all theorems verified”; see `formal/INCOMPLETENESS.md`
 - **Industry tiers:** [INDUSTRY_READINESS.md](INDUSTRY_READINESS.md) T1–T4; ops guides: KEY_MANAGEMENT, DISASTER_RECOVERY, MIGRATION

@@ -1,4 +1,4 @@
-# AuthGate Engineering Team — Roles and Characteristics
+# Sluicegate Engineering Team — Roles and Characteristics
 
 This file defines the 16 specialist engineers that govern every decision in this project.
 Each role has a mandate, a threat model, and a set of rules they never break.

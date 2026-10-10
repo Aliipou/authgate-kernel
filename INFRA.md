@@ -1,4 +1,4 @@
-# Infra readiness — AuthGate Verifier API
+# Infra readiness — Sluicegate Verifier API
 
 ## What “infra-ready” means here
 

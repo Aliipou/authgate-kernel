@@ -1,9 +1,9 @@
-# Kill-test: does AuthGate solve anything OPA / Cedar / Zanzibar *inherently cannot*?
+# Kill-test: does Sluicegate solve anything OPA / Cedar / Zanzibar *inherently cannot*?
 
-> Same discipline that closed the FDK theory file, turned on AuthGate. The question is **not**
-> "is AuthGate good?" — it is *"why would the world need AuthGate when OPA, Cedar, and Zanzibar
-> exist?"* If the honest answer is "it wouldn't," AuthGate gets FDK's fate. This runs the three
-> scenarios that are AuthGate's best case and tries to **kill** each by showing an incumbent can
+> Same discipline that closed the FDK theory file, turned on Sluicegate. The question is **not**
+> "is Sluicegate good?" — it is *"why would the world need Sluicegate when OPA, Cedar, and Zanzibar
+> exist?"* If the honest answer is "it wouldn't," Sluicegate gets FDK's fate. This runs the three
+> scenarios that are Sluicegate's best case and tries to **kill** each by showing an incumbent can
 > already do it.
 
 ## The incumbents, stated fairly (so the kill is real)
@@ -32,11 +32,11 @@ purpose A (legitimately), then *used* for purpose B (a marketing model, an expor
 property of **information flow across requests**, which point-in-time policy engines **inherently
 cannot** see — they evaluate the read, not the downstream sink. Enforcing it requires
 **information-flow control** (Denning lattices; non-interference), which OPA/Cedar/Zanzibar do
-not provide. AuthGate *does* ship an IFC extension (`authgate.extensions`: `NonInterferenceChecker`,
-`SecurityLattice`, `IFCViolation`). **So Scenario 1 is the one place AuthGate has a capability the
+not provide. Sluicegate *does* ship an IFC extension (`authgate.extensions`: `NonInterferenceChecker`,
+`SecurityLattice`, `IFCViolation`). **So Scenario 1 is the one place Sluicegate has a capability the
 incumbents structurally lack.**
 
-*Honest caveat:* IFC is a 1970s field, and AuthGate **bundles** a known technique rather than
+*Honest caveat:* IFC is a 1970s field, and Sluicegate **bundles** a known technique rather than
 inventing one. The defensible claim is therefore narrow: *"capability authority **plus**
 information-flow/purpose control in one gate,"* not "a new kind of access control." **Verdict:
 SURVIVES — narrowly, as IFC+capabilities.**
@@ -52,30 +52,30 @@ live owner-consent relationship." **Verdict: KILLED — no AuthGate-only capabil
 
 ## Scenario 3 — Delegation provenance (chain valid; root/origin illegitimate)
 
-**Shared-unsolvable — and AuthGate doesn't win it either.** Capability systems and Zanzibar
+**Shared-unsolvable — and Sluicegate doesn't win it either.** Capability systems and Zanzibar
 validate the *chain* (attenuation, signatures, tuples) but **assume the root is legitimate**.
 Whether the original grantor had the *real-world right* to grant — the **provenance / ownership-
-genesis** question — is not a computable fact inside any access-control system, AuthGate included.
-AuthGate's capability DAG checks attenuation and signatures exactly like the others; it cannot
+genesis** question — is not a computable fact inside any access-control system, Sluicegate included.
+Sluicegate's capability DAG checks attenuation and signatures exactly like the others; it cannot
 audit whether the root capability *should* have existed, because that needs a trustworthy
 consent/ownership graph (the same input problem that sank the FDK product story). **Verdict:
 KILLED as a differentiator — it's a real gap, but a *shared* one no one fills.**
 
 ## The verdict
 
-| Scenario | Can OPA/Cedar/Zanzibar do it? | AuthGate distinctive? |
+| Scenario | Can OPA/Cedar/Zanzibar do it? | Sluicegate distinctive? |
 |---|---|---|
 | 1. Purpose, at decision time | **Yes** (policy on context) | no |
 | 1b. Purpose, as **flow over time** | **No** (they're point-in-time) | **YES — via IFC (a known technique it bundles)** |
 | 2. Revoked consent | **Yes** (Zanzibar-native / consent-as-relationship) | no |
 | 3. Delegation provenance / flawed origin | No — but **nobody** can (shared) | no |
 
-**AuthGate survives the kill-test on exactly one narrow front, and survives it better than FDK
+**Sluicegate survives the kill-test on exactly one narrow front, and survives it better than FDK
 did (FDK had none):** the combination of **capability authority + information-flow/purpose
 control**, which point-in-time policy engines (OPA/Cedar/Zanzibar/ABAC) structurally do not
 provide. Everything else collapses to "write a policy" or to a problem no one solves.
 
-So the honest one-line answer to *"why AuthGate when OPA/Cedar exist?"* is **not** "a better
+So the honest one-line answer to *"why Sluicegate when OPA/Cedar exist?"* is **not** "a better
 authorization engine" (it isn't — Cedar is verified, Zanzibar scales). It is: *"for **usage /
 flow / purpose control** layered on capabilities — a different question than authorization, which
 the incumbents own."* And even that is a recombination of known techniques (capabilities:
@@ -94,7 +94,7 @@ Spend the whole budget on **Scenario 1b**, because it is the only surviving gap:
 
 For each, the killing question: *can this be handled by "log it + a DLP rule + a database
 purpose-column," or does it genuinely need capability-scoped non-interference?* If the three
-collapse to DLP/logging, **close AuthGate like FDK**. If they hold — if there is a real class of
+collapse to DLP/logging, **close Sluicegate like FDK**. If they hold — if there is a real class of
 agent purpose-violations that only capability+IFC catches — there is a product, and it is in
 **agent data governance**, not in "another authorization engine."
 
@@ -103,5 +103,5 @@ it, and use the whole body of work as a strong **backend / cloud / distributed-s
 engineering** portfolio — which, realistically, is its highest-return use either way.
 
 *Kill-test, not a pitch. Engineering: Ali Pourrahim. Verdicts are reconstructions of incumbent
-capabilities, offered to be refuted — if OPA/Cedar/Zanzibar can do Scenario 1b too, AuthGate gets
+capabilities, offered to be refuted — if OPA/Cedar/Zanzibar can do Scenario 1b too, Sluicegate gets
 FDK's fate.*
