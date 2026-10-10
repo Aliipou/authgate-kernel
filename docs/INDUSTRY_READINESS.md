@@ -6,7 +6,7 @@ Do not claim a tier without meeting every gate on that row.
 | Tier | Git branch | Audience | Gate |
 |------|------------|----------|------|
 | **T1 Assurance-bounded** | `tier/assurance-bounded` | Researchers, formal-methods reviewers | Minimal formal core; every `sorry`/axiom/non-goal named |
-| **T2 Engineering-complete** | `tier/engineering-complete` | Kernel engineers, CI owners | T1 + zero open [Engineering gaps](README.md#engineering-gaps) + formal/seccomp/sandbox CI green |
+| **T2 Engineering-complete** | `tier/engineering-complete` | Kernel engineers, CI owners | T1 + zero open [Engineering gaps](../README.md#engineering-gaps) + formal/seccomp/sandbox CI green |
 | **T3 Deployable reference** | `tier/deployable-reference` | Platform teams, early adopters | T2 + Docker/compose, K8s sidecar, probes, Prometheus, runbooks |
 | **T4 Production infra-ready** | `tier/production-infra-ready` | Security-conscious production | T3 + KMS guide, DR, migration tooling, advisory process, 100% code-addressable [deployment checklist](DEPLOYMENT_READINESS.md) |
 
@@ -19,9 +19,9 @@ Do not claim a tier without meeting every gate on that row.
 | Requirement | Artifact |
 |-------------|----------|
 | Axioms A1–A7 stated | [AXIOMATIC_FOUNDATION.md](AXIOMATIC_FOUNDATION.md) |
-| Proved vs admitted split | [formal/INCOMPLETENESS.md](formal/INCOMPLETENESS.md) |
-| Bounded TLC | [formal/tlc_run.log](formal/tlc_run.log), CI `formal.yml` |
-| Kani TCB harnesses | [formal/COVERAGE.md](formal/COVERAGE.md) |
+| Proved vs admitted split | [formal/INCOMPLETENESS.md](../formal/INCOMPLETENESS.md) |
+| Bounded TLC | [formal/tlc_run.log](../formal/tlc_run.log), CI `formal.yml` |
+| Kani TCB harnesses | [formal/COVERAGE.md](../formal/COVERAGE.md) |
 | Lean partial (2 sorry, 2 crypto axioms) | `formal/lean4/FreedomKernel/Scope.lean`, `Proofs.lean` |
 
 **Not claimed:** Full refinement TLA+→Rust, semantic intent, infinite-horizon safety.
@@ -34,7 +34,7 @@ Do not claim a tier without meeting every gate on that row.
 
 | Requirement | Artifact |
 |-------------|----------|
-| Engineering gaps table empty | [README.md#engineering-gaps](README.md#engineering-gaps) |
+| Engineering gaps table empty | [README.md#engineering-gaps](../README.md#engineering-gaps) |
 | WASM sandbox CI | `.github/workflows/sandbox.yml` |
 | Seccomp adversarial CI | `.github/workflows/seccomp.yml` |
 | TLC + Lean CI | `.github/workflows/formal.yml` |
@@ -52,9 +52,9 @@ Do not claim a tier without meeting every gate on that row.
 |-------------|----------|
 | HTTP verifier + `/readyz` + `/metrics` | [INFRA.md](INFRA.md), `src/authgate/api/app.py` |
 | Docker + compose | `Dockerfile`, `docker-compose.yml` |
-| K8s sidecar + probes | [examples/kubernetes/](examples/kubernetes/) |
+| K8s sidecar + probes | [examples/kubernetes/](../examples/kubernetes) |
 | Incident response | [INCIDENT_RESPONSE.md](INCIDENT_RESPONSE.md) |
-| Threat model + non-goals | [THREAT_MODEL.md](THREAT_MODEL.md), [NON_GOALS.md](NON_GOALS.md) |
+| Threat model + non-goals | [THREAT_MODEL.md](../THREAT_MODEL.md), [NON_GOALS.md](../NON_GOALS.md) |
 
 **Honest limit:** `/verify` is open on the pod network — lock down with NetworkPolicy + mesh mTLS.
 
@@ -69,7 +69,7 @@ Do not claim a tier without meeting every gate on that row.
 | Key management integration | [KEY_MANAGEMENT.md](KEY_MANAGEMENT.md) |
 | Disaster recovery | [DISASTER_RECOVERY.md](DISASTER_RECOVERY.md) |
 | Schema migration tooling | [MIGRATION.md](MIGRATION.md), `authgate-cli migrate` |
-| CVE / advisory process | [SECURITY.md](SECURITY.md) |
+| CVE / advisory process | [SECURITY.md](../SECURITY.md) |
 | External review package | [EXTERNAL_REVIEW_PACKAGE.md](EXTERNAL_REVIEW_PACKAGE.md) |
 
 | Human-dependent (process-ready, not “done”) | How to close |

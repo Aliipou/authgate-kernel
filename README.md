@@ -12,11 +12,11 @@ If an agent, planner, or service routes a request to read a file, call an API, o
 
 No valid proof → the action does not run. Same inputs always yield the same Permit or Deny. No LLM calls inside the gate. No probability scores.
 
-Not a LangChain plugin. Not model-specific. The product is a **wire format** plus a **verify function**. Framework adapters are convenience glue — when a framework goes away, the contract stays. See [POSITIONING.md](POSITIONING.md).
+Not a LangChain plugin. Not model-specific. The product is a **wire format** plus a **verify function**. Framework adapters are convenience glue — when a framework goes away, the contract stays. See [POSITIONING.md](docs/POSITIONING.md).
 
 **Constitution (book + philosopher edition):** [Aliipou/freedom-theory](https://github.com/Aliipou/freedom-theory). This repo is **authority** (Sluicegate TCB). It does not replace the legitimacy floor. Start there for A1–A7; start here for signed capability proofs.
 
-**Deployable verifier API:** [INFRA.md](INFRA.md) — Docker Compose, `/readyz`, admin-gated registry mutation, attenuating `/delegate`.
+**Deployable verifier API:** [INFRA.md](docs/INFRA.md) — Docker Compose, `/readyz`, admin-gated registry mutation, attenuating `/delegate`.
 
 ```mermaid
 flowchart LR
@@ -37,7 +37,9 @@ flowchart LR
 [![Lean4](https://img.shields.io/badge/Lean4-25%2F25%20proved-blue.svg)](formal/lean4/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
-**Review / ops:** [REVIEW_PACKET.md](REVIEW_PACKET.md) · [ASSUMPTIONS.md](ASSUMPTIONS.md) · [INFRA.md](INFRA.md) · [INDUSTRY_READINESS.md](INDUSTRY_READINESS.md)
+**Repository map:** [docs/REPOSITORY_MAP.md](docs/REPOSITORY_MAP.md) — which repo does what, and where to start.
+
+**Review / ops:** [REVIEW_PACKET.md](docs/REVIEW_PACKET.md) · [ASSUMPTIONS.md](ASSUMPTIONS.md) · [INFRA.md](docs/INFRA.md) · [INDUSTRY_READINESS.md](docs/INDUSTRY_READINESS.md)
 
 ---
 
@@ -63,7 +65,7 @@ flowchart LR
 
 **Formal system posture (honest):** minimal, **incomplete but consistent** — every theorem is proved, admitted (`sorry`), or listed as axiom/non-goal. Security-critical scope lemmas T-SC3/T-SC4 are proved; 2 `sorry` remain in `Scope.lean` (trailing `/`, prefix antisymmetry); 2 crypto axioms in `Proofs.lean`. Details: [formal/INCOMPLETENESS.md](formal/INCOMPLETENESS.md).
 
-**Industry readiness tiers** defined in [INDUSTRY_READINESS.md](INDUSTRY_READINESS.md) — T1 assurance-bounded through T4 production infra-ready. Current branch meets **T2 engineering-complete** (gaps closed + CI green); ops guides (KMS, DR, migration) land in T3/T4 docs.
+**Industry readiness tiers** defined in [INDUSTRY_READINESS.md](docs/INDUSTRY_READINESS.md) — T1 assurance-bounded through T4 production infra-ready. Current branch meets **T2 engineering-complete** (gaps closed + CI green); ops guides (KMS, DR, migration) land in T3/T4 docs.
 
 **Pending:** merge PR #8 to `main` so the default branch carries the same CI and gap closure.
 
@@ -116,7 +118,7 @@ This is the same family of idea as capability-based OS security (seL4, CHERI), a
 
 Sluicegate is **not** “a better OPA.” General policy engines already answer *“is this principal allowed to do this action on this resource right now?”* Cedar is formally verified as a policy language; Zanzibar / OpenFGA scale relationship-based access; OPA’s Rego is highly expressive. We do not claim to replace those systems for service mesh, cloud IAM, or classic ABAC.
 
-What we *do* claim, based on a written comparative evaluation ([COMPARATIVE_EVALUATION.md](COMPARATIVE_EVALUATION.md), kill-tests in [WHY_NOT_OPA.md](WHY_NOT_OPA.md) / [WHY_NOT_DLP.md](WHY_NOT_DLP.md)):
+What we *do* claim, based on a written comparative evaluation ([COMPARATIVE_EVALUATION.md](docs/COMPARATIVE_EVALUATION.md), kill-tests in [WHY_NOT_OPA.md](docs/WHY_NOT_OPA.md) / [WHY_NOT_DLP.md](docs/WHY_NOT_DLP.md)):
 
 | System | Strength | Gap relative to agent tool gates |
 |---|---|---|
@@ -145,7 +147,7 @@ If you only need Rego policies for a REST API, use OPA. If you need relationship
 
 Full gap list: [formal/INCOMPLETENESS.md](formal/INCOMPLETENESS.md). Assumptions that must hold for claims to apply: [ASSUMPTIONS.md](ASSUMPTIONS.md).
 
-Optional philosophy / Theory-of-Freedom notes live under [`PHILOSOPHY/`](PHILOSOPHY/) and [FREEDOM_THEORY_POSITION.md](FREEDOM_THEORY_POSITION.md). They are **not** the industrial claim and do not expand the TCB.
+Optional philosophy / Theory-of-Freedom notes live under [`PHILOSOPHY/`](PHILOSOPHY) and [FREEDOM_THEORY_POSITION.md](docs/FREEDOM_THEORY_POSITION.md). They are **not** the industrial claim and do not expand the TCB.
 
 ---
 
@@ -199,7 +201,7 @@ docker compose up --build -d
 curl -s localhost:8000/readyz
 ```
 
-Details: [INFRA.md](INFRA.md).
+Details: [INFRA.md](docs/INFRA.md).
 
 ### Rust (TCB — prefer for production enforcement)
 
@@ -331,14 +333,14 @@ All items from the original gap audit are **closed or explicitly scoped**. None 
 
 | Item | Resolution |
 |------|------------|
-| WASM sandbox | **Closed** — Linux CI (`.github/workflows/sandbox.yml`); Windows local dev optional (SDK in [DEPLOYMENT.md](DEPLOYMENT.md)) |
+| WASM sandbox | **Closed** — Linux CI (`.github/workflows/sandbox.yml`); Windows local dev optional (SDK in [DEPLOYMENT.md](docs/DEPLOYMENT.md)) |
 | OS-level confinement (seccomp-bpf) | **Closed** — Linux CI adversarial test + rights-derived allowlist (`.github/workflows/seccomp.yml`); Windows/macOS: subprocess isolation only |
 | TLC / Java tooling | **Closed** — CI-verified (`.github/workflows/formal.yml`); log in `formal/tlc_run.log` |
 | CLI packaging | **Closed** — `authgate-cli` entry point + fresh-venv CI smoke; PyPI publish is release ops, not a gate gap |
 | Refinement proof TLA+ → Rust | **Out of scope** — limitation L7, not an engineering gap |
 | Distributed consensus in Rust TCB | **Non-goal** — [NON_GOALS.md](NON_GOALS.md) |
 
-**Infra-ready bar:** this table must stay empty of open rows; see [INFRA.md](INFRA.md).
+**Infra-ready bar:** this table must stay empty of open rows; see [INFRA.md](docs/INFRA.md).
 
 The intended long-term enforcement chain:
 
@@ -368,7 +370,7 @@ Before changing anything under the TCB (`authgate-kernel/src/tcb/`):
 
 > Can this feature live entirely *outside* the TCB?
 
-If yes, keep it out. TCB changes need an invariant justification, proof or model-check evidence where applicable, and regression coverage. See [CONTRIBUTING.md](CONTRIBUTING.md) and [BRANCHES.md](BRANCHES.md).
+If yes, keep it out. TCB changes need an invariant justification, proof or model-check evidence where applicable, and regression coverage. See [CONTRIBUTING.md](CONTRIBUTING.md) and [BRANCHES.md](docs/BRANCHES.md).
 
 ---
 

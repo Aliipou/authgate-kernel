@@ -6,12 +6,12 @@ trusted core), **Implemented** (real code, but outside the TCB — in `extension
 `analysis/`), or **Documented gap** (intentionally not modeled, stated openly).
 
 The trusted core (TCB) is kept free of theological vocabulary by design — see
-[`../TCB_DISCIPLINE.md`](../TCB_DISCIPLINE.md). Components below marked *Implemented*
+[`../TCB_DISCIPLINE.md`](../docs/TCB_DISCIPLINE.md). Components below marked *Implemented*
 therefore live deliberately outside the gate.
 
 | # | Theory component | Book formulation | Code | Status |
 |---|---|---|---|---|
-| 1 | **Axioms A1..A7** | آکسیوم‌های پایه (مالکیت، تفویض، عدم سلطه ماشین) | [`kernel/verifier.py`](../src/authgate/kernel/verifier.py) sovereignty flags `L148–L160`; [`AXIOMATIC_FOUNDATION.md`](../AXIOMATIC_FOUNDATION.md); `formal/lean4/FreedomKernel.lean` | **Enforced** |
+| 1 | **Axioms A1..A7** | آکسیوم‌های پایه (مالکیت، تفویض، عدم سلطه ماشین) | [`kernel/verifier.py`](../src/authgate/kernel/verifier.py) sovereignty flags `L148–L160`; [`AXIOMATIC_FOUNDATION.md`](../docs/AXIOMATIC_FOUNDATION.md); `formal/lean4/FreedomKernel.lean` | **Enforced** |
 | 2 | **Ownership hierarchy** `Human -> Machine` | `Machine(m) -> ∃h (Person(h) ∧ HumanOwner(h, m))` | [`kernel/registry.py`](../src/authgate/kernel/registry.py) `register_machine()`; verifier **A4** `UNOWNED_MACHINE` `L173–L177` | **Enforced** |
 | 3 | **No machine dominion** `Machine -X-> Human` | `Machine(m) ∧ Person(h) -> ¬Owns(m, h)` | [`kernel/verifier.py`](../src/authgate/kernel/verifier.py) **A6** `MACHINE_DOMINION` `L188–L194` | **Enforced** |
 | 4 | **Delegated property only, attenuated** | `MachineScope(m) ⊆ PropertyScope(HumanOwner(m))` | [`kernel/registry.py`](../src/authgate/kernel/registry.py) `delegate()` attenuation; `_delegation_chain_valid()` | **Enforced** |

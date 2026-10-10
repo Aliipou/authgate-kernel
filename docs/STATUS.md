@@ -99,7 +99,7 @@ The kill-test disposition above stands. Additional artifacts landed for review:
 
 Disposition unchanged; **engineering evidence upgraded:**
 
-- **All original engineering gaps closed** — WASM sandbox CI, seccomp adversarial CI, TLC+Lean CI, CLI smoke; see README [Engineering gaps](README.md#engineering-gaps)
+- **All original engineering gaps closed** — WASM sandbox CI, seccomp adversarial CI, TLC+Lean CI, CLI smoke; see README [Engineering gaps](../README.md#engineering-gaps)
 - **CI 5/5 green** on `with-legitimacy` ([PR #8](https://github.com/Aliipou/sluicegate/pull/8)): CI, Formal, Seccomp, Sandbox, TCB Test Suite
 - **New modules:** `seccomp.rs`, `session_clock.rs`; Lean FreedomKernel lake build fixed (Lean 4.14)
 - **Formal honesty:** 2 Lean `sorry` (Scope T-SC1/T-SC5), 2 crypto axioms — not “all theorems verified”; see `formal/INCOMPLETENESS.md`

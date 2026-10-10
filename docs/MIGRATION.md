@@ -76,4 +76,4 @@ Capabilities signed under `old_root` are invalid after epoch cutover. Migration 
 - **MINOR:** additive JSON fields only; old clients still validate
 - **MAJOR:** breaking wire change → migration tool update required + CHANGELOG `[Breaking]`
 
-See [CHANGELOG.md](CHANGELOG.md) and [FEATURE_FREEZE.md](FEATURE_FREEZE.md).
+See [CHANGELOG.md](../CHANGELOG.md) and [FEATURE_FREEZE.md](FEATURE_FREEZE.md).
