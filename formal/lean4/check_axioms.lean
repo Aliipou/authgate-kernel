@@ -11,8 +11,16 @@
     VACUOUS   an axiom whose conclusion is True states nothing.
               (Would have caught `sig_euf_cma : ... -> True`.)
 
+  DO NOT run `lake env lean check_axioms.lean` directly: without `--run` Lean
+  only elaborates this file, prints nothing and exits 0 -- a silent "pass"
+  that checks nothing. Use `formal/lean4/run_axiom_guard.sh`, which holds the
+  real module lists and allowlists. Every allowlist entry must also appear in
+  the preprint's list of unproved assumptions; that link is the point of the
+  allowlist.
+
   Usage (from a package dir, after `lake build`):
     lake env lean --run ../check_axioms.lean <allowed-axioms,comma-sep> <Module> [<Module> ...]
+  Exits 1 if no theorems were found in scope (nothing was checked), 2 on bad usage.
 
   propext, Classical.choice, Quot.sound are always allowed. Every other allowed
   name must also appear in the preprint's list of unproved assumptions.

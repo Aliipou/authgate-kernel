@@ -149,7 +149,9 @@ Optional philosophy / Theory-of-Freedom notes live under [`PHILOSOPHY/`](PHILOSO
 
 ---
 
-## Numbers (Aug 2026 — `with-legitimacy`; merges to `main` via PR #8)
+## Numbers
+
+Only the Lean and guard rows were re-verified on 2026-10-12 (command above; CI job `formal.yml`). The other rows are as last recorded and were **not** re-run in that pass.
 
 | Metric | Value |
 |---|---|
@@ -159,7 +161,6 @@ Optional philosophy / Theory-of-Freedom notes live under [`PHILOSOPHY/`](PHILOSO
 | Kani harnesses | 19 proved (bounded) |
 | Lean 4 | **43 hand-written theorems proved, zero `sorry`, no axioms beyond Lean's own** (source count of `theorem` declarations: `Scope` 25, `TCB` 8, `Authgate/Proofs` 6, `Temporal` 2, `MultiAgent` 2). The CI axiom guard checks every theorem constant in these modules, which includes Lean-generated auxiliary lemmas, so its total is not a count of theorems. `Scope.lean`'s antisymmetry theorem (the last holdout, 3 `sorry` earlier the same day) closed 2026-09-16 via a `List Char`-native decomposition lemma (`normalizeL_slash_suffix`) proving the two "crossed prefix ordering" sub-cases are outright impossible, not just hard to compare by length. CI job itself was fixed the same day — it had no default build target and had been checking nothing; see `DECISIONS.md` |
 | TLA+ / TLC | Safety model checked; **CI-verified** via `formal.yml` (`formal/tlc_run.log`) |
-| CI workflows (PR #8) | 5/5 green (CI, Formal, Seccomp, Sandbox, TCB) |
 | Python `verify()` latency (indicative) | p50 ≈ 10–17 µs depending on registry size |
 
 Treat formal badges as **evidence of engineering discipline**, not as a certificate that every deployment is secure. Crypto implementations and clock integrity remain caller/environment responsibilities unless separately attested.
@@ -273,8 +274,10 @@ cargo kani --harness prop_attenuation_two_node
 cargo kani --harness prop_epoch_check
 cargo kani --harness proof_forged_revocation_ignored
 
-# Lean 4
-cd formal/lean4 && lake build
+# Lean 4: two separate packages (different toolchains), then the axiom guard
+(cd formal/lean4 && lake build)                  # Authgate
+(cd formal/lean4/FreedomKernel && lake build)    # FreedomKernel
+formal/lean4/run_axiom_guard.sh all              # must exit 0; see note below
 
 # Python
 pip install -e ".[dev]"
@@ -285,6 +288,8 @@ python attack_harness/wire_attacks.py
 python attack_harness/differential_tests.py
 python attack_harness/mutation_attacks.py
 ```
+
+**About the Lean guard.** `run_axiom_guard.sh` is the only supported entry point. Running `lake env lean formal/lean4/check_axioms.lean` directly (without `--run`) only elaborates the file, prints nothing and exits 0, which looks like a pass but checks nothing. The guard exits 1 if it finds no theorems in scope and 2 on bad usage.
 
 ---
 

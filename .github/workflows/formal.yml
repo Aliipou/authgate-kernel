@@ -80,10 +80,7 @@ jobs:
       # which a text grep for `sorry` would miss. Empty allowlist = only
       # propext, Classical.choice, Quot.sound are accepted.
       - name: Axiom guard — FreedomKernel security modules
-        working-directory: formal/lean4/FreedomKernel
-        run: |
-          lake env lean --run ../check_axioms.lean "" \
-            FreedomKernel Scope TCB Temporal MultiAgent Incompleteness
+        run: formal/lean4/run_axiom_guard.sh freedomkernel
 
   lean-authgate:
     name: Lean 4 — Authgate (+ axiom guard)
@@ -109,7 +106,4 @@ jobs:
       # Ed25519 EUF-CMA assumption) must be a visible review item and must also
       # be listed in the preprint's unproved assumptions.
       - name: Axiom guard — Authgate
-        working-directory: formal/lean4
-        run: |
-          lake env lean --run check_axioms.lean "" \
-            Authgate.Core Authgate.Invariants Authgate.Proofs
+        run: formal/lean4/run_axiom_guard.sh authgate
