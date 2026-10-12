@@ -85,15 +85,6 @@ jobs:
           lake env lean --run ../check_axioms.lean "" \
             FreedomKernel Scope TCB Temporal MultiAgent Incompleteness
 
-      # The two OntologicalRoot theorems rest on the A0 axioms by design. They
-      # are pinned here so any *other* dependency, or a new axiom, still fails.
-      - name: Axiom guard — OntologicalRoot (explicit A0 allowlist)
-        working-directory: formal/lean4/FreedomKernel
-        run: |
-          lake env lean --run ../check_axioms.lean \
-            "FreedomKernel.OntologicalRoot.Owns,FreedomKernel.OntologicalRoot.OwnedByGod,FreedomKernel.OntologicalRoot.A0_exclusive,FreedomKernel.OntologicalRoot.A0_every_human_owned_by_god" \
-            OntologicalRoot
-
   lean-authgate:
     name: Lean 4 — Authgate (+ axiom guard)
     runs-on: ubuntu-24.04

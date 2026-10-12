@@ -34,7 +34,7 @@ flowchart LR
 [![Rust](https://img.shields.io/badge/kernel-Rust-orange.svg)](authgate-kernel/)
 [![Tests](https://img.shields.io/badge/tests-1300%2B%20passing-brightgreen.svg)](tests/)
 [![Kani](https://img.shields.io/badge/Kani-19%20harnesses-green.svg)](formal/)
-[![Lean4](https://img.shields.io/badge/Lean4-45%20theorems%2C%200%20sorry-blue.svg)](formal/lean4/)
+[![Lean4](https://img.shields.io/badge/Lean4-43%20theorems%2C%200%20sorry-blue.svg)](formal/lean4/)
 [![License: Apache 2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 
 **Review / ops:** [REVIEW_PACKET.md](REVIEW_PACKET.md) · [ASSUMPTIONS.md](ASSUMPTIONS.md) · [INFRA.md](INFRA.md) · [INDUSTRY_READINESS.md](INDUSTRY_READINESS.md)
@@ -61,7 +61,7 @@ flowchart LR
 - `authgate-kernel/src/session_clock.rs` — monotonic session clock; rejects backward time jumps
 - `tests/test_seccomp_adversarial.py` — seccomp kill-test in CI
 
-**Formal system posture.** All 45 Lean theorems declared in the audited modules are proved, with no `sorry`. 43 of them depend on no axioms beyond Lean's own (`propext`, `Classical.choice`, `Quot.sound`). The other 2 (`no_human_owns_human`, `no_machine_owns_human` in `OntologicalRoot.lean`) rest on the A0 axioms by design and are allowlisted explicitly; no security theorem depends on them. This is enforced in CI by `formal/lean4/check_axioms.lean`, which fails the build on any unexpected axiom dependency, on any axiom declared but not allowlisted, and on any axiom whose conclusion is vacuous. The results are proved at the abstract capability level; the link between that level and the signed-token implementation is not yet formalised. Details: [formal/INCOMPLETENESS.md](formal/INCOMPLETENESS.md).
+**Formal system posture.** Every theorem in the audited Lean modules is proved, with no `sorry` and no axioms beyond Lean's own (`propext`, `Classical.choice`, `Quot.sound`). There are 43 hand-written theorems (source count of `theorem` declarations). This is enforced in CI by `formal/lean4/check_axioms.lean`, which fails the build on any unexpected axiom dependency, on any axiom declared but not allowlisted, and on any axiom whose conclusion is vacuous. The results are proved at the abstract capability level; the link between that level and the signed-token implementation is not yet formalised. The ontological-root axioms (A0) live on the `nazariye-azadi` branch, outside this development. Details: [formal/INCOMPLETENESS.md](formal/INCOMPLETENESS.md).
 
 **Industry readiness tiers** defined in [INDUSTRY_READINESS.md](INDUSTRY_READINESS.md) — T1 assurance-bounded through T4 production infra-ready. Current branch meets **T2 engineering-complete** (gaps closed + CI green); ops guides (KMS, DR, migration) land in T3/T4 docs.
 
@@ -157,7 +157,7 @@ Optional philosophy / Theory-of-Freedom notes live under [`PHILOSOPHY/`](PHILOSO
 | Rust crate lib tests | 300 passing (`cargo test --release`, independently re-verified 2026-09-16) |
 | Python / integration tests | 1300+ passing |
 | Kani harnesses | 19 proved (bounded) |
-| Lean 4 | **45 declared theorems proved, zero `sorry`** (source count of `theorem` declarations: `Scope` 25, `TCB` 8, `Authgate/Proofs` 6, `Temporal` 2, `MultiAgent` 2, `OntologicalRoot` 2). The CI axiom guard checks every theorem constant in these modules, 128 in total including Lean-generated auxiliary lemmas, so 128 is not a count of theorems. `Scope.lean`'s antisymmetry theorem (the last holdout, 3 `sorry` earlier the same day) closed 2026-09-16 via a `List Char`-native decomposition lemma (`normalizeL_slash_suffix`) proving the two "crossed prefix ordering" sub-cases are outright impossible, not just hard to compare by length. CI job itself was fixed the same day — it had no default build target and had been checking nothing; see `DECISIONS.md` |
+| Lean 4 | **43 hand-written theorems proved, zero `sorry`, no axioms beyond Lean's own** (source count of `theorem` declarations: `Scope` 25, `TCB` 8, `Authgate/Proofs` 6, `Temporal` 2, `MultiAgent` 2). The CI axiom guard checks every theorem constant in these modules, which includes Lean-generated auxiliary lemmas, so its total is not a count of theorems. `Scope.lean`'s antisymmetry theorem (the last holdout, 3 `sorry` earlier the same day) closed 2026-09-16 via a `List Char`-native decomposition lemma (`normalizeL_slash_suffix`) proving the two "crossed prefix ordering" sub-cases are outright impossible, not just hard to compare by length. CI job itself was fixed the same day — it had no default build target and had been checking nothing; see `DECISIONS.md` |
 | TLA+ / TLC | Safety model checked; **CI-verified** via `formal.yml` (`formal/tlc_run.log`) |
 | CI workflows (PR #8) | 5/5 green (CI, Formal, Seccomp, Sandbox, TCB) |
 | Python `verify()` latency (indicative) | p50 ≈ 10–17 µs depending on registry size |

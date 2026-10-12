@@ -14,4 +14,3 @@ import TCB
 import Temporal
 import MultiAgent
 import Incompleteness
-import OntologicalRoot

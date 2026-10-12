@@ -8,7 +8,7 @@ placeholder for future work, and how it differs in kind from a row like
 Consent Logic (row 8), which genuinely was closeable and now is (see
 [`../docs/CONSENT_SEMANTICS.md`](../docs/CONSENT_SEMANTICS.md)).
 
-**Update:** `formal/lean4/FreedomKernel/OntologicalRoot.lean` now exists and
+**Update:** `formal/lean4/FreedomKernel/OntologicalRoot.lean` (on the `nazariye-azadi` branch, moved off `main` 2026-10-12 so the engineering development declares no axioms beyond Lean's own) exists and
 states this axiom explicitly in Lean, with two real theorems derived from it
 (`no_human_owns_human`, `no_machine_owns_human` — rows A2/A6 of
 `AXIOM_MAP.md`, previously two separate independent assumptions, are now one

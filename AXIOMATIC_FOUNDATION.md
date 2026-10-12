@@ -196,7 +196,7 @@ Per `formal/INCOMPLETENESS.md`, the following are NOT covered by the axioms:
 
 ## Axioms in the Lean development
 
-The only axioms are the A0 axioms in `OntologicalRoot.lean` (`Owns`, `OwnedByGod`, `A0_every_human_owned_by_god`, `A0_exclusive`), allowlisted explicitly in CI. Only the 2 theorems in that file depend on them.
+The Lean development declares no axioms beyond Lean's own. The A0 axioms (`Owns`, `OwnedByGod`, `A0_every_human_owned_by_god`, `A0_exclusive`) and the 2 theorems that depend on them live on the `nazariye-azadi` branch.
 
 Two axioms were removed on 2026-10-12. `infinite_horizon_undecidable` was inconsistent as stated and no result depended on it; the intended Rice-style meta-theoretic content is not formalised here. `sig_euf_cma` had conclusion `True` and asserted nothing. Neither is an assumption of this development. `forged_revocation_harmless` is a theorem, not an axiom.
 

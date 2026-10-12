@@ -167,7 +167,7 @@ outright impossible: canceling the shared normalized prefix forces the
 side to end in '/', contradicting its own already-normalized status.
 
 All 25 theorems in `Scope.lean`, including this one, are now proved
-with zero `sorry` (45 declared theorems across the audited Lean modules). Security-critical traversal rejection (T-SC3) and prefix
+with zero `sorry` (43 hand-written theorems across the audited Lean modules). Security-critical traversal rejection (T-SC3) and prefix
 containment (T-SC4) were proved from the start of the `List Char` rewrite.
 
 ### Removed axioms and the cryptographic boundary (Chlipala feedback)
