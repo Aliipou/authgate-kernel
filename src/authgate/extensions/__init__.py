@@ -5,6 +5,7 @@ ExtendedFreedomVerifier = kernel.FreedomVerifier
     + manipulation detection (detection.py)
     + conflict queue       (resolver.py)
     + synthesis engine     (synthesis.py)
+    + delegate reputation  (delegate_reputation.py)
 
 The API uses ExtendedFreedomVerifier.
 The kernel FreedomVerifier is the formal gate; extensions add observability
@@ -15,10 +16,17 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from authgate.extensions.delegate_reputation import (
+    DelegateReputationEngine,
+    DelegateReputationResult,
+    NDC,
+    ReputationScore,
+)
 from authgate.extensions.detection import detect
 from authgate.extensions.ifc import IFCViolation, NonInterferenceChecker, SecurityLattice
 from authgate.extensions.resolver import ConflictQueue
 from authgate.extensions.synthesis import ProposedRule, SynthesisEngine
+from authgate.kernel.audit import AuditLog
 from authgate.kernel.registry import OwnershipRegistry
 from authgate.kernel.verifier import Action, FreedomVerifier, VerificationResult
 
@@ -29,14 +37,16 @@ class ExtendedVerificationResult:
     Heuristic-augmented result. NEVER returned by the kernel.
 
     Wraps a kernel VerificationResult with heuristic signals like
-    manipulation_score. Callers that need these signals use ExtendedFreedomVerifier;
-    callers that need only structural enforcement use the kernel FreedomVerifier
-    and get a clean VerificationResult.
+    manipulation_score and delegate_reputation. Callers that need these
+    signals use ExtendedFreedomVerifier; callers that need only structural
+    enforcement use the kernel FreedomVerifier and get a clean
+    VerificationResult.
 
     The kernel contract stays clean. The extension carries its own type.
     """
     kernel_result: VerificationResult
     manipulation_score: float = 0.0
+    reputation: ReputationScore | None = None
 
     # Delegate the structural fields for convenience
     @property
@@ -55,8 +65,13 @@ class ExtendedVerificationResult:
 
     def summary(self) -> str:
         base = self.kernel_result.summary()
+        extras: list[str] = []
         if self.manipulation_score > 0:
-            return f"{base} (manipulation={self.manipulation_score:.2f})"
+            extras.append(f"manipulation={self.manipulation_score:.2f}")
+        if self.reputation is not None:
+            extras.append(f"DRE={self.reputation.dcrs:.2f}")
+        if extras:
+            return f"{base} ({', '.join(extras)})"
         return base
 
 
@@ -66,6 +81,7 @@ class ExtendedFreedomVerifier:
       - Manipulation detection on action.argument
       - ConflictQueue for human-arbitration tracking
       - SynthesisEngine for constrained rule induction
+      - DelegateReputationEngine for reasonable-delegate scoring
 
     Returns ExtendedVerificationResult — a SUPERTYPE that carries the kernel
     result plus heuristic fields. The kernel's VerificationResult is never mutated.
@@ -77,12 +93,15 @@ class ExtendedFreedomVerifier:
         conclusion_tester: Callable[[str], bool] | None = None,
         manipulation_threshold: float = 0.5,
         freeze: bool = True,
-        audit_log: object | None = None,
+        audit_log: AuditLog | None = None,
+        reputation_engine: DelegateReputationEngine | None = None,
     ) -> None:
         self.registry = registry
         self._gate = FreedomVerifier(registry, freeze=freeze, audit_log=audit_log)
         self.synthesis = SynthesisEngine()
         self.conflict_queue = ConflictQueue()
+        self.reputation = reputation_engine
+        self._audit_log = audit_log
         self._conclusion_tester = conclusion_tester
         self._manip_threshold = manipulation_threshold
 
@@ -119,9 +138,39 @@ class ExtendedFreedomVerifier:
         else:
             augmented = kernel_result
 
+        # Run delegate reputation engine if configured and TCB permitted
+        rep_score: ReputationScore | None = None
+        if self.reputation is not None and augmented.permitted:
+            dre_result = self.reputation.evaluate(action, augmented)
+            augmented = dre_result.kernel_result
+            rep_score = dre_result.reputation
+
+            # Audit the DRE decision (Phase 3)
+            if self._audit_log is not None and rep_score is not None:
+                self._audit_log.record_extension(
+                    action_id=action.action_id,
+                    source="extension:delegate_reputation",
+                    permitted=augmented.permitted,
+                    extensions={
+                        "dcrs": rep_score.dcrs,
+                        "threshold": rep_score.threshold,
+                        "chain_length": rep_score.chain_length,
+                        "ndc": rep_score.ndc,
+                        "base_risk": rep_score.base_risk,
+                        "historical_penalty": rep_score.historical_penalty,
+                        "attestation_penalty": rep_score.attestation_penalty,
+                        "decay_factor": rep_score.decay_factor,
+                        "historical_actions_90d": rep_score.historical_actions_90d,
+                        "flagged_actions_90d": rep_score.flagged_actions_90d,
+                        "denied_actions_90d": rep_score.denied_actions_90d,
+                        "unique_resources_90d": rep_score.unique_resources_90d,
+                    },
+                )
+
         return ExtendedVerificationResult(
             kernel_result=augmented,
             manipulation_score=round(manip_score, 3),
+            reputation=rep_score,
         )
 
     def admit_rule(self, rule: ProposedRule) -> tuple[bool, str]:
@@ -134,6 +183,10 @@ class ExtendedFreedomVerifier:
 __all__ = [
     "ExtendedFreedomVerifier",
     "ExtendedVerificationResult",
+    "DelegateReputationEngine",
+    "DelegateReputationResult",
+    "NDC",
+    "ReputationScore",
     "ProposedRule",
     "SynthesisEngine",
     "ConflictQueue",

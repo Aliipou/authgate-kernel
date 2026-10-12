@@ -8,6 +8,7 @@ Commands:
 
 Usage:
   authgate-cli verify --registry reg.json --action action.json [--audit log.jsonl]
+  authgate-cli verify --registry reg.json --action action.json --enable-dre --dre-config dre.yaml
   authgate-cli audit verify log.jsonl
   authgate-cli audit replay log.jsonl <index>
   authgate-cli audit stats log.jsonl
@@ -47,7 +48,8 @@ def _build_registry_from_dict(data: dict[str, Any]):
 
     for a in data.get("agents", []):
         kind = AgentType[a["kind"].upper()]
-        agents[a["id"]] = Entity(a["id"], kind)
+        metadata = a.get("metadata", {})
+        agents[a["id"]] = Entity(a["id"], kind, metadata=metadata)
 
     for m in data.get("machine_owners", []):
         machine = agents[m["machine"]]
@@ -134,17 +136,54 @@ def cmd_verify(args: argparse.Namespace) -> int:
         audit = AuditLog(path=args.audit)
 
     frozen = registry.freeze()
-    verifier = FreedomVerifier(frozen, audit_log=audit)
-    result = verifier.verify(action)
 
-    output = {
-        "action_id": result.action_id,
-        "permitted": result.permitted,
-        "confidence": result.confidence,
-        "violations": list(result.violations),
-        "warnings": list(result.warnings),
-        "requires_human_arbitration": result.requires_human_arbitration,
-    }
+    # Phase 3: DRE integration
+    if args.enable_dre:
+        from authgate.extensions import ExtendedFreedomVerifier
+        from authgate.extensions.delegate_reputation_config import DREConfig
+
+        dre_cfg = DREConfig()
+        if args.dre_config:
+            cfg_data = _load_json(args.dre_config, "DRE config")
+            dre_cfg = DREConfig.from_dict(cfg_data)
+
+        dre_engine = dre_cfg.build_engine()
+        verifier = ExtendedFreedomVerifier(
+            frozen,
+            audit_log=audit,
+            reputation_engine=dre_engine,
+        )
+        ext_result = verifier.verify(action)
+        result = ext_result.kernel_result
+
+        output = {
+            "action_id": result.action_id,
+            "permitted": result.permitted,
+            "confidence": result.confidence,
+            "violations": list(result.violations),
+            "warnings": list(result.warnings),
+            "requires_human_arbitration": result.requires_human_arbitration,
+        }
+        if ext_result.reputation is not None:
+            output["dre"] = {
+                "dcrs": ext_result.reputation.dcrs,
+                "threshold": ext_result.reputation.threshold,
+                "ndc": ext_result.reputation.ndc,
+                "chain_length": ext_result.reputation.chain_length,
+            }
+    else:
+        verifier = FreedomVerifier(frozen, audit_log=audit)
+        result = verifier.verify(action)
+
+        output = {
+            "action_id": result.action_id,
+            "permitted": result.permitted,
+            "confidence": result.confidence,
+            "violations": list(result.violations),
+            "warnings": list(result.warnings),
+            "requires_human_arbitration": result.requires_human_arbitration,
+        }
+
     if args.json:
         print(json.dumps(output, indent=2))
     else:
@@ -255,6 +294,10 @@ def build_parser() -> argparse.ArgumentParser:
                           help="Append audit entry to this JSONL file")
     p_verify.add_argument("--json", action="store_true",
                           help="Output machine-readable JSON instead of human text")
+    p_verify.add_argument("--enable-dre", action="store_true",
+                          help="Enable Delegate Reputation Extension (Phase 3)")
+    p_verify.add_argument("--dre-config", metavar="DRE.json",
+                          help="DRE configuration JSON file (requires --enable-dre)")
     p_verify.set_defaults(func=cmd_verify)
 
     # audit
