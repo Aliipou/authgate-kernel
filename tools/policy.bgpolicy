@@ -1,0 +1,9 @@
+layer authgate         = src, attack_harness, examples, benchmarks, redteam, tests
+layer fdk              = fdk, freedom_decision_kernel
+layer banking          = banking, ledger
+layer robotics         = robot, robotics, authrobo
+layer quantum_research = quantum, qkd, qfl
+forbid authgate -> quantum_research : the core depends on nothing — no research code in the kernel
+forbid authgate -> fdk : the core depends on nothing
+forbid authgate -> banking : the core depends on nothing
+forbid authgate -> robotics : the core depends on nothing

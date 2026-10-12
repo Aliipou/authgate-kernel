@@ -1,0 +1,17 @@
+name: boundaries
+
+# Architecture guard (dev/CI only — no runtime code).
+# Enforces the golden rule for the core: AuthGate depends on nothing.
+# The kernel must not import any satellite layer (fdk / banking / robotics / quantum).
+on: [push, pull_request]
+
+jobs:
+  enforce-boundaries:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: AuthGate core imports no satellite layer
+        run: PYTHONPATH=tools python -m boundary_guard check src attack_harness --policy tools/policy.bgpolicy
