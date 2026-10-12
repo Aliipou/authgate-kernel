@@ -69,9 +69,7 @@ Located in `formal/lean4/` (see `Proofs.lean`):
 | `stale_epoch_implies_deny`       | cap.epoch < min_epoch → ¬FreshEpoch                                       |
 | `subject_mismatch_violates_binding` | cap.subject ≠ actor_id → ¬SubjectBinding                               |
 
-Admitted axioms (cryptographic boundary):
-- `sig_euf_cma` — ed25519 EUF-CMA security
-- `forged_revocation_harmless` — invalid-sig revocations do not affect decisions
+Cryptographic boundary: no Lean axiom. `forged_revocation_harmless` (invalid-sig revocations do not affect decisions) is a **proved theorem**. The former placeholder `sig_euf_cma : True` was removed 2026-10-12; Ed25519 security is not modelled in Lean.
 
 ## TCB Rust Test Coverage
 

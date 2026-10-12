@@ -74,3 +74,36 @@ jobs:
           lake update
           lake build
           echo "Lean build OK — see formal/INCOMPLETENESS.md for admitted theorems"
+
+      # Axiom guard: transitive axiom set per theorem (Lean.collectAxioms), so
+      # sorryAx / native_decide / axioms reached via helper lemmas are caught,
+      # which a text grep for `sorry` would miss. Empty allowlist = only
+      # propext, Classical.choice, Quot.sound are accepted.
+      - name: Axiom guard — FreedomKernel security modules
+        run: formal/lean4/run_axiom_guard.sh freedomkernel
+
+  lean-authgate:
+    name: Lean 4 — Authgate (+ axiom guard)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install elan + Lean
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Build Authgate
+        working-directory: formal/lean4
+        run: |
+          elan toolchain install $(cat lean-toolchain)
+          lake exe cache get
+          lake build
+
+      # Empty allowlist: Authgate declares no axioms. Adding one (e.g. a real
+      # Ed25519 EUF-CMA assumption) must be a visible review item and must also
+      # be listed in the preprint's unproved assumptions.
+      - name: Axiom guard — Authgate
+        run: formal/lean4/run_axiom_guard.sh authgate

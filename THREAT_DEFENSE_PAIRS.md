@@ -83,7 +83,7 @@ Format: `AT-X.Y ↔ DEF-X.Y` — each defense is enforced by code, not by policy
 
 | Attack | Defense | Enforcement site |
 |--------|---------|------------------|
-| AT-6.1 signature forgery (without key) | DEF-6.1 ed25519 EUF-CMA assumption (admitted axiom in Lean) | `formal/lean4/` sig_euf_cma |
+| AT-6.1 signature forgery (without key) | DEF-6.1 ed25519 EUF-CMA assumption (runtime assumption; not modelled in Lean) | `ASSUMPTIONS.md` |
 | AT-6.2 cross-context proof reuse | DEF-6.2 resource_hash in proof and action must match | `engine.rs:55` |
 | AT-6.3 timing-side-channel on hash compare | DEF-6.3 constant-time comparison in verify_binding() | `types.rs` |
 | AT-6.4 weak nonce predictability | DEF-6.4 N/A — caller-supplied; deployment responsibility | (DEPLOY) |

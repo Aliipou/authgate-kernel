@@ -13,11 +13,22 @@ namespace FreedomKernel.Incompleteness
 -- GUARANTEE: no prefix of length ≤ n violates temporal invariants.
 -- GAP: the range (n, ∞) is not covered.
 
--- Stated as an axiom (undecidability result):
-axiom infinite_horizon_undecidable :
-  ¬ ∃ (decide : List Unit → Bool),
-    ∀ (plan : List Unit),
-      decide plan = true ↔ True  -- placeholder for "all-safe predicate"
+-- REMOVED 2026-10-12: `infinite_horizon_undecidable` was inconsistent.
+--
+-- It was stated as:
+--   not (exists decide : List Unit -> Bool, forall plan, decide plan = true <-> True)
+--
+-- That is refutable: `fun _ => true` witnesses the existential, so the axiom
+-- yields `False` and any module importing it could prove anything.
+--
+-- The intended content is a Rice-style meta-theoretic result: no total
+-- decision procedure settles an arbitrary semantic property of plans over an
+-- unbounded horizon. `List Unit -> Bool` cannot model that (the domain carries
+-- no information about the plan). Formalising it needs a real model of plans
+-- and of the property decided, and is not attempted here.
+--
+-- This is NOT an assumption the development rests on and must not appear in
+-- the preprint's list of unproved assumptions.
 
 -- ── Semantic Intent ───────────────────────────────────────────────────────────
 

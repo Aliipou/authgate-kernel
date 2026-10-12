@@ -5,10 +5,9 @@
 -- Proofs of the pure logical properties (epoch, rights, attenuation) and of
 -- INV-REVOCATION's "forged revocation is harmless" property are complete
 -- (see `forged_revocation_harmless`, which models engine.rs Layer 3 rather
--- than being admitted). `sig_euf_cma`, the cryptographic-oracle axiom for
--- INV-SIGCHAIN, is a genuine ed25519 hardness assumption — those aren't
--- proved in a general-purpose proof assistant, only assumed or reduced to
--- another assumption; it stays an axiom pending a Lean 4 ed25519 library.
+-- than being admitted). There is no signature axiom: the former placeholder
+-- `sig_euf_cma ... : True` was vacuous and was removed (see below). INV-SIGCHAIN's
+-- cryptographic content is NOT modelled here.
 
 import Authgate.Core
 import Authgate.Invariants
@@ -63,14 +62,14 @@ theorem subject_mismatch_violates_binding
   simp [SubjectBinding]
   exact h
 
--- ─── Admitted: Signature validity implies non-forgeable origin ───────────────
--- If IsValidSig(key, sig, msg) holds, then no party without key's private key
--- could have produced sig. This reduces to ed25519 EUF-CMA security.
--- Admitted pending Lean 4 ed25519 formalization.
-axiom sig_euf_cma
-    (key : PrincipalId) (sig msg : List Nat)
-    (h : IsValidSig key sig msg)
-    : True  -- placeholder; real statement requires key/sig types
+-- ─── REMOVED 2026-10-12: `sig_euf_cma` ───────────────────────────────────────
+-- It was `axiom sig_euf_cma ... (h : IsValidSig key sig msg) : True`. A
+-- conclusion of `True` is provable without the axiom, so it assumed nothing and
+-- no theorem could use it; keeping it made the file look like it rested on a
+-- cryptographic assumption when it does not. These proofs are at the abstract
+-- capability level. A real Ed25519 EUF-CMA assumption (and the link to
+-- signed tokens) is future work: see `Ed25519.lean` on the unmerged
+-- `crypto-axiom-connection` branch.
 
 -- ─── Theorem: Invalid revocation does not affect Layer 3's decision ──────────
 -- Models authgate-kernel/src/tcb/engine.rs Layer 3 (lines 90-104):

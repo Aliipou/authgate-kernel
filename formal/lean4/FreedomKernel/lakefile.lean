@@ -13,4 +13,4 @@ package «FreedomKernel» where
 -- `@[default_target]` meant `lake build` succeeded by building nothing.
 @[default_target]
 lean_lib «FreedomKernel» where
-  roots := #[`FreedomKernel, `Scope, `TCB, `Temporal, `MultiAgent, `Incompleteness, `OntologicalRoot]
+  roots := #[`FreedomKernel, `Scope, `TCB, `Temporal, `MultiAgent, `Incompleteness]

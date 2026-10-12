@@ -102,6 +102,6 @@ Disposition unchanged; **engineering evidence upgraded:**
 - **All original engineering gaps closed** — WASM sandbox CI, seccomp adversarial CI, TLC+Lean CI, CLI smoke; see README [Engineering gaps](README.md#engineering-gaps)
 - **CI 5/5 green** on `with-legitimacy` ([PR #8](https://github.com/Aliipou/sluicegate/pull/8)): CI, Formal, Seccomp, Sandbox, TCB Test Suite
 - **New modules:** `seccomp.rs`, `session_clock.rs`; Lean FreedomKernel lake build fixed (Lean 4.14)
-- **Formal honesty:** 2 Lean `sorry` (Scope T-SC1/T-SC5), 2 crypto axioms — not “all theorems verified”; see `formal/INCOMPLETENESS.md`
+- **Formal honesty:** no Lean `sorry`; proofs are at the abstract capability level and the signed-token link is not formalised — not “the implementation is verified”; see `formal/INCOMPLETENESS.md`
 - **Industry tiers:** [INDUSTRY_READINESS.md](INDUSTRY_READINESS.md) T1–T4; ops guides: KEY_MANAGEMENT, DISASTER_RECOVERY, MIGRATION
 - **Pending:** merge PR #8 → `main`

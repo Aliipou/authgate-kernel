@@ -91,8 +91,12 @@ cd formal/lean4/FreedomKernel && lake build
 | `TCB.lean` | Proved (forbidden flags, determinism) |
 | `Temporal.lean` | `taint_monotone` proved |
 | `MultiAgent.lean` | `attenuation_cannot_escalate` proved |
-| `Scope.lean` | T-SC3/T-SC4 proved; T-SC1/T-SC5 have 1 `sorry` each |
-| `Proofs.lean` | 2 crypto axioms (`sig_euf_cma`, `forged_revocation_harmless`) |
+| `Scope.lean` | T-SC1..T-SC5 proved; no `sorry` (checked by `check_axioms.lean` in CI) |
+| `Authgate/Proofs.lean` | `forged_revocation_harmless` proved (a theorem, not an axiom). No signature axiom: the proofs hold at the abstract capability level |
+
+The link between that abstract level and a signed-token implementation is **not formalised**. `Ed25519.lean` on the unmerged `crypto-axiom-connection` branch is work toward it. The ontological-root axioms (A0) and their two consequences live on the `nazariye-azadi` branch, outside this development.
+
+CI runs `formal/lean4/check_axioms.lean`: per-theorem transitive axioms, plus every *declared* axiom must be allowlisted and non-vacuous.
 
 Do not claim “all theorems verified” without the split in `INCOMPLETENESS.md`.
 

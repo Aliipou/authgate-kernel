@@ -13,27 +13,28 @@ decision-os-min outreach.
 
 | Claim | Status | Where |
 |---|---|---|
-| Ed25519 EUF-CMA (signature unforgeability) | **AXIOM** | Lean: `formal/lean4/Proofs.lean` `sig_euf_cma`; runtime uses `cryptography` Ed25519, **not** HACL*/Fiat-verified code |
-| Forged revocation evidence is harmless under the axiom | **AXIOM** (reduces to EUF-CMA) | `forged_revocation_harmless` |
+| Ed25519 EUF-CMA (signature unforgeability) | **ASSUMED, not modelled in Lean** (no Lean axiom encodes it) | runtime uses `cryptography` Ed25519, **not** HACL*/Fiat-verified code |
+| Forged revocation evidence is harmless | **PROVED** at the abstract level (a theorem, not an axiom) | `forged_revocation_harmless` in `formal/lean4/Authgate/Proofs.lean` |
 | Hash-chain audit tamper detection (SHA-256 collision resistance) | **ASSUMED** (standard hash assumption; not proved here) | `decision_os_min/audit.py`, Rust audit export |
 | HMAC-SHA256 integrity of macaroon caveat chains | **ASSUMED** (HMAC unforgeability) | `decision_os_min/attenuation.py` |
 
-### Ed25519 axiom (explicit, per Adam Chlipala feedback)
+### Ed25519 assumption (explicit, per Adam Chlipala feedback)
 
-> **Axiom `sig_euf_cma`.** The signature oracle used by the kernel (`IsValidSig` /
-> `cryptography.hazmat…Ed25519`) is treated as EUF-CMA-secure. No theorem in this
-> repository discharges that claim. Until a verified implementation from the
-> HACL* / Fiat-Crypto family replaces the runtime signer **and** the Lean oracle
-> is linked to it, every theorem that mentions signatures is **conditional on this
-> axiom**.
+> The signature scheme used by the runtime (`cryptography.hazmat…Ed25519`) is
+> assumed EUF-CMA-secure. **No Lean axiom or theorem in `main` encodes this**:
+> the proofs are at the abstract capability level and the link to signed tokens
+> is not formalised. A real Lean axiom (`ed25519_euf_cma`, ed25519-dalek v2.2.0)
+> exists only on the unmerged `crypto-axiom-connection` branch.
+>
+> Two axioms were removed on 2026-10-12. `infinite_horizon_undecidable` was inconsistent as stated and no result depended on it; the intended Rice-style meta-theoretic content is not formalised here. `sig_euf_cma` had conclusion `True` and asserted nothing. Neither is an assumption of this development. `forged_revocation_harmless` is a theorem, not an axiom.
 
 Status-table row (do not upgrade without evidence):
 
 | Component | Implementation | Verified? | Role in claims |
 |---|---|---|---|
-| Decision signing (`decision-os-min`, `decision-kernel-core`) | `cryptography` Ed25519 | **No** | AXIOM |
-| Sluicegate Rust TCB signatures | project crypto provider | **No** (Kani/Lean treat sig as oracle) | AXIOM |
-| Target replacement | HACL* / Fiat Ed25519 | planned | removes axiom |
+| Decision signing (`decision-os-min`, `decision-kernel-core`) | `cryptography` Ed25519 | **No** | ASSUMED (not in Lean) |
+| Sluicegate Rust TCB signatures | project crypto provider | **No** (Kani treats sig as oracle; Lean does not model it) | ASSUMED (not in Lean) |
+| Target replacement | HACL* / Fiat Ed25519 | planned | would let a real axiom be discharged |
 
 ---
 
