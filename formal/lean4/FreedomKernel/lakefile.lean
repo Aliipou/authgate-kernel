@@ -5,4 +5,4 @@ package «authgate-kernel» where
   name := "FreedomKernel"
 
 lean_lib «FreedomKernel» where
-  roots := #[`FreedomKernel]
+  roots := #[`FreedomKernel, `OntologicalRoot, `OntologicalRootModel]
