@@ -74,3 +74,51 @@ jobs:
           lake update
           lake build
           echo "Lean build OK — see formal/INCOMPLETENESS.md for admitted theorems"
+
+      # Axiom guard: transitive axiom set per theorem (Lean.collectAxioms), so
+      # sorryAx / native_decide / axioms reached via helper lemmas are caught,
+      # which a text grep for `sorry` would miss. Empty allowlist = only
+      # propext, Classical.choice, Quot.sound are accepted.
+      - name: Axiom guard — FreedomKernel security modules
+        working-directory: formal/lean4/FreedomKernel
+        run: |
+          lake env lean --run ../check_axioms.lean "" \
+            FreedomKernel Scope TCB Temporal MultiAgent Incompleteness
+
+      # The two OntologicalRoot theorems rest on the A0 axioms by design. They
+      # are pinned here so any *other* dependency, or a new axiom, still fails.
+      - name: Axiom guard — OntologicalRoot (explicit A0 allowlist)
+        working-directory: formal/lean4/FreedomKernel
+        run: |
+          lake env lean --run ../check_axioms.lean \
+            "FreedomKernel.OntologicalRoot.Owns,FreedomKernel.OntologicalRoot.OwnedByGod,FreedomKernel.OntologicalRoot.A0_exclusive,FreedomKernel.OntologicalRoot.A0_every_human_owned_by_god" \
+            OntologicalRoot
+
+  lean-authgate:
+    name: Lean 4 — Authgate (+ axiom guard)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Install elan + Lean
+        run: |
+          curl -sSf https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Build Authgate
+        working-directory: formal/lean4
+        run: |
+          elan toolchain install $(cat lean-toolchain)
+          lake exe cache get
+          lake build
+
+      # sig_euf_cma is declared in Authgate.Proofs but currently used by no
+      # theorem, so the allowlist stays empty. If a proof starts depending on
+      # it, this fails and the allowlist change becomes a visible review item.
+      - name: Axiom guard — Authgate
+        working-directory: formal/lean4
+        run: |
+          lake env lean --run check_axioms.lean "" \
+            Authgate.Core Authgate.Invariants Authgate.Proofs
