@@ -22,7 +22,7 @@ Do not claim a tier without meeting every gate on that row.
 | Proved vs admitted split | [formal/INCOMPLETENESS.md](formal/INCOMPLETENESS.md) |
 | Bounded TLC | [formal/tlc_run.log](formal/tlc_run.log), CI `formal.yml` |
 | Kani TCB harnesses | [formal/COVERAGE.md](formal/COVERAGE.md) |
-| Lean partial (2 sorry, 2 crypto axioms) | `formal/lean4/FreedomKernel/Scope.lean`, `Proofs.lean` |
+| Lean: abstract level only (no sorry; signed-token link not formalised) | `formal/lean4/` |
 
 **Not claimed:** Full refinement TLA+→Rust, semantic intent, infinite-horizon safety.
 

@@ -150,7 +150,7 @@ formal/lean4/FreedomKernel/
     [✓] prefix_implies_containment (T-SC4)   (proved — security-critical)
     [✓] scope_contains_antisymmetric (T-SC5) (proved, zero sorry — closed 2026-09-16)
   Incompleteness.lean
-    [✓] infinite_horizon_undecidable         (axiom — undecidability result)
+    (no declarations; `infinite_horizon_undecidable` was removed 2026-10-12, see below)
 ```
 
 ### 2026-09-16: last gap closed
@@ -166,15 +166,14 @@ outright impossible: canceling the shared normalized prefix forces the
 "extra" segment to be pure '/' characters, which then forces the crossed
 side to end in '/', contradicting its own already-normalized status.
 
-All 25 Lean theorems in this library, including this one, are now proved
-with zero `sorry`. Security-critical traversal rejection (T-SC3) and prefix
+All 25 theorems in `Scope.lean`, including this one, are now proved
+with zero `sorry` (45 declared theorems across the audited Lean modules). Security-critical traversal rejection (T-SC3) and prefix
 containment (T-SC4) were proved from the start of the `List Char` rewrite.
 
-### Crypto axioms (trusted boundary — Chlipala feedback)
+### Removed axioms and the cryptographic boundary (Chlipala feedback)
 
-| Axiom | Statement | Replacement plan |
-|---|---|---|
-| `sig_euf_cma` | ed25519 EUF-CMA security | HACL\*/Fiat-lineage verified Ed25519 (highest-value formal gap) |
-| `forged_revocation_harmless` | Invalid-sig revocations do not affect decisions | Discharge via signature verification proof chain |
+Two axioms were removed on 2026-10-12. `infinite_horizon_undecidable` was inconsistent as stated and no result depended on it; the intended Rice-style meta-theoretic content is not formalised here. `sig_euf_cma` had conclusion `True` and asserted nothing. Neither is an assumption of this development. `forged_revocation_harmless` is a theorem, not an axiom.
+
+The highest-value formal gap is therefore not discharging an axiom but *stating* one: linking the abstract capability level to signed tokens (see the unmerged `crypto-axiom-connection` branch and `formal/CRYPTO_VERIFICATION_PLAN.md` there).
 
 Do **not** claim "16 theorems proved" without this split — see `formal/COVERAGE.md` and README badges.

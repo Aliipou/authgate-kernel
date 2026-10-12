@@ -116,12 +116,12 @@ and must live in `extensions/` or `analysis/`.
 |--------|-----------|
 | Code (Rust)   | `freedom-kernel/src/tcb/engine.rs:60-69` (expiry + epoch) + `dag.rs:62,72` (signatures) |
 | Code (Python) | `src/authgate/kernel/registry.py:can_act()` (epoch gate) + `RightsClaim.is_expired()` |
-| Lean axiom    | `sig_euf_cma` in `formal/lean4/Proofs.lean:66` (ed25519 EUF-CMA assumption — admitted, not proved) |
+| Lean axiom    | none (the former placeholder `sig_euf_cma : True` was removed 2026-10-12; signatures are not modelled in Lean) |
 | Lean theorem  | `attenuation_transitive` (proves chain integrity given signature validity) |
 | Lean theorem  | `stale_epoch_implies_deny` (proves epoch gate is unconditional) |
 | Kani harness  | `prop_epoch_check` + `proof_forged_revocation_ignored` |
 | Closes attacks| AT-2.5 (forged sig), AT-2.6 (expired cap), AT-3.* (epoch attacks) |
-| Boundary      | Cryptographic strength assumed (`sig_euf_cma` is an admitted axiom from cryptographic literature, not proved here) |
+| Boundary      | Cryptographic strength assumed at runtime (Ed25519 EUF-CMA); not modelled in Lean |
 
 ### A6 — Attenuation: Child Rights ⊆ Parent Rights
 
@@ -194,21 +194,13 @@ Per `formal/INCOMPLETENESS.md`, the following are NOT covered by the axioms:
 
 ---
 
-## Admitted Axioms (cryptographic dependencies we do not prove)
+## Axioms in the Lean development
 
-The proofs depend on these admitted axioms. Their soundness is external.
+The only axioms are the A0 axioms in `OntologicalRoot.lean` (`Owns`, `OwnedByGod`, `A0_every_human_owned_by_god`, `A0_exclusive`), allowlisted explicitly in CI. Only the 2 theorems in that file depend on them.
 
-| Admitted axiom | Source | Used to prove |
-|---------------|--------|---------------|
-| `sig_euf_cma` | ed25519 EUF-CMA security from cryptographic literature | A5 (cap signatures cannot be forged without private key) |
-| `forged_revocation_harmless` | Code inspection (revocation with invalid sig is silently ignored) | DoS resistance against forged revocations |
-| `infinite_horizon_undecidable` | Rice's theorem | Statement of incompleteness boundary |
+Two axioms were removed on 2026-10-12. `infinite_horizon_undecidable` was inconsistent as stated and no result depended on it; the intended Rice-style meta-theoretic content is not formalised here. `sig_euf_cma` had conclusion `True` and asserted nothing. Neither is an assumption of this development. `forged_revocation_harmless` is a theorem, not an axiom.
 
-Replacing these axioms with mechanical proofs would require either:
-- A formal ed25519 verification (massive undertaking; out of scope)
-- A complete proof of the Python/Rust runtime semantics
-
-We accept these as borrowings from a wider mathematical context.
+What is *not* proved: the runtime assumes Ed25519 EUF-CMA security and the Python/Rust runtime semantics are not verified. Closing that gap needs a real signature axiom linked to the implementation (see `crypto-axiom-connection`) or a verified implementation.
 
 ---
 
@@ -246,7 +238,7 @@ a measurable, achievable goal. We are halfway there.
 | Mechanical proofs (Kani + Lean) for kernel scope | TLC model checker not yet run |
 | INCOMPLETENESS.md enumerates the gaps | Workshop paper / arXiv preprint not written |
 | Python reference layer mirrors Rust intent | Python NOT formally verified (acknowledged) |
-| Cryptographic axioms cited (`sig_euf_cma`) | No external crypto audit |
+| Ed25519 EUF-CMA assumed at runtime, not modelled in Lean | No external crypto audit |
 
 The work to get from "halfway" to "fully" is mostly:
 - External adversarial review (D8 in `DEPLOYMENT_READINESS.md`)

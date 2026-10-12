@@ -114,9 +114,9 @@ jobs:
           lake exe cache get
           lake build
 
-      # sig_euf_cma is declared in Authgate.Proofs but currently used by no
-      # theorem, so the allowlist stays empty. If a proof starts depending on
-      # it, this fails and the allowlist change becomes a visible review item.
+      # Empty allowlist: Authgate declares no axioms. Adding one (e.g. a real
+      # Ed25519 EUF-CMA assumption) must be a visible review item and must also
+      # be listed in the preprint's unproved assumptions.
       - name: Axiom guard — Authgate
         working-directory: formal/lean4
         run: |
