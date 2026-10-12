@@ -10,6 +10,12 @@
 -- `trivialModel` instantiates them with a concrete interpretation in plain
 -- Lean (no axioms of its own), so the set is consistent relative to Lean.
 --
+-- WHAT THIS FILE ESTABLISHES, EXACTLY: the four A0 axioms are not mutually
+-- contradictory (relative consistency, relative to Lean's own logic). It makes
+-- NO claim about the content of the axioms, about whether they are true of
+-- anything, or about their sufficiency for any result. Do not cite it as
+-- "A0 was proved".
+--
 -- HONEST SCOPE: the model is trivial -- nobody owns anything, and "owned by
 -- God" is true of everyone. That proves the axioms are not contradictory. It
 -- also shows how little they constrain: `no_human_owns_human` and
